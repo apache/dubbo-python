@@ -12,7 +12,7 @@ Python Dubbo Client
 然后通过代理实现负载均衡算法，调用服务端
 
 ### Example
-'''python   
+```python   
     service_interface = 'com.ofpay.demo.api.UserProvider'
     dubbo_client = DubboClient(service_interface)
     print dubbo_client.getUser('A003')
@@ -21,4 +21,4 @@ Python Dubbo Client
     print dubbo_client.queryAll()
     print dubbo_client.isLimit('MAN', 'Joe')
     print dubbo_client('getUser', 'A005')   
-'''
+```
