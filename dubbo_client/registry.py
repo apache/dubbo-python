@@ -1,4 +1,4 @@
-# encoding=utf-8
+# coding=utf-8
 import urllib
 from urlparse import urlparse, parse_qsl
 

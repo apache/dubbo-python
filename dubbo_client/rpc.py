@@ -1,5 +1,7 @@
 import httplib
 import json
+import random
+from pyjsonrpc import HttpClient
 
 from dubbo_client.registry import service_provides, add_provider_listener
 
@@ -19,6 +21,43 @@ def raw_client(service_interface, app_params):
         return response.read(), None
     else:
         return None, 'can not find the provide of {0}'.format(service_interface)
+
+
+class DubboClient(object):
+    clients = []
+
+    class _Method(object):
+
+        def __init__(self, client_instance, method):
+            self.client_instance = client_instance
+            self.method = method
+
+        def __call__(self, *args, **kwargs):
+            return self.client_instance.call(self.method, *args, **kwargs)
+
+    def __init__(self, interface):
+        add_provider_listener(interface)
+        provides = service_provides.get(interface, ())
+        if len(provides) > 0:
+            for location, provide in provides.items():
+                self.clients.append(HttpClient(url="http://{0}{1}".format(location, provide.path)))
+
+    def call(self, method, *args, **kwargs):
+        client = random.choice(self.clients)
+        return client.call(method, *args, **kwargs)
+
+    def __call__(self, method, *args, **kwargs):
+        """
+        Redirects the direct call to *self.call*
+        """
+        return self.call(method, *args, **kwargs)
+
+    def __getattr__(self, method):
+        """
+        Allows the usage of attributes as *method* names.
+        """
+
+        return self._Method(client_instance=self, method=method)
 
 
 if __name__ == '__main__':
