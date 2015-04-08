@@ -20,5 +20,5 @@ Python Dubbo Client
         {u'age': 18, u'time': 1428463514153, u'sex': u'MAN', u'id': u'A003', u'name': u'zhangsan'})
     print dubbo_client.queryAll()
     print dubbo_client.isLimit('MAN', 'Joe')
-    print dubbo_client('getUser', 'A005')
+    print dubbo_client('getUser', 'A005')   
 '''
