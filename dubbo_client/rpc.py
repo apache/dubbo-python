@@ -24,7 +24,7 @@ def raw_client(service_interface, app_params):
 
 
 class DubboClient(object):
-    clients = []
+    interface = ''
 
     class _Method(object):
 
@@ -36,14 +36,16 @@ class DubboClient(object):
             return self.client_instance.call(self.method, *args, **kwargs)
 
     def __init__(self, interface):
+        self.interface = interface
         add_provider_listener(interface)
-        provides = service_provides.get(interface, ())
-        if len(provides) > 0:
-            for location, provide in provides.items():
-                self.clients.append(HttpClient(url="http://{0}{1}".format(location, provide.path)))
 
     def call(self, method, *args, **kwargs):
-        client = random.choice(self.clients)
+        provides = service_provides.get(self.interface, ())
+        if len(provides) == 0:
+            return None
+        location, provide = random.choice(provides.items())
+        print 'location is {0}'.format(location)
+        client = HttpClient(url="http://{0}{1}".format(location, provide.path))
         return client.call(method, *args, **kwargs)
 
     def __call__(self, method, *args, **kwargs):
