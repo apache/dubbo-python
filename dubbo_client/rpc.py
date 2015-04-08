@@ -40,7 +40,7 @@ class DubboClient(object):
         add_provider_listener(interface)
 
     def call(self, method, *args, **kwargs):
-        provides = service_provides.get(self.interface, ())
+        provides = service_provides.get(self.interface, {})
         if len(provides) == 0:
             return None
         location, provide = random.choice(provides.items())
