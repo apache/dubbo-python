@@ -38,7 +38,7 @@ zk.add_listener(state_listener)
 
 
 def node_listener(event):
-    print event
+    # print event
     event_queue.put(event)
 
 
@@ -91,7 +91,7 @@ def do_event(event):
 
 for i in range(num_worker_threads):
     t = Thread(target=worker)
-    t.daemon = False
+    t.daemon = True
     t.start()
 
 

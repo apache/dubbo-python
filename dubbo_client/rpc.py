@@ -1,9 +1,11 @@
 import httplib
 import json
 import random
-from pyjsonrpc import HttpClient
+from urllib2 import HTTPError
+from pyjsonrpc import HttpClient, JsonRpcError
 
 from dubbo_client.registry import service_provides, add_provider_listener
+from dubbo_client.rpcerror import NoProvider, ConnectionFail, dubbo_client_errors
 
 
 __author__ = 'caozupeng'
@@ -42,11 +44,16 @@ class DubboClient(object):
     def call(self, method, *args, **kwargs):
         provides = service_provides.get(self.interface, {})
         if len(provides) == 0:
-            return None
+            raise NoProvider('can not find provide', self.interface)
         location, provide = random.choice(provides.items())
         print 'location is {0}'.format(location)
         client = HttpClient(url="http://{0}{1}".format(location, provide.path))
-        return client.call(method, *args, **kwargs)
+        try:
+            return client.call(method, *args, **kwargs)
+        except HTTPError, e:
+            raise ConnectionFail(None, e.filename)
+        except JsonRpcError, error:
+            raise dubbo_client_errors.get(error.code, None)
 
     def __call__(self, method, *args, **kwargs):
         """
