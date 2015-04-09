@@ -1,6 +1,6 @@
 __author__ = 'caozupeng'
 
-from rpc import (
+from rpclib import (
     DubboClient,
 )
 from rpcerror import *
