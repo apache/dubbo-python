@@ -4,7 +4,7 @@ __author__ = 'caozupeng'
 import urllib
 from kazoo.protocol.states import KazooState
 from kazoo.client import KazooClient
-from dubbo_client.common import ServiceProvider
+from dubbo_client.common import ServiceURL
 
 
 class Registry(object):
@@ -61,16 +61,21 @@ class ZookeeperRegistry(Registry):
         """
         self.__do_event(event)
 
-    def __handler_urls(self, urls):
-        for child_node in urls:
-            url = urllib.unquote(child_node).decode('utf8')
-            if url.startswith('jsonrpc'):
-                provide = ServiceProvider(url)
-                service_key = self.__service_provides.get(provide.interface)
+    def __handler_nodes(self, nodes):
+        """
+        将zookeeper中查询到的服务节点列表加入到一个dict中
+        :param nodes: 节点列表
+        :return: 不需要返回
+        """
+        for child_node in nodes:
+            node = urllib.unquote(child_node).decode('utf8')
+            if node.startswith('jsonrpc'):
+                service_url = ServiceURL(node)
+                service_key = self.__service_provides.get(service_url.interface)
                 if service_key:
-                    service_key[provide.location] = provide
+                    service_key[service_url.location] = service_url
                 else:
-                    self.__service_provides[provide.interface] = {provide.location: provide}
+                    self.__service_provides[service_url.interface] = {service_url.location: service_url}
 
     def __do_event(self, event):
         # event.path 是类似/dubbo/com.ofpay.demo.api.UserProvider/providers 这样的
@@ -80,10 +85,10 @@ class ZookeeperRegistry(Registry):
             del self.__service_provides[provide_name]
         if event.state == 'CONNECTED':
             children = self.__zk.get_children(event.path, watch=self.__event_listener)
-            self.__handler_urls(children)
+            self.__handler_nodes(children)
         if event.state == 'DELETED':
             children = self.__zk.get_children(event.path, watch=self.__event_listener)
-            self.__handler_urls(children)
+            self.__handler_nodes(children)
 
     def add_provider_listener(self, provide_name):
         """
@@ -97,7 +102,7 @@ class ZookeeperRegistry(Registry):
         children = self.__zk.get_children('{0}/{1}/{2}'.format('dubbo', provide_name, 'providers'),
                                           watch=self.__event_listener)
         # 全部重新添加
-        self.__handler_urls(children)
+        self.__handler_nodes(children)
 
     def get_provides(self, provide_name, default=None):
         """

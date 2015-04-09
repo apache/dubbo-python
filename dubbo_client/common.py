@@ -4,7 +4,7 @@ from urlparse import urlparse, parse_qsl
 __author__ = 'caozupeng'
 
 
-class ServiceProvider(object):
+class ServiceURL(object):
     protocol = 'jsonrpc'
     location = ''  # ip+port
     path = ''  # like /com.qianmi.dubbo.UserProvider
