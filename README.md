@@ -14,11 +14,18 @@ Python Dubbo Client
 ### Example
 ```python   
     service_interface = 'com.ofpay.demo.api.UserProvider'
-    dubbo_client = DubboClient(service_interface)
-    print dubbo_client.getUser('A003')
-    print dubbo_client.queryUser(
-        {u'age': 18, u'time': 1428463514153, u'sex': u'MAN', u'id': u'A003', u'name': u'zhangsan'})
-    print dubbo_client.queryAll()
-    print dubbo_client.isLimit('MAN', 'Joe')
-    print dubbo_client('getUser', 'A005')   
+    registry = ZookeeperRegistry('172.19.65.33:2181')
+    dubbo_client = DubboClient(service_interface, registry)
+    for i in range(1000):
+        try:
+            print dubbo_client.getUser('A003')
+            print dubbo_client.queryUser(
+                {u'age': 18, u'time': 1428463514153, u'sex': u'MAN', u'id': u'A003', u'name': u'zhangsan'})
+            print dubbo_client.queryAll()
+            print dubbo_client.isLimit('MAN', 'Joe')
+            print dubbo_client('getUser', 'A005')
+
+        except DubboClientError, client_error:
+            print client_error
+        time.sleep(5)
 ```
