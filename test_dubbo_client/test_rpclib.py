@@ -2,13 +2,15 @@
 import time
 
 from dubbo_client import DubboClient, DubboClientError
+from dubbo_client import ZookeeperRegistry
 
 
 __author__ = 'caozupeng'
 
 if __name__ == '__main__':
     service_interface = 'com.ofpay.demo.api.UserProvider'
-    dubbo_client = DubboClient(service_interface)
+    registry = ZookeeperRegistry('172.19.65.33:2181')
+    dubbo_client = DubboClient(service_interface, registry)
     for i in range(1000):
         try:
             print dubbo_client.getUser('A003')

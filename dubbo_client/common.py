@@ -25,5 +25,5 @@ class ServiceProvider(object):
             pos = key.find('.')
             if pos > -1:
                 key = key[pos + 1:]
-            print key
+            # print key
             self.__dict__[key] = value
