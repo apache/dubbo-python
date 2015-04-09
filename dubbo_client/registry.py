@@ -1,13 +1,10 @@
 # coding=utf-8
-import urllib
-
-from kazoo.protocol.states import KazooState
-
-from dubbo_client.common import ServiceProvider
-
 
 __author__ = 'caozupeng'
+import urllib
+from kazoo.protocol.states import KazooState
 from kazoo.client import KazooClient
+from dubbo_client.common import ServiceProvider
 
 
 class Registry(object):
@@ -38,8 +35,8 @@ class ZookeeperRegistry(Registry):
     __service_provides = {}
     __connect_state = 'UNCONNECT'
 
-    def __init__(self, hosts):
-        self.__zk = KazooClient(hosts=hosts, read_only=True)
+    def __init__(self, zk_hosts):
+        self.__zk = KazooClient(hosts=zk_hosts, read_only=True)
         self.__zk.add_listener(self.__state_listener)
         self.__zk.start()
 
@@ -57,6 +54,11 @@ class ZookeeperRegistry(Registry):
             self.__connect_state = state
 
     def __event_listener(self, event):
+        """
+        node provides上下线的监听回调函数
+        :param event:
+        :return:
+        """
         self.__do_event(event)
 
     def __handler_urls(self, urls):

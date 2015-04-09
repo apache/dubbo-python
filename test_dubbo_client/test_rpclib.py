@@ -20,6 +20,6 @@ if __name__ == '__main__':
             print dubbo_client.isLimit('MAN', 'Joe')
             print dubbo_client('getUser', 'A005')
 
-        except DubboClientError, client_e:
-            print client_e
+        except DubboClientError, client_error:
+            print client_error
         time.sleep(5)
