@@ -1,13 +1,19 @@
 # coding=utf-8
 import random
 from urllib2 import HTTPError
+
 from pyjsonrpc import HttpClient, JsonRpcError
+
 from dubbo_client.rpcerror import NoProvider, ConnectionFail, dubbo_client_errors, InternalError
+
+
 __author__ = 'caozupeng'
 
 
 class DubboClient(object):
     interface = ''
+    group = ''
+    version = ''
 
     class _Method(object):
 
@@ -18,17 +24,20 @@ class DubboClient(object):
         def __call__(self, *args, **kwargs):
             return self.client_instance.call(self.method, *args, **kwargs)
 
-    def __init__(self, interface, registry):
+    def __init__(self, interface, registry, **kwargs):
         self.interface = interface
         self.registry = registry
+        self.group = kwargs.get('group', '')
+        self.version = kwargs.get('version', '')
         self.registry.add_provider_listener(interface)
 
     def call(self, method, *args, **kwargs):
-        provides = self.registry.get_provides(self.interface, {})
+        provides = self.registry.get_provides(self.interface, {}, version=self.version, group=self.group)
         if len(provides) == 0:
             raise NoProvider('can not find provide', self.interface)
-        location, provide = random.choice(provides.items())
-        client = HttpClient(url="http://{0}{1}".format(location, provide.path))
+        ip_port, service_url = random.choice(provides.items())
+        print service_url.location
+        client = HttpClient(url="http://{0}{1}".format(ip_port, service_url.path))
         try:
             return client.call(method, *args, **kwargs)
         except HTTPError, e:
@@ -48,7 +57,6 @@ class DubboClient(object):
         """
         Allows the usage of attributes as *method* names.
         """
-
         return self._Method(client_instance=self, method=method)
 
 

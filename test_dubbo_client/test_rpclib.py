@@ -1,16 +1,16 @@
 # coding=utf-8
 import time
 
-from user_provider import DubboClient, DubboClientError
-from user_provider import ZookeeperRegistry
+from dubbo_client import ZookeeperRegistry, DubboClient, DubboClientError
 
 
 __author__ = 'caozupeng'
 
 if __name__ == '__main__':
     service_interface = 'com.ofpay.demo.api.UserProvider'
+    # 该对象较重，有zookeeper的连接，需要保存使用
     registry = ZookeeperRegistry('172.19.65.33:2181')
-    user_provider = DubboClient(service_interface, registry)
+    user_provider = DubboClient(service_interface, registry, version='3.0')
     for i in range(1000):
         try:
             print user_provider.getUser('A003')

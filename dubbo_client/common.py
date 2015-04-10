@@ -10,6 +10,8 @@ class ServiceURL(object):
     path = ''  # like /com.qianmi.dubbo.UserProvider
     ip = '127.0.0.1'
     port = '9090'
+    version = ''
+    group = ''
 
     def __init__(self, url):
         result = urlparse(url)
