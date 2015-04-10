@@ -36,7 +36,7 @@ class DubboClient(object):
         if len(provides) == 0:
             raise NoProvider('can not find provide', self.interface)
         ip_port, service_url = random.choice(provides.items())
-        print service_url.location
+        # print service_url.location
         client = HttpClient(url="http://{0}{1}".format(ip_port, service_url.path))
         try:
             return client.call(method, *args, **kwargs)
