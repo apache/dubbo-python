@@ -8,6 +8,11 @@ Python Dubbo Client
 请使用dubbo-rpc-jsonrpc 并在dubbo中配置protocol为jsonrpc协议
 参考 https://github.com/ofpay/dubbo-rpc-jsonrpc
 
+### 安装
+下载代码   
+python setup.py install
+
+
 ### 在客户端实现负载均衡，服务发现  
 通过注册中心的zookeeper，获取服务的注册信息
 然后通过代理实现负载均衡算法，调用服务端
@@ -33,6 +38,6 @@ Python Dubbo Client
 ```
 
 ### TODO
-优化性能
-支持Retry参数
-支持RoundRobin的调用
+优化性能  
+支持Retry参数  
+支持RoundRobin的调用  
