@@ -44,3 +44,6 @@ pip install git+https://github.com/ofpay/dubbo-client-py.git
 优化性能  
 支持Retry参数  
 支持RoundRobin的调用  
+
+### Licenses
+MIT License
