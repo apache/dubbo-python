@@ -47,19 +47,33 @@ def test_dubbo():
         user_provider('getUser', 'A005')
 
 if __name__ == '__main__':
-    #test_client_every_new 运行10000次， 耗时220.188388109
-    #test_client 运行10000次， 耗时215.014229059
-    #说明每次new HttpClient和保持一个HttpClient的效率相差不大
+    """
+    在我的mac 4c8g笔记本上，同时启动服务端和客户端（忽略网络开销）
+    test_client_every_new 运行1000次，13.380 seconds
+    test_client 运行1000次， 12.851 seconds
+    test_dubbo运行1000次 13.559 seconds
+    说明
+    1、加上Dubbo的封装，和原生的jsonrpclib差距很小，可以忽略不计
+    2、每次new HttpClient和保持一个HttpClient句柄复用的效率相差不大
+    3、每秒接近300次的调用，对一个业务系统来说绰绰有余
+    大量的应用程序不需要这么快的运行速度，因为用户根本感觉不出来。
+    例如开发一个下载MP3的网络应用程序，C程序的运行时间需要0.001秒，
+    而Python程序的运行时间需要0.1秒，慢了100倍，但由于网络更慢，需要等待1秒，
+    你想，用户能感觉到1.001秒和1.1秒的区别吗？
+    这就好比F1赛车和普通的出租车在北京三环路上行驶的道理一样，
+    虽然F1赛车理论时速高达400公里，但由于三环路堵车的时速只有20公里，
+    因此，作为乘客，你感觉的时速永远是20公里。
 
+    """
     # print u'test_client_every_new 运行{0}次， 耗时{1}'.format(number, timeit.timeit(test_client_every_new, number=1))
     # print u'test_client 运行{0}次， 耗时{1}'.format(number, timeit.timeit(test_client, number=1))
     # print u'test_dubbo 运行{0}次， 耗时{1}'.format(number, timeit.timeit(test_dubbo, number=1))
     # profile.run("test_dubbo()", 'test_dubbo.txt')
-    # p = pstats.Stats('test_dubbo.txt')
-    # p.sort_stats('time').print_stats()
+    p = pstats.Stats('test_dubbo.txt')
+    p.sort_stats('time').print_stats()
     # profile.run('test_client_every_new()', 'test_client_every_new.txt')
-    # np = pstats.Stats('test_client_every_new.txt')
-    # np.sort_stats('time').print_stats()
-    profile.run('test_client()', 'test_client.txt')
+    np = pstats.Stats('test_client_every_new.txt')
+    np.sort_stats('time').print_stats()
+    # profile.run('test_client()', 'test_client.txt')
     cp = pstats.Stats('test_client.txt')
     cp.sort_stats('time').print_stats()
