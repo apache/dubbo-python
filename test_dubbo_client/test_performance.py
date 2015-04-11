@@ -1,4 +1,6 @@
 # coding=utf-8
+import profile
+import pstats
 import timeit
 
 from pyjsonrpc import HttpClient
@@ -49,6 +51,15 @@ if __name__ == '__main__':
     #test_client 运行10000次， 耗时215.014229059
     #说明每次new HttpClient和保持一个HttpClient的效率相差不大
 
-    print u'test_client_every_new 运行{0}次， 耗时{1}'.format(number, timeit.timeit(test_client_every_new, number=1))
-    print u'test_client 运行{0}次， 耗时{1}'.format(number, timeit.timeit(test_client, number=1))
-    print u'test_dubbo 运行{0}次， 耗时{1}'.format(number, timeit.timeit(test_dubbo, number=1))
+    # print u'test_client_every_new 运行{0}次， 耗时{1}'.format(number, timeit.timeit(test_client_every_new, number=1))
+    # print u'test_client 运行{0}次， 耗时{1}'.format(number, timeit.timeit(test_client, number=1))
+    # print u'test_dubbo 运行{0}次， 耗时{1}'.format(number, timeit.timeit(test_dubbo, number=1))
+    # profile.run("test_dubbo()", 'test_dubbo.txt')
+    # p = pstats.Stats('test_dubbo.txt')
+    # p.sort_stats('time').print_stats()
+    # profile.run('test_client_every_new()', 'test_client_every_new.txt')
+    # np = pstats.Stats('test_client_every_new.txt')
+    # np.sort_stats('time').print_stats()
+    profile.run('test_client()', 'test_client.txt')
+    cp = pstats.Stats('test_client.txt')
+    cp.sort_stats('time').print_stats()
