@@ -10,7 +10,7 @@ from dubbo_client.common import ServiceURL
 
 
 class Registry(object):
-    def add_provider_listener(self, provide_name):
+    def subscribe(self, provide_name):
         """
         监听注册中心的服务上下线
         :param provide_name: 类似com.ofpay.demo.api.UserProvider这样的服务名
@@ -51,11 +51,11 @@ class ZookeeperRegistry(Registry):
             self.__connect_state = state
         elif state == KazooState.SUSPENDED:
             # Handle being disconnected from Zookeeper
-            print 'disconnect from zookeeper'
+            # print 'disconnect from zookeeper'
             self.__connect_state = state
         else:
             # Handle being connected/reconnected to Zookeeper
-            print 'connected'
+            # print 'connected'
             self.__connect_state = state
 
     def __event_listener(self, event):
@@ -106,7 +106,7 @@ class ZookeeperRegistry(Registry):
             children = self.__zk.get_children(event.path, watch=self.__event_listener)
             self.__handler_nodes(provide_name, children)
 
-    def add_provider_listener(self, interface, **kwargs):
+    def subscribe(self, interface, **kwargs):
         """
         监听注册中心的服务上下线
         :param interface: 类似com.ofpay.demo.api.UserProvider这样的服务名

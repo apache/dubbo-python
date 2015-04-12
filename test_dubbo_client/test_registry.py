@@ -4,5 +4,5 @@ __author__ = 'caozupeng'
 
 if __name__ == '__main__':
     registry = ZookeeperRegistry('172.19.65.33:2181')
-    registry.add_provider_listener('com.ofpay.demo.api.UserProvider')
+    registry.subscribe('com.ofpay.demo.api.UserProvider')
     print registry.get_provides('com.ofpay.demo.api.UserProvider')
