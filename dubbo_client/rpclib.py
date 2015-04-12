@@ -32,7 +32,7 @@ class DubboClient(object):
         self.registry.subscribe(interface)
 
     def call(self, method, *args, **kwargs):
-        provides = self.registry.get_provides(self.interface, {}, version=self.version, group=self.group)
+        provides = self.registry.get_provides(self.interface, version=self.version, group=self.group)
         if len(provides) == 0:
             raise NoProvider('can not find provide', self.interface)
         ip_port, service_url = random.choice(provides.items())

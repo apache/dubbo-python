@@ -119,7 +119,7 @@ class ZookeeperRegistry(Registry):
         # 全部重新添加
         self.__handler_nodes(interface, children)
 
-    def get_provides(self, interface, default=None, **kwargs):
+    def get_provides(self, interface, **kwargs):
         """
         获取已经注册的服务URL对象
         :param interface: com.ofpay.demo.api.UserProvider
@@ -130,7 +130,7 @@ class ZookeeperRegistry(Registry):
         version = kwargs.get('version', '')
         key = self.__to_key(interface, version, group)
         second = self.__service_provides.get(interface, {})
-        return second.get(key, default)
+        return second.get(key, {})
 
 
 if __name__ == '__main__':
