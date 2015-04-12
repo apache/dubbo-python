@@ -9,7 +9,7 @@ __author__ = 'caozupeng'
 if __name__ == '__main__':
     service_interface = 'com.ofpay.demo.api.UserProvider'
     # 该对象较重，有zookeeper的连接，需要保存使用
-    registry = ZookeeperRegistry('172.19.65.33:2181')
+    registry = ZookeeperRegistry('192.168.59.103:2181')
     user_provider = DubboClient(service_interface, registry, version='2.0')
     for i in range(1000):
         try:
