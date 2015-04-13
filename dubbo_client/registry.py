@@ -72,6 +72,13 @@ class ZookeeperRegistry(Registry):
     def __handler_nodes(self, interface, nodes):
         """
         将zookeeper中查询到的服务节点列表加入到一个dict中
+        zookeeper中保持的节点url类似如下
+        jsonrpc://192.168.2.1:38080/com.ofpay.demo.api.UserProvider?
+        anyhost=true&application=demo-provider&default.timeout=10000&dubbo=2.4.10&
+        environment=product&interface=com.ofpay.demo.api.UserProvider&
+        methods=getUser,queryAll,queryUser,isLimit&owner=wenwu&pid=61578&
+        side=provider&timestamp=1428904600188
+        首先将url转为ServiceUrl对象，然保持到缓存中
         :param nodes: 节点列表
         :return: 不需要返回
         """
