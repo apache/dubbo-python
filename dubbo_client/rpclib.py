@@ -30,6 +30,7 @@ class DubboClient(object):
         self.group = kwargs.get('group', '')
         self.version = kwargs.get('version', '')
         self.registry.subscribe(interface)
+        self.registry.register(interface)
 
     def call(self, method, *args, **kwargs):
         provides = self.registry.get_provides(self.interface, version=self.version, group=self.group)

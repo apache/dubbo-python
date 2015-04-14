@@ -9,3 +9,6 @@ from registry import (
     Registry,
     ZookeeperRegistry,
 )
+from config import (
+    ApplicationConfig,
+)

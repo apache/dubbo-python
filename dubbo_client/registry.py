@@ -1,4 +1,8 @@
 # coding=utf-8
+import os
+
+from dubbo_client.config import ApplicationConfig
+
 
 __author__ = 'caozupeng'
 import urllib
@@ -37,26 +41,30 @@ class ZookeeperRegistry(Registry):
     dict 格式为{interface:{providername:{ip+port:service_url}}}
 
     """
-    __service_provides = {}
-    __connect_state = 'UNCONNECT'
+    _service_provides = {}
+    _app_config = ApplicationConfig('default_app')
+    _connect_state = 'UNCONNECT'
 
-    def __init__(self, zk_hosts):
-        self.__zk = KazooClient(hosts=zk_hosts, read_only=True)
+
+    def __init__(self, zk_hosts, application_config=None):
+        if application_config:
+            self._app_config = application_config
+        self.__zk = KazooClient(hosts=zk_hosts)
         self.__zk.add_listener(self.__state_listener)
         self.__zk.start()
 
     def __state_listener(self, state):
         if state == KazooState.LOST:
             # Register somewhere that the session was lost
-            self.__connect_state = state
+            self._connect_state = state
         elif state == KazooState.SUSPENDED:
             # Handle being disconnected from Zookeeper
             # print 'disconnect from zookeeper'
-            self.__connect_state = state
+            self._connect_state = state
         else:
             # Handle being connected/reconnected to Zookeeper
             # print 'connected'
-            self.__connect_state = state
+            self._connect_state = state
 
     def __event_listener(self, event):
         """
@@ -64,7 +72,7 @@ class ZookeeperRegistry(Registry):
         :param event:
         :return:
         """
-        self.__do_event(event)
+        self._do_event(event)
 
     def __to_key(self, interface, versioin, group):
         return '{0}|{1}|{2}'.format(interface, versioin, group)
@@ -83,14 +91,14 @@ class ZookeeperRegistry(Registry):
         :return: 不需要返回
         """
         # 如果已经存在，首先删除原有的服务的集合
-        if interface in self.__service_provides:
-            del self.__service_provides[interface]
+        if interface in self._service_provides:
+            del self._service_provides[interface]
         for child_node in nodes:
             node = urllib.unquote(child_node).decode('utf8')
             if node.startswith('jsonrpc'):
                 service_url = ServiceURL(node)
                 key = self.__to_key(service_url.interface, service_url.version, service_url.group)
-                second_dict = self.__service_provides.get(interface)
+                second_dict = self._service_provides.get(interface)
                 if second_dict:
                     # 获取最内层的nest的dict
                     inner_dict = second_dict.get(key)
@@ -100,9 +108,9 @@ class ZookeeperRegistry(Registry):
                         second_dict[key] = {service_url.location: service_url}
                 else:
                     # create the second dict
-                    self.__service_provides[interface] = {key: {service_url.location: service_url}}
+                    self._service_provides[interface] = {key: {service_url.location: service_url}}
 
-    def __do_event(self, event):
+    def _do_event(self, event):
         # event.path 是类似/dubbo/com.ofpay.demo.api.UserProvider/providers 这样的
         # 如果要删除，必须先把/dubbo/和最后的/providers去掉
         provide_name = event.path[7:event.path.rfind('/')]
@@ -112,6 +120,28 @@ class ZookeeperRegistry(Registry):
         if event.state == 'DELETED':
             children = self.__zk.get_children(event.path, watch=self.__event_listener)
             self.__handler_nodes(provide_name, children)
+
+    def register(self, interface, **kwargs):
+        ip = self.__zk._connection._socket.getsockname()[0]
+        params = {
+            'interface': interface,
+            'application': self._app_config.name,
+            'application.version': self._app_config.version,
+            'category': 'consumer',
+            'dubbo': 'dubbo-client-py-1.0.0',
+            'environment': self._app_config.environment,
+            'interface': interface,
+            'method': '',
+            'owner': self._app_config.owner,
+            'side': 'consumer',
+            'pid': os.getpid(),
+            'version': '1.0'
+        }
+        url = 'consumer://{0}/{1}?{2}'.format(ip, interface, urllib.urlencode(params))
+        # print urllib.quote(url, safe='')
+
+        consumer_path = '{0}/{1}/{2}'.format('dubbo', interface, 'consumers')
+        self.__zk.create(consumer_path + '/' + urllib.quote(url, safe=''), ephemeral=True)
 
     def subscribe(self, interface, **kwargs):
         """
@@ -136,10 +166,16 @@ class ZookeeperRegistry(Registry):
         group = kwargs.get('group', '')
         version = kwargs.get('version', '')
         key = self.__to_key(interface, version, group)
-        second = self.__service_provides.get(interface, {})
+        second = self._service_provides.get(interface, {})
         return second.get(key, {})
 
 
 if __name__ == '__main__':
-    pass
-
+    zk = KazooClient(hosts='192.168.59.103:2181')
+    zk.start()
+    parent_node = '{0}/{1}/{2}'.format('dubbo', 'com.ofpay.demo.api.UserProvider', 'consumers')
+    nodes = zk.get_children(parent_node)
+    for child_node in nodes:
+        node = urllib.unquote(child_node).decode('utf8')
+        print node
+        # zk.delete(parent_node+'/'+child_node, recursive=True)
