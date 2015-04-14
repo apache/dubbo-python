@@ -16,7 +16,7 @@ os.chdir(THISDIR)
 VERSION = open("version.txt").readline().strip()
 HOMEPAGE = "https://github.com/ofpay/dubbo-client-py"
 DOWNLOAD_BASEURL = "https://github.com/ofpay/dubbo-client-py/raw/master/dist/"
-DOWNLOAD_URL = DOWNLOAD_BASEURL + "dubbo-client-%s.tar.gz" % VERSION
+DOWNLOAD_URL = DOWNLOAD_BASEURL + "dubbo-client-%s-py2.7.egg" % VERSION
 
 
 setup(
