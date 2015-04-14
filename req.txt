@@ -1,4 +1,7 @@
 bunch==1.0.1
+dubbo-client==1.0.0-beta-1
 kazoo==2.0
+py==1.4.26
+pytest==2.7.0
 python-jsonrpc==0.7.3
 wsgiref==0.1.2
