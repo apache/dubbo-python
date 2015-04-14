@@ -14,10 +14,20 @@ from dubbo_client.common import ServiceURL
 
 
 class Registry(object):
-    def subscribe(self, provide_name):
+    def register(self, interface, **kwargs):
+        """
+        客户端注册到注册中心，亮出自己的身份
+        :param interface:
+        :param kwargs:
+        :return:
+        """
+        pass
+
+    def subscribe(self, interface, **kwargs):
         """
         监听注册中心的服务上下线
         :param provide_name: 类似com.ofpay.demo.api.UserProvider这样的服务名
+        :param kwargs: version , group
         :return: 无返回
         """
         pass
