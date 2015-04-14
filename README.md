@@ -46,6 +46,7 @@ pip install git+https://github.com/ofpay/dubbo-client-py.git@1.0.0-beta-1
 优化性能，将服务上下线的影响降到最小  
 支持Retry参数    
 支持权重调用    
+单元测试覆盖率
 
 ### Licenses
 MIT License
