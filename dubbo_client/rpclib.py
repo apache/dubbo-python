@@ -3,6 +3,7 @@ import random
 from urllib2 import HTTPError
 
 from pyjsonrpc import HttpClient, JsonRpcError
+from dubbo_client.registry import Registry
 
 from dubbo_client.rpcerror import NoProvider, ConnectionFail, dubbo_client_errors, InternalError
 
@@ -25,6 +26,7 @@ class DubboClient(object):
             return self.client_instance.call(self.method, *args, **kwargs)
 
     def __init__(self, interface, registry, **kwargs):
+        assert isinstance(registry, Registry)
         self.interface = interface
         self.registry = registry
         self.group = kwargs.get('group', '')
