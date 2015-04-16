@@ -178,7 +178,6 @@ class ZookeeperRegistry(Registry):
             'category': 'consumer',
             'dubbo': 'dubbo-client-py-1.0.0',
             'environment': self._app_config.environment,
-            'interface': interface,
             'method': '',
             'owner': self._app_config.owner,
             'side': 'consumer',
@@ -235,7 +234,6 @@ class MulticastRegistry(Registry):
         self.event_loop = self._Loop(address, self.event_listener)
         self.event_loop.setDaemon(True)
         self.event_loop.start()
-        # self.event_loop.set_mssage('subscribe provider://172.19.3.111:38081/com.ofpay.demo.api.UserProvider?anyhost=true&application=jsonrpcdemo&category=configurators&check=false&default.timeout=10000&dubbo=2.4.10&environment=product&interface=com.ofpay.demo.api.UserProvider&methods=getUser,queryAll,queryUser,isLimit&owner=wenwu&pid=63590&side=provider&timestamp=1429149716694')
 
     def _do_event(self, event):
         if event.startswith('register'):
