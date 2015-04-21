@@ -12,11 +12,11 @@ Python Dubbo Client
 下载代码   
 python setup.py install
 pip安装
-pip install dubbo-client==1.0.0b4
+pip install dubbo-client==1.0.0b5
 Git安装   
-pip install git+http://git.dev.qianmi.com/tda/dubbo-client-py.git@1.0.0b4   
+pip install git+http://git.dev.qianmi.com/tda/dubbo-client-py.git@1.0.0b5   
 或者   
-pip install git+https://github.com/ofpay/dubbo-client-py.git@1.0.0b4
+pip install git+https://github.com/ofpay/dubbo-client-py.git@1.0.0b5
 
 ### 在客户端实现负载均衡，服务发现  
 通过注册中心的zookeeper，获取服务的注册信息
