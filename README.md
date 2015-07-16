@@ -18,6 +18,8 @@ pip install git+https://github.com/ofpay/dubbo-client-py.git@1.0.0b2
 
 ### 在客户端实现负载均衡，服务发现  
 通过注册中心的zookeeper，获取服务的注册信息
+dubbo-client-py支持配置多个zookeeper服务地址
+"host": "192.168.1.183:2181,192.168.1.184:2181,192.168.1.185:2181",
 然后通过代理实现负载均衡算法，调用服务端
 支持Version、Group设置
 
