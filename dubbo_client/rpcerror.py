@@ -80,9 +80,18 @@ class InvalidRequest(DubboClientError):
         DubboClientError.__init__(self, message=message, data=data)
 
 
+class UserDefinedError(DubboClientError):
+    code = -32000
+    message = u'User defined error happend'
+
+    def __init__(self, message=None, data=None):
+        DubboClientError.__init__(self, message=message, data=data)
+
+
 dubbo_client_errors[MethodNotFound.code] = MethodNotFound
 dubbo_client_errors[NoProvider.code] = NoProvider
 dubbo_client_errors[ConnectionFail.code] = ConnectionFail
 dubbo_client_errors[InvalidParams.code] = InvalidParams
 dubbo_client_errors[InternalError.code] = InternalError
 dubbo_client_errors[InvalidRequest.code] = InvalidRequest
+dubbo_client_errors[UserDefinedError.code] = UserDefinedError
