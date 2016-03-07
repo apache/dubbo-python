@@ -3,10 +3,9 @@ import random
 from urllib2 import HTTPError
 
 from pyjsonrpc import HttpClient, JsonRpcError
+
 from dubbo_client.registry import Registry
-
-from dubbo_client.rpcerror import NoProvider, ConnectionFail, dubbo_client_errors, InternalError
-
+from dubbo_client.rpcerror import NoProvider, ConnectionFail, dubbo_client_errors, InternalError, DubboClientError
 
 __author__ = 'caozupeng'
 
@@ -46,9 +45,15 @@ class DubboClient(object):
         except HTTPError, e:
             raise ConnectionFail(None, e.filename)
         except JsonRpcError, error:
-            raise dubbo_client_errors.get(error.code, None)
+            if error.code in dubbo_client_errors:
+                raise dubbo_client_errors[error.code](message=error.message, data=error.data)
+            else:
+                raise DubboClientError(code=error.code, message=error.message, data=error.data)
         except Exception, ue:
-            raise InternalError(ue.message, None)
+            if hasattr(ue, 'reason'):
+                raise InternalError(ue.message, ue.reason)
+            else:
+                raise InternalError(ue.message, None)
 
     def __call__(self, method, *args, **kwargs):
         """
