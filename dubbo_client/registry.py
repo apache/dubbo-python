@@ -1,20 +1,29 @@
 # coding=utf-8
 import time
-
-__author__ = 'caozupeng'
 import os
 import socket
 import struct
 from threading import Thread
-
-from dubbo_client.config import ApplicationConfig
-
 import urllib
+import logging
+import logging.config
+import os.path
 
 from kazoo.protocol.states import KazooState
+
 from kazoo.client import KazooClient
 
+from dubbo_client.config import ApplicationConfig
 from dubbo_client.common import ServiceURL
+
+__author__ = 'caozupeng'
+
+# 创建一个logger
+if os.path.exists('logging.conf'):
+    logging.config.fileConfig('logging.conf')
+else:
+    logging.basicConfig()
+logger = logging.getLogger('dubbo')
 
 
 class Registry(object):
@@ -31,6 +40,14 @@ class Registry(object):
     def _do_event(self, event):
         """
         protect方法，处理回调，留给子类实现
+        :param event:
+        :return:
+        """
+        pass
+
+    def _do_config_event(self, event):
+        """
+        protect方法，处理管理台的禁用，倍权，半权等操作
         :param event:
         :return:
         """
@@ -74,6 +91,14 @@ class Registry(object):
         :return:
         """
         self._do_event(event)
+
+    def configuration_listener(self, event):
+        """
+        监听
+        :param event:
+        :return:
+        """
+        self._do_config_event(event)
 
     def _to_key(self, interface, versioin, group):
         """
@@ -124,6 +149,7 @@ class Registry(object):
             del self._service_provides[interface]
         for child_node in nodes:
             node = urllib.unquote(child_node).decode('utf8')
+            logger.debug('child of node is {0}'.format(node))
             if node.startswith('jsonrpc'):
                 service_url = ServiceURL(node)
                 self._add_node(interface, service_url)
@@ -161,6 +187,7 @@ class ZookeeperRegistry(Registry):
         # 如果要删除，必须先把/dubbo/和最后的/providers去掉
         # 将zookeeper中查询到的服务节点列表加入到一个dict中
         # zookeeper中保持的节点url类似如下
+        logger.debug("receive event is {0}, event state is {1}".format(event, event.state))
         provide_name = event.path[7:event.path.rfind('/')]
         if event.state == 'CONNECTED':
             children = self.__zk.get_children(event.path, watch=self.event_listener)
@@ -168,6 +195,9 @@ class ZookeeperRegistry(Registry):
         if event.state == 'DELETED':
             children = self.__zk.get_children(event.path, watch=self.event_listener)
             self._compare_swap_nodes(provide_name, self.__unquote(children))
+
+    def _do_config_event(self, event):
+        print event
 
     def register(self, interface, **kwargs):
         ip = self.__zk._connection._socket.getsockname()[0]
@@ -199,10 +229,13 @@ class ZookeeperRegistry(Registry):
         """
         version = kwargs.get('version', '')
         group = kwargs.get('group', '')
-        children = self.__zk.get_children('{0}/{1}/{2}'.format('dubbo', interface, 'providers'),
-                                          watch=self.event_listener)
+        providers_children = self.__zk.get_children('{0}/{1}/{2}'.format('dubbo', interface, 'providers'),
+                                                    watch=self.event_listener)
+        logger.debug("watch node is {0}".format(providers_children))
+        configurators_children = self.__zk.get_children('{0}/{1}/{2}'.format('dubbo', interface, 'configurators'),
+                                                        watch=self.configuration_listener)
         # 全部重新添加
-        self._compare_swap_nodes(interface, self.__unquote(children))
+        self._compare_swap_nodes(interface, self.__unquote(providers_children))
 
 
 class MulticastRegistry(Registry):
@@ -227,7 +260,6 @@ class MulticastRegistry(Registry):
         def set_mssage(self, msg):
             self.sock.sendto(msg, (self.multicast_group, int(self.multicast_port)))
 
-
     def __init__(self, address, application_config=None):
         if application_config:
             self._app_config = application_config
@@ -249,13 +281,27 @@ class MulticastRegistry(Registry):
 
 
 if __name__ == '__main__':
-    # zk = KazooClient(hosts='192.168.59.103:2181')
-    # zk.start()
-    # parent_node = '{0}/{1}/{2}'.format('dubbo', 'com.ofpay.demo.api.UserProvider', '')
-    # nodes = zk.get_children(parent_node)
-    # for child_node in nodes:
-    #     node = urllib.unquote(child_node).decode('utf8')
-    #     print node
-        # zk.delete(parent_node+'/'+child_node, recursive=True)
-    registry = MulticastRegistry('224.5.6.7:1234')
-    time.sleep(50)
+    zk = KazooClient(hosts='192.168.59.103:2181')
+    zk.start()
+    parent_node = '{0}/{1}/{2}'.format('dubbo', 'com.ofpay.demo.api.UserProvider', '')
+    nodes = zk.get_children(parent_node)
+    for child_node in nodes:
+        node = urllib.unquote(child_node).decode('utf8')
+        print node
+    configurators_node = '{0}/{1}/{2}'.format('dubbo', 'com.ofpay.demo.api.UserProvider', 'configurators')
+    nodes = zk.get_children(configurators_node)
+    for child_node in nodes:
+        node = urllib.unquote(child_node).decode('utf8')
+        print node
+    providers_node = '{0}/{1}/{2}'.format('dubbo', 'com.ofpay.demo.api.UserProvider', 'providers')
+    nodes = zk.get_children(providers_node)
+    for child_node in nodes:
+        node = urllib.unquote(child_node).decode('utf8')
+        print node
+    # zk.delete(parent_node+'/'+child_node, recursive=True)
+    # registry = MulticastRegistry('224.5.6.7:1234')
+    registry = ZookeeperRegistry('zookeeper:2181')
+    registry.subscribe('com.ofpay.demo.api.UserProvider')
+    print registry.get_provides('com.ofpay.demo.api.UserProvider')
+
+    time.sleep(500)

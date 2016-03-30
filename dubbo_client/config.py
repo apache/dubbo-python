@@ -7,13 +7,13 @@ class ApplicationConfig(object):
     name = 'default'
     # 模块版本
     version = '1.0.0'
-    #应用负责人
+    # 应用负责人
     owner = ''
-    #组织名(BU或部门)
+    # 组织名(BU或部门)
     organization = ''
-    #分层
+    # 分层
     architecture = 'web'
-    #环境，如：dev/test/run
+    # 环境，如：dev/test/run
     environment = 'run'
 
     def __init__(self, name, **kwargs):

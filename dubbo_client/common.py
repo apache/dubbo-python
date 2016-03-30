@@ -1,4 +1,4 @@
-#encoding=utf-8
+# encoding=utf-8
 from urlparse import urlparse, parse_qsl
 
 __author__ = 'caozupeng'

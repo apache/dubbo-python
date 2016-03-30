@@ -1,15 +1,14 @@
 # coding=utf-8
-import profile
 import pstats
-import timeit
 
 from pyjsonrpc import HttpClient
-from dubbo_client import ZookeeperRegistry, DubboClient
 
+from dubbo_client import ZookeeperRegistry, DubboClient
 
 __author__ = 'caozupeng'
 
 number = 1000
+
 
 def test_client_every_new():
     for x in range(number):
@@ -45,6 +44,7 @@ def test_dubbo():
         # user_provider.queryAll()
         user_provider.isLimit('MAN', 'Joe')
         user_provider('getUser', 'A005')
+
 
 if __name__ == '__main__':
     """
