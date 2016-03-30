@@ -147,6 +147,7 @@ class Registry(object):
         # 如果已经存在，首先删除原有的服务的集合
         if interface in self._service_provides:
             del self._service_provides[interface]
+            logger.debug("delete node {0}".format(interface))
         for child_node in nodes:
             node = urllib.unquote(child_node).decode('utf8')
             logger.debug('child of node is {0}'.format(node))
