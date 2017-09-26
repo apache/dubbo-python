@@ -6,13 +6,13 @@ __author__ = 'caozupeng'
 def multicat():
     registry = MulticastRegistry('224.5.6.7:1234')
     registry.subscribe('com.ofpay.demo.api.UserProvider')
-    print registry.get_provides('com.ofpay.demo.api.UserProvider')
+    print registry.get_providers('com.ofpay.demo.api.UserProvider')
 
 
 def zookeeper():
     registry = ZookeeperRegistry('172.19.65.33:2181')
     registry.subscribe('com.ofpay.demo.api.UserProvider')
-    print registry.get_provides('com.ofpay.demo.api.UserProvider')
+    print registry.get_providers('com.ofpay.demo.api.UserProvider')
 
 
 def test_registry():
@@ -29,7 +29,7 @@ def test_registry():
                        "dubbo=2.4.10&environment=product&interface=com.ofpay.demo.api.UserProvider&"
                        "methods=getUser,queryAll,isLimit,queryUser&owner=wenwu&pid=60402&revision=2.0&"
                        "side=provider&timestamp=1429105028153&version=1.0")
-    assert registry._service_provides
+    assert registry._service_providers
 
 
 if __name__ == '__main__':

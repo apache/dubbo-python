@@ -1,11 +1,10 @@
 # coding=utf-8
-import random
 from urllib2 import HTTPError
 
 from pyjsonrpc import HttpClient, JsonRpcError
 
 from dubbo_client.registry import Registry
-from dubbo_client.rpcerror import NoProvider, ConnectionFail, dubbo_client_errors, InternalError, DubboClientError
+from dubbo_client.rpcerror import ConnectionFail, dubbo_client_errors, InternalError, DubboClientError
 
 __author__ = 'caozupeng'
 
@@ -34,12 +33,9 @@ class DubboClient(object):
         self.registry.register(interface)
 
     def call(self, method, *args, **kwargs):
-        provides = self.registry.get_provides(self.interface, version=self.version, group=self.group)
-        if len(provides) == 0:
-            raise NoProvider('can not find provide', self.interface)
-        ip_port, service_url = random.choice(provides.items())
+        provider = self.registry.get_random_provider(self.interface, version=self.version, group=self.group)
         # print service_url.location
-        client = HttpClient(url="http://{0}{1}".format(ip_port, service_url.path))
+        client = HttpClient(url="http://{0}{1}".format(provider.location, provider.path))
         try:
             return client.call(method, *args, **kwargs)
         except HTTPError, e:
