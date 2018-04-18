@@ -53,7 +53,7 @@ dubbo-client-py支持配置多个zookeeper服务地址
 单元测试覆盖率
 
 ### Licenses
-MIT License
+Apache License
 
 ### 感谢
 感谢 @jingpeicomp 同学做小白鼠，目前已经正常运行在生产环境数月，谢谢！   
