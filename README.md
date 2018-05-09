@@ -6,7 +6,7 @@ Python Dubbo Client
 
 ### Python调用Dubbo接口的jsonrpc协议  
 请使用dubbo-rpc-jsonrpc 并在dubbo中配置protocol为jsonrpc协议
-参考 https://github.com/ofpay/dubbo-rpc-jsonrpc
+参考 https://github.com/apache/incubator-dubbo-rpc-jsonrpc
 
 ### 安装
 下载代码   
@@ -16,7 +16,7 @@ pip install dubbo-client==1.0.0b5
 Git安装   
 pip install git+http://git.dev.qianmi.com/tda/dubbo-client-py.git@1.0.0b5   
 或者   
-pip install git+https://github.com/ofpay/dubbo-client-py.git@1.0.0b5
+pip install git+https://github.com/qianmiopen/dubbo-client-py.git@1.0.0b5
 
 ### 在客户端实现负载均衡，服务发现  
 通过注册中心的zookeeper，获取服务的注册信息   
