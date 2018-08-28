@@ -1,35 +1,29 @@
-Python Dubbo Client
-=====================================  
-实现客户端的负载均衡、配合Zookeeper自动发现服务功能
--------------------------------------
-
-
-### Python调用Dubbo接口的jsonrpc协议  
-请使用dubbo-rpc-jsonrpc 并在dubbo中配置protocol为jsonrpc协议
-参考 https://github.com/apache/incubator-dubbo-rpc-jsonrpc
-
-### 安装
-下载代码   
-python setup.py install  
-pip安装  
-pip install dubbo-client==1.0.0b5  
-Git安装   
-pip install git+http://git.dev.qianmi.com/tda/dubbo-client-py.git@1.0.0b5   
-或者   
-pip install git+https://github.com/qianmiopen/dubbo-client-py.git@1.0.0b5
-
-### 在客户端实现负载均衡，服务发现  
-通过注册中心的zookeeper，获取服务的注册信息   
-dubbo-client-py支持配置多个zookeeper服务地址   
-"host": "192.168.1.183:2181,192.168.1.184:2181,192.168.1.185:2181"   
-然后通过代理实现负载均衡算法，调用服务端  
-支持Version、Group设置  
-
-### Example
-```python   
-    config = ApplicationConfig('test_rpclib')
+# Python Dubbo Client
+## Implement the load balancing in the client and   discover service function with Zookeeper automatically
+### Python calls the jsonrpc protocol of the Dubbo interface
+Please use dubbo-rpc-jsonrpc and configure the protocol as the jsonrpc protocol in dubbo, referring to [https://github.com/apache/incubator-dubbo-rpc-jsonrpc](https://github.com/apache/incubator-dubbo-rpc-jsonrpc).
+### Install
+Download code
+python setup.py install
+Install <span data-type="color" style="color:rgb(36, 41, 46)"><span data-type="background" style="background-color:rgb(255, 255, 255)">pip</span></span>
+<span data-type="color" style="color:rgb(36, 41, 46)"><span data-type="background" style="background-color:rgb(255, 255, 255)">pip install dubbo-client==1.0.0b5</span></span>
+Install <span data-type="color" style="color:rgb(36, 41, 46)"><span data-type="background" style="background-color:rgb(255, 255, 255)">Git</span></span>
+<span data-type="color" style="color:rgb(36, 41, 46)"><span data-type="background" style="background-color:rgb(255, 255, 255)">pip install git+</span></span>[http://git.dev.qianmi.com/tda/dubbo-client-py.git@1.0.0b5](http://git.dev.qianmi.com/tda/dubbo-client-py.git@1.0.0b5)
+or
+<span data-type="color" style="color:rgb(36, 41, 46)"><span data-type="background" style="background-color:rgb(255, 255, 255)">pip install git+</span></span>[https://github.com/qianmiopen/dubbo-client-py.git@1.0.0b5](https://github.com/qianmiopen/dubbo-client-py.git@1.0.0b5)
+### Implement the load balancing on the client and the service discovery
+Get the service registration information with the zookeeper in the registration center
+.
+Dubbo-client-py supports configuring multiple zookeeper service addresses
+.
+"host": "192.168.1.183:2181,192.168.1.184:2181,192.168.1.185:2181"
+Then implement the load balancing algorithm and calling the server through the proxy.
+Support Version, Group settings.
+#### Example
+```xml
+config = ApplicationConfig('test_rpclib')
     service_interface = 'com.ofpay.demo.api.UserProvider'
-    #registry包含了和zookeeper的连接，该对象需要缓存
+    #registry contains a connection to zookeeper, which needs to be cached
     registry = ZookeeperRegistry('192.168.59.103:2181', config)
     user_provider = DubboClient(service_interface, registry, version='1.0')
     for i in range(1000):
@@ -45,15 +39,14 @@ dubbo-client-py支持配置多个zookeeper服务地址
             print client_error
         time.sleep(5)
 ```
-
-### TODO
-优化性能，将服务上下线的影响降到最小  
-支持Retry参数    
-支持权重调用    
-单元测试覆盖率
-
-### Licenses
+#### TODO
+Optimize performance and minimize the impact of online and offline service.
+Support Retry parameters
+.
+Support weight call
+.
+Unit test the coverage ratios.
+#### Licenses
 Apache License
-
-### 感谢
-感谢 @jingpeicomp 同学做小白鼠，目前已经正常运行在生产环境数月，谢谢！   
+### Acknowledgment
+Thanks to @jingpeicomp' s attempts, and the flow of this function has been running normally in the production environment for several months, thank you!
