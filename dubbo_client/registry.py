@@ -372,8 +372,11 @@ class MulticastRegistry(Registry):
             Thread.__init__(self)
             self.multicast_group, self.multicast_port = address.split(':')
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-            # in osx we should use SO_REUSEPORT instead of SO_REUSEADDRESS
-            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            # in osx we should use SO_REUSEPORT instead of SO_REUSEADDR
+            if getattr(socket, 'SO_REUSEPORT', None):
+                self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+            else:
+                self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.sock.bind(('', int(self.multicast_port)))
             mreq = struct.pack("4sl", socket.inet_aton(self.multicast_group), socket.INADDR_ANY)
             self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
