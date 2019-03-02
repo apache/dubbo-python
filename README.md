@@ -22,25 +22,32 @@ Dubbo-client-py supports configuring multiple zookeeper service addresses.
 "host":"192.168.1.183:2181,192.168.1.184:2181,192.168.1.185:2181"  
 Then the load balancing algorithm is implemented by proxy, and the server is called.    
 Support Version and Group settings.
-### Example
-	    config = ApplicationConfig('test_rpclib')
-	    service_interface = 'com.ofpay.demo.api.UserProvider'
-	    #Contains a connection to zookeeper, which needs caching.
-	    registry = ZookeeperRegistry('192.168.59.103:2181', config)
-	    user_provider = DubboClient(service_interface, registry, version='1.0')
-	    for i in range(1000):
-        try:
-            print user_provider.getUser('A003')
-            print user_provider.queryUser(
-                {u'age': 18, u'time': 1428463514153, u'sex': u'MAN', u'id': u'A003', u'name': u'zhangsan'})
-            print user_provider.queryAll()
-            print user_provider.isLimit('MAN', 'Joe')
-            print user_provider('getUser', 'A005')
 
-        except DubboClientError, client_error:
-            print client_error
-        time.sleep(5)
-	
+### Example
+
+```python
+# coding=utf-8
+import time
+from dubbo_client import ZookeeperRegistry, DubboClient, DubboClientError, ApplicationConfig
+
+config = ApplicationConfig('test_rpclib')
+service_interface = 'com.ofpay.demo.api.UserProvider'
+# Contains a connection to zookeeper, which needs caching.
+registry = ZookeeperRegistry('192.168.59.103:2181', config)
+user_provider = DubboClient(service_interface, registry, version='1.0')
+for i in range(1000):
+    try:
+        print user_provider.getUser('A003')
+        print user_provider.queryUser(
+            {u'age': 18, u'time': 1428463514153, u'sex': u'MAN', u'id': u'A003', u'name': u'zhangsan'})
+        print user_provider.queryAll()
+        print user_provider.isLimit('MAN', 'Joe')
+        print user_provider('getUser', 'A005')
+    except DubboClientError, client_error:
+        print client_error
+    time.sleep(5)
+```
+
 ### TODO
 Optimize performance, minimize the impact of service upper and lower lines.  
 Support Retry parameters  
