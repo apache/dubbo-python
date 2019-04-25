@@ -1,4 +1,4 @@
-## Python Dubbo Client
+## Python Client For Apache Dubbo
 ## Achieve load balancing on the client side、auto discovery service function with Zookeeper
 ### Python calls the Dubbo interface's jsonrpc protocol
 Please use dubbo-rpc-jsonrpc and configure protocol in Dubbo for jsonrpc protocol   
