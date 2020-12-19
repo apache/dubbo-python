@@ -103,7 +103,7 @@ class Registry(object):
         group = kwargs.get('group', '')
         version = kwargs.get('version', '')
         key = self._to_key(interface, version, group)
-        second = self._service_provides.get(interface, {})
+        second = self._service_providers.get(interface, {})
         return second.get(key, {})
 
     def get_random_provider(self, interface, **kwargs):
@@ -115,10 +115,13 @@ class Registry(object):
         """
         group = kwargs.get('group', '')
         version = kwargs.get('version', '')
+        protocol = kwargs.get('protocol', '')
+
         key = self._to_key(interface, version, group)
         second_dict = self._service_providers.get(interface, {})
         service_url_list = [service_url for service_url in second_dict.get(key, {}).itervalues() if
-                            not service_url.disabled and service_url.weight > 0]
+                            not service_url.disabled and service_url.weight > 0
+                            and (not protocol or protocol == service_url.protocol)]
         if not service_url_list:
             raise NoProvider('can not find provider', interface)
 
@@ -210,11 +213,10 @@ class Registry(object):
                 for child_node in nodes:
                     node = urllib.unquote(child_node).decode('utf8')
                     logger.debug('child of node is {0}'.format(node))
-                    if node.startswith('jsonrpc'):
-                        service_url = ServiceURL(node)
-                        self._add_node(interface, service_url)
+                    service_url = ServiceURL(node)
+                    self._add_node(interface, service_url)
             except Exception as e:
-                logger.warn('swap json-rpc provider error %s', str(e))
+                logger.warn('swap provider error %s', str(e))
             finally:
                 self._mutex.release()
 
@@ -399,18 +401,16 @@ class MulticastRegistry(Registry):
     def _do_event(self, event):
         if event.startswith('register'):
             url = event[9:]
-            if url.startswith('jsonrpc'):
-                service_provide = ServiceURL(url)
-                self._add_node(service_provide.interface, service_provide)
+            service_provide = ServiceURL(url)
+            self._add_node(service_provide.interface, service_provide)
         if event.startswith('unregister'):
             url = event[11:]
-            if url.startswith('jsonrpc'):
-                service_provide = ServiceURL(url)
-                self._remove_node(service_provide.interface, service_provide)
+            service_provide = ServiceURL(url)
+            self._remove_node(service_provide.interface, service_provide)
 
 
 if __name__ == '__main__':
-    zk = KazooClient(hosts='192.168.59.103:2181')
+    zk = KazooClient(hosts='127.0.0.1:2181')
     zk.start()
     parent_node = '{0}/{1}/{2}'.format('dubbo', 'com.ofpay.demo.api.UserProvider', '')
     nodes = zk.get_children(parent_node)
@@ -429,7 +429,7 @@ if __name__ == '__main__':
         print node
     # zk.delete(parent_node+'/'+child_node, recursive=True)
     # registry = MulticastRegistry('224.5.6.7:1234')
-    registry = ZookeeperRegistry('zookeeper:2181')
+    registry = ZookeeperRegistry('127.0.0.1:2181')
     registry.subscribe('com.ofpay.demo.api.UserProvider')
     print registry.get_providers('com.ofpay.demo.api.UserProvider')
 

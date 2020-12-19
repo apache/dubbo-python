@@ -16,20 +16,22 @@
 
 """
 
-
 from urllib2 import HTTPError
 
 from pyjsonrpc import HttpClient, JsonRpcError
 
+from dubbo.connection.connections import connection_pool
 from dubbo_client.registry import Registry
 from dubbo_client.rpcerror import ConnectionFail, dubbo_client_errors, InternalError, DubboClientError
-
 
 
 class DubboClient(object):
     interface = ''
     group = ''
     version = ''
+    protocol = ''
+
+    protocol_methods = {}
 
     class _Method(object):
 
@@ -46,13 +48,37 @@ class DubboClient(object):
         self.registry = registry
         self.group = kwargs.get('group', '')
         self.version = kwargs.get('version', '')
+        self.protocol = kwargs.get('protocol', '')
         self.registry.subscribe(interface)
         self.registry.register(interface)
 
+        self.protocol_methods = {'jsonrpc': self.__jsonrpc_call__, 'dubbo': self.__dubbo_call__}
+
     def call(self, method, *args, **kwargs):
-        provider = self.registry.get_random_provider(self.interface, version=self.version, group=self.group)
-        # print service_url.location
-        client = HttpClient(url="http://{0}{1}".format(provider.location, provider.path))
+        provider = self.registry.get_random_provider(self.interface, version=self.version, group=self.group,
+                                                     protocol=self.protocol)
+        timeout = int(provider.timeout) / 1000
+
+        return self.protocol_methods[provider.protocol](method, provider, timeout, *args, **kwargs)
+
+    def __dubbo_call__(self, method, provider, timeout, *args, **kwargs):
+
+        if not isinstance(args, (list, tuple)):
+            args = [args]
+
+        request_param = {
+            'dubbo_version': provider.dubbo,
+            'version': provider.version,
+            'path': provider.interface if not provider.group else provider.group + '/' + provider.interface,
+            'method': method,
+            'arguments': args
+        }
+
+        result = connection_pool.get(provider.location, request_param, timeout, **kwargs)
+        return result
+
+    def __jsonrpc_call__(self, method, provider, timeout, *args, **kwargs):
+        client = HttpClient(url="http://{0}{1}".format(provider.location, provider.path), timeout=timeout)
         try:
             return client.call(method, *args, **kwargs)
         except HTTPError, e:
