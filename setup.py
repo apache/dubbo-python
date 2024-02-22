@@ -44,7 +44,7 @@ setup(
     description=(
         "Python Dubbo Client"
     ),
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding='utf-8').read(),
     keywords=(
         "Dubbo, JSON-RPC, JSON, RPC, Client,"
         "HTTP-Client, Remote Procedure Call, JavaScript Object Notation, "
