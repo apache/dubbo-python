@@ -25,7 +25,7 @@ if __name__ == '__main__':
     config = ApplicationConfig('test_rpclib')
     service_interface = 'com.ofpay.demo.api.UserProvider'
     # 该对象较重，有zookeeper的连接，需要保存使用
-    registry = ZookeeperRegistry('115.28.74.185:2181', config)
+    registry = ZookeeperRegistry('127.0.0.1:2181', config)
     # registry = MulticastRegistry('224.5.6.7:1234', config)
     user_provider = DubboClient(service_interface, registry, version='2.0')
     for i in range(1000):

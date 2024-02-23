@@ -21,6 +21,7 @@ from urlparse import urlparse, parse_qsl
 
 class ServiceURL(object):
     protocol = 'jsonrpc'
+    interface = ''
     location = ''  # ip+port
     path = ''  # like /com.qianmi.dubbo.UserProvider
     ip = '127.0.0.1'
