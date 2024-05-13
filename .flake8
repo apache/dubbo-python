@@ -1,0 +1,24 @@
+[flake8]
+
+ignore =
+    # whitespace before ',', ';', or ':'
+    E203
+    # too many leading '#' for block comment
+    E266
+    # line too long (82 > 79 characters)
+    E501
+    # line break before binary operator
+    W503
+    # from module import * used
+    F403
+
+# Maximum line length
+max-line-length = 120
+
+exclude =
+    .git,
+    __pycache__,
+    docs
+
+per-file-ignores =
+    __init__.py:F401
