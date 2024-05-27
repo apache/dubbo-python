@@ -33,6 +33,63 @@ class UnaryUnaryMultiCallable(abc.ABC):
           request: The request value for the RPC.
           timeout: An optional duration of time in seconds to allow for the RPC.
           compression: An element of dubbo.common.compression, e.g. 'gzip'.
+
+        Returns:
+          The response value for the RPC.
+
+        Raises:
+          RpcError: Indicating that the RPC terminated with non-OK status. The
+            raised RpcError will also be a Call for the RPC affording the RPC's
+            metadata, status code, and details.
         """
 
-        raise NotImplementedError()
+        raise NotImplementedError("Method '__call__' is not implemented.")
+
+    @abc.abstractmethod
+    def with_call(
+            self,
+            request,
+            timeout=None,
+            compression=None
+    ):
+        """
+        Synchronously invokes the underlying RPC.
+        Args:
+            request: The request value for the RPC.
+            timeout: An optional duration of time in seconds to allow for the RPC.
+            compression: An element of dubbo.common.compression, e.g. 'gzip'.
+
+            Returns:
+                The response value for the RPC.
+
+            Raises:
+                RpcError: Indicating that the RPC terminated with non-OK status. The
+                raised RpcError will also be a Call for the RPC affording the RPC's
+                metadata, status code, and details.
+        """
+
+        raise NotImplementedError("Method 'with_call' is not implemented.")
+
+    @abc.abstractmethod
+    def async_call(
+            self,
+            request,
+            timeout=None,
+            compression=None
+    ):
+        """
+        Asynchronously invokes the underlying RPC.
+            Args:
+                request: The request value for the RPC.
+                timeout: An optional duration of time in seconds to allow for the RPC.
+                compression: An element of dubbo.common.compression, e.g. 'gzip'.
+
+            Returns:
+                An object that is both a Call for the RPC and a Future.
+                In the event of RPC completion, the return Call-Future's result
+                value will be the response message of the RPC.
+                Should the event terminate with non-OK status,
+                the returned Call-Future's exception value will be an RpcError.
+            """
+
+        raise NotImplementedError("Method 'async_call' is not implemented.")
