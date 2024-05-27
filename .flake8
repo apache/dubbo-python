@@ -16,9 +16,12 @@ ignore =
 max-line-length = 120
 
 exclude =
+    .idea,
     .git,
     __pycache__,
     docs
 
 per-file-ignores =
     __init__.py:F401
+    dubbo/imports/imports.py:F401
+    dubbo/pydubbo.py:F401
