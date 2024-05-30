@@ -18,17 +18,30 @@ class ApplicationConfig:
     """
     Application Config
     """
+    # name
+    name: str
+    # version
+    version: str
+    # owner
+    owner: str
+    # organization(BU)
+    organization: str
+    # architecture, e.g. intl, china
+    architecture: str
+    # environment, e.g. dev, test, production
+    environment: str
 
-    def __init__(self):
-        # name
-        self.name = ''
-        # version
-        self.version = ''
-        # owner
-        self.owner = ''
-        # organization(BU)
-        self.organization = ''
-        # architecture, e.g. intl, china
-        self.architecture = ''
-        # environment, e.g. dev, test, production
-        self.environment = ''
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            if key in self.__annotations__:
+                setattr(self, key, value)
+            else:
+                raise AttributeError(f"{key} is not a valid attribute of {self.__class__.__name__}")
+
+    def __repr__(self):
+        return (f"<ApplicationConfig name={self.name}, "
+                f"version={self.version}, "
+                f"owner={self.owner}, "
+                f"organization={self.organization}, "
+                f"architecture={self.architecture}, "
+                f"environment={self.environment}>")
