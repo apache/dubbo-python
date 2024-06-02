@@ -23,10 +23,10 @@ class URL:
                  protocol: str,
                  host: str,
                  port: int,
-                 username: str = '',
-                 password: str = '',
-                 path: str = '',
-                 params=None
+                 username: str = None,
+                 password: str = None,
+                 path: str = None,
+                 params: dict[str, str] = None
                  ):
         """
         Initialize URL object.
@@ -38,8 +38,6 @@ class URL:
         :param path: path.
         :param params: parameters.
         """
-        if params is None:
-            params = {}
         self.protocol = protocol
         self.host = host
         self.port = port
@@ -58,7 +56,7 @@ class URL:
         # Set username and password
         auth_part = f"{self.username}:{self.password}@" if self.username or self.password else ""
         # Set location
-        netloc = f"{auth_part}{self.host}{self.port}"
+        netloc = f"{auth_part}{self.host}{':' + str(self.port) if self.port else ''}"
         query = ulp.urlencode(self.params)
         path = self.path
 
@@ -89,6 +87,6 @@ def parse_url(url: str, encoded: bool = False) -> URL:
     port = parsed_url.port
     path = parsed_url.path
     params = {k: v[0] for k, v in ulp.parse_qs(parsed_url.query).items()}
-    username = parsed_url.username
-    password = parsed_url.password
+    username = parsed_url.username or ''
+    password = parsed_url.password or ''
     return URL(protocol, host, port, username, password, path, params)
