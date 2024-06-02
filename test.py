@@ -14,4 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._logger import Logger, set_logger, get_logger
+from dubbo.config.application_config import ApplicationConfig
+from dubbo.logger import get_logger
+
+if __name__ == '__main__':
+    ApplicationConfig(name='dubbo')
+    dubbo_logger = get_logger()
+    dubbo_logger.debug('debug')
+    dubbo_logger.info('info')
+    dubbo_logger.warning('warning')
+    dubbo_logger.error('error')

@@ -13,5 +13,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import unittest
 
-from ._logger import Logger, set_logger, get_logger
+from dubbo.config.application_config import ApplicationConfig
+from dubbo import logger
+
+
+class TestApplicationConfig(unittest.TestCase):
+
+    def test_init_logger(self):
+        ApplicationConfig(name='dubbo')
+        dubbo_logger = logger.get_logger()
+        dubbo_logger.debug('debug')
+        dubbo_logger.info('info')
+        dubbo_logger.warning('warning')
+        dubbo_logger.error('error')
+        assert True

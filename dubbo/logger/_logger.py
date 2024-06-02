@@ -57,3 +57,25 @@ class Logger:
         Exception log
         """
         raise NotImplementedError("Method 'exception' is not implemented.")
+
+
+# global logger, default logger is None
+_LOGGER: Logger = Logger()
+
+
+def get_logger() -> Logger:
+    """
+    Get logger
+    """
+    return _LOGGER
+
+
+def set_logger(logger: Logger) -> None:
+    """
+    Set logger
+    """
+    global _LOGGER
+    if logger is not None and isinstance(logger, Logger):
+        _LOGGER = logger
+    else:
+        raise ValueError("Invalid logger")
