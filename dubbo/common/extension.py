@@ -34,7 +34,7 @@ def load_type(config_str: str) -> Type:
     module_path, class_name = '', ''
     try:
         # Split the configuration string to obtain the module path and object name
-        module_path, class_name = config_str.rsplit(':', 1)
+        module_path, class_name = config_str.rsplit('.', 1)
 
         # Import the module
         module = importlib.import_module(module_path)
@@ -99,16 +99,26 @@ class ExtensionManager:
     """
 
     def __init__(self):
+        self._initialized = False
         self._extension_loaders: Dict[type, ExtensionLoader] = {}
+
+    @property
+    def initialized(self):
+        return self._initialized
 
     def initialize(self):
         """
         Read the configuration file and initialize the extension manager.
         """
+        if self._initialized:
+            return
+        # read the configuration file
         extensions = IniFileUtils.parse_config("extensions.ini")
+        # parse the configuration
         for section, classes in extensions.items():
             class_type = load_type(section)
             self._extension_loaders[class_type] = ExtensionLoader(class_type, classes)
+        self._initialized = True
 
     def get_extension_loader(self, class_type: type) -> ExtensionLoader:
         """
@@ -118,3 +128,22 @@ class ExtensionManager:
         :return: Extension loader.
         """
         return self._extension_loaders.get(class_type)
+
+
+# global extension manager
+_EXTENSION_MANAGER = ExtensionManager()
+# lock
+_lock = threading.Lock()
+
+
+def get_extension_manager() -> ExtensionManager:
+    """
+    Get the extension manager.
+
+    :return: Extension manager.
+    """
+    if not _EXTENSION_MANAGER.initialized:
+        with _lock:
+            if not _EXTENSION_MANAGER.initialized:
+                _EXTENSION_MANAGER.initialize()
+    return _EXTENSION_MANAGER

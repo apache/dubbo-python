@@ -15,6 +15,10 @@
 # limitations under the License.
 
 class Logger:
+    """
+    Logger Interface, which is used to log messages.
+    All loggers should implement this interface.
+    """
 
     def log(self, level: str, msg: str) -> None:
         """
@@ -59,23 +63,34 @@ class Logger:
         raise NotImplementedError("Method 'exception' is not implemented.")
 
 
-# global logger, default logger is None
+# global logger, default logger is Logger(), so it will raise an error if it is not set
 _LOGGER: Logger = Logger()
-
-
-def get_logger() -> Logger:
-    """
-    Get logger
-    """
-    return _LOGGER
 
 
 def set_logger(logger: Logger) -> None:
     """
-    Set logger
+    Set global logger
     """
     global _LOGGER
     if logger is not None and isinstance(logger, Logger):
         _LOGGER = logger
     else:
         raise ValueError("Invalid logger")
+
+
+def set_logger_by_name(logger_name: str) -> None:
+    """
+    Set global logger by name
+    """
+    # import extension module here to avoid circular import
+    from dubbo.common import extension
+    extension_manager = extension.get_extension_manager()
+    instance = extension_manager.get_extension_loader(Logger).get_instance(logger_name)
+    set_logger(instance)
+
+
+def get_logger() -> Logger:
+    """
+    Get global logger
+    """
+    return _LOGGER

@@ -55,8 +55,15 @@ class Dubbo:
         self._config_manager.add_config(reference_config)
         return self
 
+    def _do_init(self):
+        """
+        Initialize Dubbo.
+        """
+        pass
+
     def start(self):
         """
         Start Dubbo.
         """
-        pass
+        self._do_init()
+

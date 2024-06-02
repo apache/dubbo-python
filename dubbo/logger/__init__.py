@@ -14,4 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._logger import Logger, set_logger, get_logger
+from ._logger import Logger, set_logger, set_logger_by_name, get_logger

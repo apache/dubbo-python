@@ -13,8 +13,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from dubbo import logger
-from dubbo.common.extension import ExtensionManager
+from dubbo.common import extension
+
+extension_manager = extension.get_extension_manager()
 
 
 class ApplicationConfig:
@@ -38,16 +41,10 @@ class ApplicationConfig:
         self._architecture = architecture
         self._environment = environment
         self._logger_name = logger_name
-        self._extension_manager = ExtensionManager()
-
-        # init application config
-        self.do_init()
 
     def do_init(self):
-        # init ExtensionManager
-        self._extension_manager.initialize()
         # init logger
-        self._update_logger(self._logger_name)
+        logger.set_logger_by_name(self.logger_name)
 
     @property
     def logger_name(self):
@@ -56,16 +53,7 @@ class ApplicationConfig:
     @logger_name.setter
     def logger_name(self, logger_name: str):
         self._logger_name = logger_name
-        self._update_logger(logger_name)
-
-    def _update_logger(self, logger_name: str):
-        """
-        Update global logger instance.
-        """
-        # get logger instance
-        instance = self._extension_manager.get_extension_loader(logger.Logger).get_instance(logger_name)
-        # update logger
-        logger.set_logger(instance)
+        logger.set_logger_by_name(logger_name)
 
     def __repr__(self):
         return (f"<ApplicationConfig name={self._name}, "

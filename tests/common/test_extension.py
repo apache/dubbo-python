@@ -14,5 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[dubbo.logger.Logger]
-loguru = dubbo.logger.loguru_logger.LoguruLogger
+import unittest
+
+from dubbo.common import extension
+from dubbo import logger
+
+
+class TestExtension(unittest.TestCase):
+
+    def test_get_instance(self):
+        manager = extension.get_extension_manager()
+        assert manager is not None
+        loader = manager.get_extension_loader(logger.Logger)
+        assert loader is not None
+        dubbo_logger = loader.get_instance("loguru")
+        assert dubbo_logger is not None

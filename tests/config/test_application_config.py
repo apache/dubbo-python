@@ -15,6 +15,7 @@
 # limitations under the License.
 import unittest
 
+from dubbo.common import extension
 from dubbo.config.application_config import ApplicationConfig
 from dubbo import logger
 
@@ -22,7 +23,8 @@ from dubbo import logger
 class TestApplicationConfig(unittest.TestCase):
 
     def test_init_logger(self):
-        ApplicationConfig(name='dubbo')
+        config = ApplicationConfig(name='dubbo')
+        config.do_init()
         dubbo_logger = logger.get_logger()
         dubbo_logger.debug('debug')
         dubbo_logger.info('info')
