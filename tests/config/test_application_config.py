@@ -15,7 +15,6 @@
 # limitations under the License.
 import unittest
 
-from dubbo.common import extension
 from dubbo.config.application_config import ApplicationConfig
 from dubbo import logger
 

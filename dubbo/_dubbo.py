@@ -66,4 +66,3 @@ class Dubbo:
         Start Dubbo.
         """
         self._do_init()
-
