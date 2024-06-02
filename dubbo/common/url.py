@@ -23,10 +23,10 @@ class URL:
                  protocol: str,
                  host: str,
                  port: int,
-                 username: str = None,
-                 password: str = None,
-                 path: str = None,
-                 params: dict[str, str] = None
+                 username: str = '',
+                 password: str = '',
+                 path: str = '',
+                 params=None
                  ):
         """
         Initialize URL object.
@@ -38,6 +38,8 @@ class URL:
         :param path: path.
         :param params: parameters.
         """
+        if params is None:
+            params = {}
         self.protocol = protocol
         self.host = host
         self.port = port
@@ -87,6 +89,6 @@ def parse_url(url: str, encoded: bool = False) -> URL:
     port = parsed_url.port
     path = parsed_url.path
     params = {k: v[0] for k, v in ulp.parse_qs(parsed_url.query).items()}
-    username = parsed_url.username or ''
-    password = parsed_url.password or ''
+    username = parsed_url.username
+    password = parsed_url.password
     return URL(protocol, host, port, username, password, path, params)

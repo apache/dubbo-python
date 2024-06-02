@@ -14,4 +14,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dubbo._dubbo import Dubbo
+import unittest
+
+from dubbo.logger.loguru_logger import LoguruLogger
+
+
+class TestLoguruLogger(unittest.TestCase):
+
+    def test_loguru_logger(self):
+        logger = LoguruLogger()
+        logger.debug("Debug log")
+        logger.info("Info log")
+        logger.warning("Warning log")
+        logger.error("Error log")
+        logger.critical("Critical log")
+        try:
+            return 1 / 0
+        except ZeroDivisionError:
+            logger.exception("exception!!!")
+        assert True

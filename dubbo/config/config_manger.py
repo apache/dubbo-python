@@ -14,4 +14,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import imports.imports  # Load the extensions.
+from dubbo.config.application_config import ApplicationConfig
+
+
+class ConfigManager:
+    """
+    Configuration manager.
+    """
+    # unique config in application
+    unique_config_types = [
+        ApplicationConfig,
+    ]
+
+    def __init__(self):
+        self._configs_cache = {}
+
+    def add_config(self, config):
+        """
+        Add configuration.
+        :param config: configuration.
+        """
+        if type(config) not in self.unique_config_types or config.__class__ not in self._configs_cache:
+            self._configs_cache[type(config)] = config
+        else:
+            raise ValueError(f"Config type {type(config)} already exists.")

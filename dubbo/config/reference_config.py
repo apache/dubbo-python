@@ -25,6 +25,8 @@ class ReferenceConfig:
         self.protocol = None
         # A ProxyFactory implementation that will generate a reference service's proxy
         self.pxy = None
+        # The interface of the reference service
+        self.method = None
         # The interface proxy reference
         self.ref = None
         # The invoker of the reference service

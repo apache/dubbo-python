@@ -14,10 +14,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-This module provides a centralized collection of Dubbo SPI implementations.
-It simplifies plugin installation using Python's import mechanism.
-"""
+from loguru import logger
 
-# Load Protocol Extension
-from dubbo.protocols.triple.triple_protocol import TripleProtocol
+from dubbo.logger import Logger
+
+
+class LoguruLogger(Logger):
+    """
+    Loguru logger.
+    """
+
+    def __init__(self):
+        self.logger = logger.opt(depth=1)
+
+    def log(self, level: str, msg: str) -> None:
+        self.logger.log(level, msg)
+
+    def debug(self, msg: str) -> None:
+        self.logger.debug(msg)
+
+    def info(self, msg: str) -> None:
+        self.logger.info(msg)
+
+    def warning(self, msg: str) -> None:
+        self.logger.warning(msg)
+
+    def error(self, msg: str) -> None:
+        self.logger.error(msg)
+
+    def critical(self, msg: str) -> None:
+        self.logger.critical(msg)
+
+    def exception(self, msg: str) -> None:
+        self.logger.exception(msg)

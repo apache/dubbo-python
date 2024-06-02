@@ -14,11 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dubbo.common.extensions.protocols_loader import ProtocolExtensionLoader
 from dubbo.protocols.protocol import Protocol
 
 
-@ProtocolExtensionLoader.register('tri')
 class TripleProtocol(Protocol):
     """
     Triple protocols.
