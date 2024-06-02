@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import importlib
+import threading
 from typing import Dict, Type
 
 from dubbo.common.utils.file_utils import IniFileUtils
@@ -63,6 +64,7 @@ class ExtensionLoader:
         self._class_type = class_type  # class type
         self._classes = {}
         self._instances = {}
+        self._instance_lock = threading.Lock()
         for name, config_str in classes.items():
             o = load_type(config_str)
             if issubclass(o, class_type):
@@ -79,8 +81,15 @@ class ExtensionLoader:
         return self._classes
 
     def get_instance(self, name: str):
+        # check if the class exists
+        if name not in self._classes:
+            raise ValueError(f"Class {name} not found in {self._class_type}")
+
+        # get the instance
         if name not in self._instances:
-            self._instances[name] = self._classes[name]()
+            with self._instance_lock:
+                if name not in self._instances:
+                    self._instances[name] = self._classes[name]()
         return self._instances[name]
 
 

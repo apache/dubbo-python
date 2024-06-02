@@ -47,7 +47,7 @@ class ApplicationConfig:
         # init ExtensionManager
         self._extension_manager.initialize()
         # init logger
-        self.init_logger(self._logger_name)
+        self._update_logger(self._logger_name)
 
     @property
     def logger_name(self):
@@ -56,14 +56,15 @@ class ApplicationConfig:
     @logger_name.setter
     def logger_name(self, logger_name: str):
         self._logger_name = logger_name
-        self.init_logger(logger_name)
+        self._update_logger(logger_name)
 
-    def init_logger(self, logger_name: str):
+    def _update_logger(self, logger_name: str):
         """
-        Init logger
+        Update global logger instance.
         """
-        # init dubbo logger
+        # get logger instance
         instance = self._extension_manager.get_extension_loader(logger.Logger).get_instance(logger_name)
+        # update logger
         logger.set_logger(instance)
 
     def __repr__(self):
