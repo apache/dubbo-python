@@ -13,72 +13,57 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any
+import logging
+from typing import Any, Dict
+
+from dubbo.common import extension
+from dubbo.logger import Logger
 
 
-class Logger:
-    """
-    Logger Interface, which is used to log messages.
-    All loggers should implement this interface.
-    """
+@extension.register_logger(name="internal")
+class InternalLogger(Logger):
+
+    _loggers: Dict[str, "InternalLogger"] = {}
 
     def __init__(self, name: str, *args, **kwargs):
-        """
-        Initialize the logger.
-        """
-        pass
+        super().__init__(name, *args, **kwargs)
+        self._logger = logging.getLogger(name)
+        # Set the default log format.
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            fmt="%(asctime)s | %(levelname)s | %(module)s:%(funcName)s:%(lineno)d - [Dubbo] %(message)s"
+        )
+        handler.setFormatter(formatter)
+        self._logger.addHandler(handler)
 
     @classmethod
     def get_logger(cls, name: str) -> "Logger":
-        """
-        Get the logger by name.
-        """
-        raise NotImplementedError("get_logger() is not implemented.")
+        logger_instance = cls._loggers.get(name, None)
+        if logger_instance is None:
+            logger_instance = cls(name)
+            cls._loggers[name] = logger_instance
+        return logger_instance
 
     def log(self, level: int, msg: str, *args: Any, **kwargs: Any) -> None:
-        """
-        Log a message.
-        """
-        raise NotImplementedError("log() is not implemented.")
+        self._logger.log(level, msg, *args, **kwargs)
 
     def debug(self, msg: str, *args, **kwargs) -> None:
-        """
-        Log a debug message.
-        """
-        raise NotImplementedError("debug() is not implemented.")
+        self._logger.debug(msg, *args, **kwargs)
 
     def info(self, msg: str, *args, **kwargs) -> None:
-        """
-        Log an info message.
-        """
-        raise NotImplementedError("info() is not implemented.")
+        self._logger.info(msg, *args, **kwargs)
 
     def warning(self, msg: str, *args, **kwargs) -> None:
-        """
-        Log a warning message.
-        """
-        raise NotImplementedError("warning() is not implemented.")
+        self._logger.warning(msg, *args, **kwargs)
 
     def error(self, msg: str, *args, **kwargs) -> None:
-        """
-        Log an error message.
-        """
-        raise NotImplementedError("error() is not implemented.")
+        self._logger.error(msg, *args, **kwargs)
 
     def critical(self, msg: str, *args, **kwargs) -> None:
-        """
-        Log a critical message.
-        """
-        raise NotImplementedError("critical() is not implemented.")
+        self._logger.critical(msg, *args, **kwargs)
 
     def fatal(self, msg: str, *args, **kwargs) -> None:
-        """
-        Log a fatal message.
-        """
-        raise NotImplementedError("fatal() is not implemented.")
+        self._logger.fatal(msg, *args, **kwargs)
 
     def exception(self, msg: str, *args, **kwargs) -> None:
-        """
-        Log an exception message.
-        """
-        raise NotImplementedError("exception() is not implemented.")
+        self._logger.exception(msg, *args, **kwargs)

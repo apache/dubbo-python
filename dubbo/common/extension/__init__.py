@@ -13,32 +13,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-class ProtocolConfig:
-    """
-    Protocol Config
-    """
-
-    def __init__(self):
-        # protocol name
-        self.name = ''
-        # service ip address
-        self.host = ''
-        # service port
-        self.port = None
-        # protocol codec
-        self.codec = ''
-        # serialization
-        self.serialization = ''
-        # charset
-        self.charset = ''
-        # ssl
-        self.ssl = False
-        # transporter
-        self.transporter = ''
-        # server
-        self.server = ''
-        # client
-        self.client = ''
-        # register
-        self.register = False
+from .logger_extension import get_logger, register_logger

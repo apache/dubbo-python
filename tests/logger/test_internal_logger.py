@@ -13,28 +13,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import unittest
 
-from dubbo.config.application_config import ApplicationConfig
+from dubbo.logger.internal_logger import InternalLogger
 
 
-class ConfigManager:
-    """
-    Configuration manager.
-    """
-    # unique config in application
-    unique_config_types = [
-        ApplicationConfig,
-    ]
+class TestInternalLogger(unittest.TestCase):
 
-    def __init__(self):
-        self._configs_cache = {}
-
-    def add_config(self, config):
-        """
-        Add configuration.
-        :param config: configuration.
-        """
-        if type(config) not in self.unique_config_types or config.__class__ not in self._configs_cache:
-            self._configs_cache[type(config)] = config
-        else:
-            raise ValueError(f"Config type {type(config)} already exists.")
+    def test_log(self):
+        logger = InternalLogger.get_logger("test")
+        logger.log(10, "test log")
+        logger.debug("test debug")
+        logger.info("test info")
+        logger.warning("test warning")
+        logger.error("test error")
+        try:
+            1 / 0
+        except ZeroDivisionError:
+            logger.exception("test exception")
+        self.assertTrue(True)

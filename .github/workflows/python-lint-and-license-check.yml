@@ -19,11 +19,11 @@ jobs:
         pip install flake8
         flake8 .
 
-#    - name: Type check with MyPy
-#      run: |
-#        # fail if there are any MyPy errors
-#        pip install mypy
-#        mypy ./dubbo
+    - name: Type check with MyPy
+      run: |
+        # fail if there are any MyPy errors
+        pip install mypy
+        mypy ./dubbo
 
   check-license:
     runs-on: ubuntu-latest

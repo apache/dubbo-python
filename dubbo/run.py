@@ -14,36 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from loguru import logger
 
-from dubbo.logger import Logger
+class Dubbo:
+    """The entry point of dubbo-python framework."""
 
-
-class LoguruLogger(Logger):
-    """
-    Loguru logger.
-    """
-
-    def __init__(self):
-        self.logger = logger.opt(depth=1)
-
-    def log(self, level: str, msg: str) -> None:
-        self.logger.log(level, msg)
-
-    def debug(self, msg: str) -> None:
-        self.logger.debug(msg)
-
-    def info(self, msg: str) -> None:
-        self.logger.info(msg)
-
-    def warning(self, msg: str) -> None:
-        self.logger.warning(msg)
-
-    def error(self, msg: str) -> None:
-        self.logger.error(msg)
-
-    def critical(self, msg: str) -> None:
-        self.logger.critical(msg)
-
-    def exception(self, msg: str) -> None:
-        self.logger.exception(msg)
+    pass

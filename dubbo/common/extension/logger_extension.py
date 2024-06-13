@@ -13,27 +13,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Dict, Type
 
-import gzip
+from dubbo.logger import Logger
 
-from dubbo.common.compression.compression import Compression
+# A dictionary to store all the logger classes.
+_logger_dict: Dict[str, Type[Logger]] = {}
 
 
-class GzipCompression(Compression):
-    """Gzip compression implementation."""
+def register_logger(name: str):
+    """
+    A decorator to register a logger class to the logger extension point.
+    """
 
-    def compress(self, data: bytes) -> bytes:
-        """
-        Compress data using gzip.
-        :param data: data to be compressed.
-        :return: compressed data.
-        """
-        return gzip.compress(data)
+    def decorator(cls):
+        _logger_dict[name] = cls
+        return cls
 
-    def decompress(self, data: bytes) -> bytes:
-        """
-        Decompress data using gzip.
-        :param data: data to be decompressed.
-        :return: decompressed data.
-        """
-        return gzip.decompress(data)
+    return decorator
+
+
+def get_logger(name: str, *args, **kwargs) -> Logger:
+    """
+    Get a logger instance by name.
+    """
+    logger_cls = _logger_dict[name]
+    return logger_cls(*args, **kwargs)
