@@ -13,4 +13,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from ._dubbo import Dubbo
+import unittest
+
+
+class TestDubbo(unittest.TestCase):
+
+    def test_dubbo(self):
+        from dubbo import Dubbo
+
+        Dubbo()
