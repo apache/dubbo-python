@@ -34,6 +34,20 @@ class Level(enum.Enum):
     FATAL = "FATAL"
 
 
+@enum.unique
+class RotateType(enum.Enum):
+    """
+    The file rotating type enum.
+    """
+
+    # No rotating.
+    NONE = "NONE"
+    # Rotate the file by size.
+    SIZE = "SIZE"
+    # Rotate the file by time.
+    TIME = "TIME"
+
+
 class Logger:
     """
     Logger Interface, which is used to log messages.

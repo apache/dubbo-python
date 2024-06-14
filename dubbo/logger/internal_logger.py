@@ -93,9 +93,9 @@ class InternalLoggerAdapter(LoggerAdapter):
         # TODO enable config by args
         logger_instance = logging.getLogger(name)
         # Create a formatter
-        formatter = logging.Formatter(
-            "%(asctime)s | %(levelname)s | %(module)s:%(funcName)s:%(lineno)d - [Dubbo] %(message)s"
-        )
+        default_format = "%(asctime)s | %(levelname)s | %(module)s:%(funcName)s:%(lineno)d - [Dubbo] %(message)s"
+        formatter = logging.Formatter(default_format)
+
         # Add a console handler
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
@@ -131,3 +131,18 @@ class InternalLoggerAdapter(LoggerAdapter):
         root_logger = logging.getLogger()
         # Set the logging level
         root_logger.setLevel(level.name)
+
+
+if __name__ == "__main__":
+    logger_adapter = InternalLoggerAdapter()
+    logger = logger_adapter.get_logger("test")
+    logger.debug("test debug")
+    logger.info("test info")
+    logger.warning("test warning")
+    logger.error("test error")
+    logger.critical("test critical")
+    logger.fatal("test fatal")
+    try:
+        1 / 0
+    except ZeroDivisionError:
+        logger.exception("test exception")
