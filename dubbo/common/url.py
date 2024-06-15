@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from urllib import parse
 
 
@@ -30,43 +30,43 @@ class URL:
 
     def __init__(
         self,
-        protocol: Optional[str] = None,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
+        protocol: str,
+        host: Optional[str],
+        port: Optional[int],
         username: Optional[str] = None,
         password: Optional[str] = None,
         path: Optional[str] = None,
-        params: Optional[Dict[str, str]] = None,
+        parameters: Optional[Dict[str, str]] = None,
     ):
         """
         Initializes the URL with the given components.
 
         Args:
-            protocol (Optional[str]): The protocol of the URL.
+            protocol (str): The protocol of the URL.
             host (Optional[str]): The host of the URL.
             port (Optional[int]): The port number of the URL.
             username (Optional[str]): The username for URL authentication.
             password (Optional[str]): The password for URL authentication.
             path (Optional[str]): The path of the URL.
-            params (Optional[Dict[str, str]]): The query parameters of the URL.
+            parameters (Optional[Dict[str, str]]): The query parameters of the URL.
         """
         self._protocol = protocol
         self._host = host
         self._port = port
-        # address = host:port
-        self._address = None if not host else f"{host}:{port}" if port else host
+        # location -> host:port
+        self._location = f"{host}:{port}" if host and port else host or None
         self._username = username
         self._password = password
         self._path = path
-        self._params = params
+        self._parameters = parameters or {}
 
     @property
-    def protocol(self) -> Optional[str]:
+    def protocol(self) -> str:
         """
         Gets the protocol of the URL.
 
         Returns:
-            Optional[str]: The protocol of the URL.
+            str: The protocol of the URL.
         """
         return self._protocol
 
@@ -81,30 +81,14 @@ class URL:
         self._protocol = protocol
 
     @property
-    def address(self) -> Optional[str]:
+    def location(self) -> Optional[str]:
         """
-        Gets the address (host:port) of the URL.
+        Gets the location (host:port) of the URL.
 
         Returns:
-            Optional[str]: The address of the URL.
+            Optional[str]: The location of the URL.
         """
-        return self._address
-
-    @address.setter
-    def address(self, address: str) -> None:
-        """
-        Sets the address (host:port) of the URL.
-
-        Args:
-            address (str): The address to set.
-        """
-        self._address = address
-        if ":" in address:
-            self._host, port = address.split(":")
-            self._port = int(port)
-        else:
-            self._host = address
-            self._port = None
+        return self._location
 
     @property
     def host(self) -> Optional[str]:
@@ -125,7 +109,7 @@ class URL:
             host (str): The host to set.
         """
         self._host = host
-        self._address = f"{host}:{self.port}" if self.port else host
+        self._location = f"{host}:{self.port}" if self.port else host
 
     @property
     def port(self) -> Optional[int]:
@@ -145,8 +129,8 @@ class URL:
         Args:
             port (int): The port to set.
         """
-        self._port = port
-        self._address = f"{self.host}:{port}" if port else self.host
+        self._port = max(port, 0)
+        self._location = f"{self.host}:{port}" if port else self.host
 
     @property
     def username(self) -> Optional[str]:
@@ -209,26 +193,26 @@ class URL:
         self._path = path
 
     @property
-    def params(self) -> Optional[Dict[str, str]]:
+    def parameters(self) -> Dict[str, str]:
         """
         Gets the query parameters of the URL.
 
         Returns:
             Optional[Dict[str, str]]: The query parameters of the URL.
         """
-        return self._params
+        return self._parameters
 
-    @params.setter
-    def params(self, params: Dict[str, str]) -> None:
+    @parameters.setter
+    def parameters(self, parameters: Dict[str, str]) -> None:
         """
         Sets the query parameters of the URL.
 
         Args:
-            params (Dict[str, str]): The query parameters to set.
+            parameters (Dict[str, str]): The query parameters to set.
         """
-        self._params = params
+        self._parameters = parameters
 
-    def get_param(self, key: str) -> Optional[str]:
+    def get_parameter(self, key: str) -> Optional[str]:
         """
         Gets a query parameter from the URL.
 
@@ -238,21 +222,19 @@ class URL:
         Returns:
             str or None: The parameter value. If the parameter does not exist, returns None.
         """
-        return self._params.get(key, None) if self._params else None
+        return self._parameters.get(key, None)
 
-    def add_param(self, key: str, value: str) -> None:
+    def add_parameter(self, key: str, value: Any) -> None:
         """
         Adds a query parameter to the URL.
 
         Args:
             key (str): The parameter name.
-            value (str): The parameter value.
+            value (Any): The parameter value.
         """
-        if not self._params:
-            self._params = {}
-        self._params[key] = value
+        self._parameters[key] = str(value) if value is not None else ""
 
-    def to_string(self, encode: bool = False) -> str:
+    def build_string(self, encode: bool = False) -> str:
         """
         Generates the URL string based on the current components.
 
@@ -270,15 +252,15 @@ class URL:
             if self.password:
                 url += f":{self.password}"
             url += "@"
-        # Set Address
-        url += self.address if self.address else ""
+        # Set location
+        url += self.location if self.location else ""
         # Set path
         url += "/"
         if self.path:
             url += f"{self.path}"
         # Set params
-        if self.params:
-            url += "?" + "&".join([f"{k}={v}" for k, v in self.params.items()])
+        if self.parameters:
+            url += "?" + "&".join([f"{k}={v}" for k, v in self.parameters.items()])
         # If the URL needs to be encoded, encode it
         if encode:
             url = parse.quote(url)
@@ -291,7 +273,7 @@ class URL:
         Returns:
             str: The generated URL string.
         """
-        return self.to_string()
+        return self.build_string()
 
     @classmethod
     def value_of(cls, url: str, encoded: bool = False) -> "URL":
@@ -322,7 +304,9 @@ class URL:
         port = parsed_url.port
         username = parsed_url.username
         password = parsed_url.password
-        params = {k: v[0] for k, v in parse.parse_qs(parsed_url.query).items()}
+        parameters = {k: v[0] for k, v in parse.parse_qs(parsed_url.query).items()}
         path = parsed_url.path.lstrip("/")
 
-        return URL(protocol, host, port, username, password, path, params)
+        if not protocol:
+            raise ValueError("Invalid URL format: missing protocol.")
+        return URL(protocol, host, port, username, password, path, parameters)

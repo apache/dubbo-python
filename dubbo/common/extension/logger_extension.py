@@ -16,12 +16,14 @@
 
 """
 This module provides an extension point for logger adapters.
-Note: Type annotations are not fully used here (LoggerAdapter object is not explicitly specified)
-because it would cause a circular reference issue.
 """
+from typing import Dict
+
+from dubbo.common.url import URL
+from dubbo.logger import LoggerAdapter
 
 # A dictionary to store all the logger adapters. key: name, value: logger adapter class
-_logger_adapter_dict = {}
+_logger_adapter_dict: Dict[str, type[LoggerAdapter]] = {}
 
 
 def register_logger_adapter(name: str):
@@ -39,14 +41,14 @@ def register_logger_adapter(name: str):
         A decorator function that registers the logger class.
     """
 
-    def decorator(cls):
+    def wrapper(cls):
         _logger_adapter_dict[name] = cls
         return cls
 
-    return decorator
+    return wrapper
 
 
-def get_logger_adapter(name: str, *args, **kwargs):
+def get_logger_adapter(name: str, config: URL) -> LoggerAdapter:
     """
     Get a logger adapter instance by name.
 
@@ -55,8 +57,7 @@ def get_logger_adapter(name: str, *args, **kwargs):
 
     Args:
         name (str): The name of the logger adapter to retrieve.
-        *args: Variable length argument list for the logger adapter constructor.
-        **kwargs: Arbitrary keyword arguments for the logger adapter constructor.
+        config (URL): The config of the logger adapter to retrieve.
 
     Returns:
         LoggerAdapter: An instance of the requested logger adapter.
@@ -64,4 +65,4 @@ def get_logger_adapter(name: str, *args, **kwargs):
         KeyError: If no logger adapter is registered under the provided name.
     """
     logger_adapter = _logger_adapter_dict[name]
-    return logger_adapter(*args, **kwargs)
+    return logger_adapter(config)

@@ -15,73 +15,114 @@
 # limitations under the License.
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
 
-from dubbo.logger import Level, RotateType
+from dubbo.common import extension
+from dubbo.common.constants import (LoggerConstants, LoggerFileRotateType,
+                                    LoggerLevel)
+from dubbo.common.url import URL
+from dubbo.logger import loggerFactory
 
 
 @dataclass
 class ConsoleLoggerConfig:
+    """Console logger configuration"""
+
     # default is open console logger
-    enabled: bool = True
-    # default level is None, use the global level
-    level: Optional[Level] = None
-    # default formatter is None, use the global formatter
-    formatter: Optional[str] = None
+    console_enabled: bool = True
+    # default console formatter is None, use the global formatter
+    console_formatter: Optional[str] = None
+
+    def check(self):
+        pass
+
+    def dict(self) -> Dict[str, str]:
+        return {
+            LoggerConstants.LOGGER_CONSOLE_ENABLED_KEY: str(self.console_enabled),
+            LoggerConstants.LOGGER_CONSOLE_FORMAT_KEY: self.console_formatter or "",
+        }
 
 
 @dataclass
 class FileLoggerConfig:
+    """File logger configuration"""
+
     # default is close file logger
-    enabled: bool = False
-    # default level is None, use the global level
-    level: Optional[Level] = None
-    # default formatter is None, use the global formatter
-    formatter: Optional[str] = None
+    file_enabled: bool = False
+    # default file formatter is None, use the global formatter
+    file_formatter: Optional[str] = None
     # default log file dir is user home dir
-    file_dir: Optional[str] = os.path.expanduser("~")
+    file_dir: str = os.path.expanduser("~")
+    # default log file name is "dubbo.log"
+    file_name: str = LoggerConstants.LOGGER_FILE_NAME_VALUE
     # default no rotate
-    rotate: Optional[RotateType] = RotateType.NONE
+    rotate: LoggerFileRotateType = LoggerFileRotateType.NONE
     # when rotate is SIZE, max_bytes is required, default 10M
-    max_bytes: Optional[int] = 1024 * 1024 * 10
-    # when rotate is TIME, rotation is required, unit is day, default 1
-    rotation: Optional[int] = 1
+    max_bytes: int = 1024 * 1024 * 10
+    # when rotate is TIME, interval is required, unit is day, default 1
+    interval: int = 1
     # when rotate is not NONE, backup_count is required, default 10
-    backup_count: Optional[int] = 10
+    backup_count: int = 10
+
+    def check(self) -> None:
+        if self.file_enabled:
+            if self.rotate == LoggerFileRotateType.SIZE and self.max_bytes < 0:
+                raise ValueError("Max bytes can't be less than 0")
+            elif self.rotate == LoggerFileRotateType.TIME and self.interval < 1:
+                raise ValueError("Interval can't be less than 1")
+
+    def dict(self) -> Dict[str, str]:
+        return {
+            LoggerConstants.LOGGER_FILE_ENABLED_KEY: str(self.file_enabled),
+            LoggerConstants.LOGGER_FILE_FORMAT_KEY: self.file_formatter or "",
+            LoggerConstants.LOGGER_FILE_DIR_KEY: self.file_dir,
+            LoggerConstants.LOGGER_FILE_NAME_KEY: self.file_name,
+            LoggerConstants.LOGGER_FILE_ROTATE_KEY: self.rotate.value,
+            LoggerConstants.LOGGER_FILE_MAX_BYTES_KEY: str(self.max_bytes),
+            LoggerConstants.LOGGER_FILE_INTERVAL_KEY: str(self.interval),
+            LoggerConstants.LOGGER_FILE_BACKUP_COUNT_KEY: str(self.backup_count),
+        }
 
 
 class LoggerConfig:
 
     def __init__(
         self,
-        logger: str = "internal",
-        level: Level = Level.INFO,
+        driver: str = LoggerConstants.LOGGER_DRIVER_VALUE,
+        level: LoggerLevel = LoggerLevel.DEBUG,
         formatter: Optional[str] = None,
-        console_config: ConsoleLoggerConfig = ConsoleLoggerConfig(),
-        file_config: FileLoggerConfig = FileLoggerConfig(),
+        console: ConsoleLoggerConfig = ConsoleLoggerConfig(),
+        file: FileLoggerConfig = FileLoggerConfig(),
     ):
-        # global logger config
-        self._logger = logger
-        self._default_level = level
-        self._default_formatter = formatter
-        # console logger config
-        self._console_config = console_config
-        # file logger config
-        self._file_config = file_config
+        # set global config
+        self._driver = driver
+        self._level = level
+        self._formatter = formatter
+        # set console config
+        self._console = console
+        self._console.check()
+        # set file comfig
+        self._file = file
+        self._file.check()
 
-        self._set_default_config()
+    def get_url(self) -> URL:
+        # get LoggerConfig parameters
+        parameters: Dict[str, str] = {
+            **self._console.dict(),
+            **self._file.dict(),
+            LoggerConstants.LOGGER_DRIVER_KEY: self._driver,
+            LoggerConstants.LOGGER_LEVEL_KEY: self._level.value,
+            LoggerConstants.LOGGER_FORMAT_KEY: self._formatter or "",
+        }
 
-    def _set_default_config(self):
-        # update console logger config
-        if self._console_config.enabled:
-            if self._console_config.level is None:
-                self._console_config.level = self._default_level
-            if self._console_config.formatter is None:
-                self._console_config.formatter = self._default_formatter
+        return URL(
+            protocol=self._driver,
+            host=self._level.value,
+            port=None,
+            parameters=parameters,
+        )
 
-        # update file logger config
-        if self._file_config.enabled:
-            if self._file_config.level is None:
-                self._file_config.level = self._default_level
-            if self._file_config.formatter is None:
-                self._file_config.formatter = self._default_formatter
+    def init(self):
+        # get logger_adapter and initialize loggerFactory
+        logger_adapter = extension.get_logger_adapter(self._driver, self.get_url())
+        loggerFactory.logger_adapter = logger_adapter

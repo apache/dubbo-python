@@ -19,8 +19,7 @@ exclude =
     .idea,
     .git,
     __pycache__,
-    docs,
-    tests
+    docs
 
 per-file-ignores =
     __init__.py:F401

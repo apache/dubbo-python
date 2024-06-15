@@ -13,39 +13,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import enum
-import threading
-from typing import Any, Dict
+from typing import Any
 
-from dubbo.common import extension
-
-
-@enum.unique
-class Level(enum.Enum):
-    """
-    The logging level enum.
-    """
-
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
-    FATAL = "FATAL"
-
-
-@enum.unique
-class RotateType(enum.Enum):
-    """
-    The file rotating type enum.
-    """
-
-    # No rotating.
-    NONE = "NONE"
-    # Rotate the file by size.
-    SIZE = "SIZE"
-    # Rotate the file by time.
-    TIME = "TIME"
+from dubbo.common.constants import LoggerLevel
+from dubbo.common.url import URL
 
 
 class Logger:
@@ -53,12 +24,12 @@ class Logger:
     Logger Interface, which is used to log messages.
     """
 
-    def log(self, level: Level, msg: str, *args: Any, **kwargs: Any) -> None:
+    def log(self, level: LoggerLevel, msg: str, *args: Any, **kwargs: Any) -> None:
         """
         Log a message at the specified logging level.
 
         Args:
-            level (Level): The logging level.
+            level (LoggerLevel): The logging level.
             msg (str): The log message.
             *args (Any): Additional positional arguments.
             **kwargs (Any): Additional keyword arguments.
@@ -142,19 +113,28 @@ class Logger:
         """
         raise NotImplementedError("exception() is not implemented.")
 
+    def is_enabled_for(self, level: LoggerLevel) -> bool:
+        """
+        Is this logger enabled for level 'level'?
+        Args:
+            level (LoggerLevel): The logging level.
+        Return:
+            bool: Whether the logging level is enabled.
+        """
+        raise ValueError("is_enabled_for() is not implemented.")
+
 
 class LoggerAdapter:
     """
     Logger Adapter Interface, which is used to support different logging libraries.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, config: URL):
         """
         Initialize the logger adapter.
 
         Args:
-            *args (Any): Additional positional arguments.
-            **kwargs (Any): Additional keyword arguments.
+            config(URL): config (URL): The config of the logger adapter.
         """
         pass
 
@@ -171,99 +151,21 @@ class LoggerAdapter:
         raise NotImplementedError("get_logger() is not implemented.")
 
     @property
-    def level(self) -> Level:
+    def level(self) -> LoggerLevel:
         """
         Get the current logging level.
 
         Returns:
-            Level: The current logging level.
+            LoggerLevel: The current logging level.
         """
         raise NotImplementedError("get_level() is not implemented.")
 
     @level.setter
-    def level(self, level: Level) -> None:
+    def level(self, level: LoggerLevel) -> None:
         """
         Set the logging level.
 
         Args:
-            level (Level): The logging level to set.
+            level (LoggerLevel): The logging level to set.
         """
         raise NotImplementedError("set_level() is not implemented.")
-
-
-class LoggerFactory:
-    """
-    Factory class to create loggers.
-    """
-
-    # The logger adapter.
-    _logger_adapter: LoggerAdapter
-
-    # A dictionary to store all the loggers.
-    _loggers: Dict[str, Logger] = {}
-
-    # A lock to protect the loggers.
-    _logger_lock = threading.Lock()
-
-    @classmethod
-    def get_logger_adapter(cls) -> LoggerAdapter:
-        """
-        Get the logger adapter.
-
-        Returns:
-            LoggerAdapter: The current logger adapter.
-        """
-        return cls._logger_adapter
-
-    @classmethod
-    def set_logger_adapter(cls, logger_adapter: str) -> None:
-        """
-        Set the logger adapter.
-
-        Args:
-            logger_adapter (str): The name of the logger adapter to set.
-        """
-        cls._logger_adapter = extension.get_logger_adapter(logger_adapter)
-        # update all loggers
-        cls._loggers = {
-            name: cls._logger_adapter.get_logger(name) for name in cls._loggers
-        }
-
-    @classmethod
-    def get_logger(cls, name: str) -> Logger:
-        """
-        Get the logger by name.
-
-        Args:
-            name (str): The name of the logger to retrieve.
-
-        Returns:
-            Logger: An instance of the requested logger.
-        """
-        logger = cls._loggers.get(name)
-        if logger is None:
-            with cls._logger_lock:
-                if name not in cls._loggers:
-                    cls._loggers[name] = cls._logger_adapter.get_logger(name)
-                logger = cls._loggers[name]
-        return logger
-
-    @classmethod
-    def set_level(cls, level: Level) -> None:
-        """
-        Set the logging level.
-
-        Args:
-            level (Level): The logging level to set.
-        """
-        cls._logger_adapter.level = level
-
-    @classmethod
-    def get_level(cls) -> Level:
-        """
-        Get the current logging level.
-
-        Returns:
-            Level: The current logging level.
-        """
-        return cls._logger_adapter.level

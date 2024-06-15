@@ -28,8 +28,8 @@ class TestUrl(unittest.TestCase):
         self.assertEqual("www.facebook.com", url_0.host)
         self.assertEqual(None, url_0.port)
         self.assertEqual("friends", url_0.path)
-        self.assertEqual("value1", url_0.get_param("param1"))
-        self.assertEqual("value2", url_0.get_param("param2"))
+        self.assertEqual("value1", url_0.get_parameter("param1"))
+        self.assertEqual("value2", url_0.get_parameter("param2"))
 
         url_1 = URL.value_of("ftp://username:password@192.168.1.7:21/1/read.txt")
         self.assertEqual("ftp", url_1.protocol)
@@ -37,7 +37,7 @@ class TestUrl(unittest.TestCase):
         self.assertEqual("password", url_1.password)
         self.assertEqual("192.168.1.7", url_1.host)
         self.assertEqual(21, url_1.port)
-        self.assertEqual("192.168.1.7:21", url_1.address)
+        self.assertEqual("192.168.1.7:21", url_1.location)
         self.assertEqual("1/read.txt", url_1.path)
 
         url_2 = URL.value_of("file:///home/user1/router.js?type=script")
@@ -52,8 +52,8 @@ class TestUrl(unittest.TestCase):
         self.assertEqual("www.facebook.com", url_3.host)
         self.assertEqual(None, url_3.port)
         self.assertEqual("friends", url_3.path)
-        self.assertEqual("value1", url_3.get_param("param1"))
-        self.assertEqual("value2", url_3.get_param("param2"))
+        self.assertEqual("value1", url_3.get_parameter("param1"))
+        self.assertEqual("value2", url_3.get_parameter("param2"))
 
     def test_url_to_str(self):
         url_0 = URL(
@@ -63,16 +63,20 @@ class TestUrl(unittest.TestCase):
             username="username",
             password="password",
             path="path",
-            params={"type": "a"},
+            parameters={"type": "a"},
         )
         self.assertEqual(
-            "tri://username:password@127.0.0.1:12/path?type=a", url_0.to_string()
+            "tri://username:password@127.0.0.1:12/path?type=a", url_0.build_string()
         )
 
         url_1 = URL(
-            protocol="tri", host="127.0.0.1", port=12, path="path", params={"type": "a"}
+            protocol="tri",
+            host="127.0.0.1",
+            port=12,
+            path="path",
+            parameters={"type": "a"},
         )
-        self.assertEqual("tri://127.0.0.1:12/path?type=a", url_1.to_string())
+        self.assertEqual("tri://127.0.0.1:12/path?type=a", url_1.build_string())
 
-        url_2 = URL(protocol="tri", host="127.0.0.1", port=12, params={"type": "a"})
-        self.assertEqual("tri://127.0.0.1:12/?type=a", url_2.to_string())
+        url_2 = URL(protocol="tri", host="127.0.0.1", port=12, parameters={"type": "a"})
+        self.assertEqual("tri://127.0.0.1:12/?type=a", url_2.build_string())

@@ -15,15 +15,18 @@
 # limitations under the License.
 import unittest
 
+from dubbo.common import extension
+from dubbo.config import LoggerConfig
+
 
 class TestLoggerExtension(unittest.TestCase):
 
     def test_logger_extension(self):
-        import dubbo.imports
-        from dubbo.common import extension
 
         # Test the get_logger_adapter method.
-        logger_adapter = extension.get_logger_adapter("internal")
+        logger_adapter = extension.get_logger_adapter(
+            "internal", LoggerConfig().get_url()
+        )
 
         # Test logger_adapter methods.
         logger = logger_adapter.get_logger("test")
