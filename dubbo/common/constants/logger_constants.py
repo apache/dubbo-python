@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import enum
+import os
 from functools import cache
 
 
@@ -79,4 +80,13 @@ class LoggerConstants:
 
     """some logger default value"""
     LOGGER_DRIVER_VALUE = "internal"
+    LOGGER_LEVEL_VALUE = LoggerLevel.DEBUG
+    # console
+    LOGGER_CONSOLE_ENABLED_VALUE = True
+    # file
+    LOGGER_FILE_ENABLED_VALUE = False
+    LOGGER_FILE_DIR_VALUE = os.path.expanduser("~")
     LOGGER_FILE_NAME_VALUE = "dubbo.log"
+    LOGGER_FILE_MAX_BYTES_VALUE = 10 * 1024 * 1024
+    LOGGER_FILE_INTERVAL_VALUE = 1
+    LOGGER_FILE_BACKUP_COUNT_VALUE = 10

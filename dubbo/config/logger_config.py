@@ -13,13 +13,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
 from dataclasses import dataclass
 from typing import Dict, Optional
 
 from dubbo.common import extension
-from dubbo.common.constants import (LoggerConstants, LoggerFileRotateType,
-                                    LoggerLevel)
+from dubbo.common.constants import LoggerConstants, LoggerFileRotateType, LoggerLevel
 from dubbo.common.url import URL
 from dubbo.logger import loggerFactory
 
@@ -29,7 +27,7 @@ class ConsoleLoggerConfig:
     """Console logger configuration"""
 
     # default is open console logger
-    console_enabled: bool = True
+    console_enabled: bool = LoggerConstants.LOGGER_CONSOLE_ENABLED_VALUE
     # default console formatter is None, use the global formatter
     console_formatter: Optional[str] = None
 
@@ -48,21 +46,21 @@ class FileLoggerConfig:
     """File logger configuration"""
 
     # default is close file logger
-    file_enabled: bool = False
+    file_enabled: bool = LoggerConstants.LOGGER_FILE_ENABLED_VALUE
     # default file formatter is None, use the global formatter
     file_formatter: Optional[str] = None
     # default log file dir is user home dir
-    file_dir: str = os.path.expanduser("~")
+    file_dir: str = LoggerConstants.LOGGER_FILE_DIR_VALUE
     # default log file name is "dubbo.log"
     file_name: str = LoggerConstants.LOGGER_FILE_NAME_VALUE
     # default no rotate
     rotate: LoggerFileRotateType = LoggerFileRotateType.NONE
     # when rotate is SIZE, max_bytes is required, default 10M
-    max_bytes: int = 1024 * 1024 * 10
+    max_bytes: int = LoggerConstants.LOGGER_FILE_MAX_BYTES_VALUE
     # when rotate is TIME, interval is required, unit is day, default 1
-    interval: int = 1
+    interval: int = LoggerConstants.LOGGER_FILE_INTERVAL_VALUE
     # when rotate is not NONE, backup_count is required, default 10
-    backup_count: int = 10
+    backup_count: int = LoggerConstants.LOGGER_FILE_BACKUP_COUNT_VALUE
 
     def check(self) -> None:
         if self.file_enabled:
@@ -89,7 +87,7 @@ class LoggerConfig:
     def __init__(
         self,
         driver: str = LoggerConstants.LOGGER_DRIVER_VALUE,
-        level: LoggerLevel = LoggerLevel.DEBUG,
+        level: LoggerLevel = LoggerConstants.LOGGER_LEVEL_VALUE,
         formatter: Optional[str] = None,
         console: ConsoleLoggerConfig = ConsoleLoggerConfig(),
         file: FileLoggerConfig = FileLoggerConfig(),

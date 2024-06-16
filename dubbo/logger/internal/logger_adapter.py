@@ -40,7 +40,6 @@ class InternalLoggerAdapter(LoggerAdapter):
 
     def __init__(self, config: URL):
         super().__init__(config)
-        self._config = config
         # Set level
         level_name = config.parameters.get(LoggerConstants.LOGGER_LEVEL_KEY)
         self._level = (
@@ -63,8 +62,7 @@ class InternalLoggerAdapter(LoggerAdapter):
         """
         logger_instance = logging.getLogger(name)
         # clean up handlers
-        for handler in logger_instance.handlers:
-            logger_instance.removeHandler(handler)
+        logger_instance.handlers.clear()
         parameters = self._config.parameters
 
         # Add console handler

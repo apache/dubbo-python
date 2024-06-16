@@ -13,9 +13,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from dubbo.common.url import URL
 
 
-class Dubbo:
-    """The entry point of dubbo-python framework.(singleton)"""
+class Node:
+    """
+    Node
+    """
 
-    pass
+    def get_url(self) -> URL:
+        """
+        Get the url of the node
+        Returns:
+            URL: URL of the node
+        """
+        raise NotImplementedError("get_url() is not implemented.")
+
+    def is_available(self) -> bool:
+        """
+        Check if the node is available
+        Returns:
+            bool: True if the node is available, false otherwise
+        """
+        raise NotImplementedError("is_available() is not implemented.")
+
+    def destroy(self) -> None:
+        """
+        Destroy the node
+        """
+        raise NotImplementedError("destroy() is not implemented.")

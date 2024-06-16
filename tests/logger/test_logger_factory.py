@@ -23,10 +23,10 @@ from dubbo.logger.internal.logger_adapter import InternalLoggerAdapter
 
 class TestLoggerFactory(unittest.TestCase):
 
-    # def test_without_config(self):
-    #     # Test the case where config is not used
-    #     logger = loggerFactory.get_logger("test_factory")
-    #     logger.info("info log -> without_config ")
+    def test_without_config(self):
+        # Test the case where config is not used
+        logger = loggerFactory.get_logger("test_factory")
+        logger.info("info log -> without_config ")
 
     def test_with_config(self):
         # Test the case where config is used
@@ -35,15 +35,13 @@ class TestLoggerFactory(unittest.TestCase):
         logger = loggerFactory.get_logger("test_factory")
         logger.info("info log -> with_config ")
 
-        logger = loggerFactory.get_logger("test_factory1")
-        logger.info("info log -> with_config ")
-
-        logger = loggerFactory.get_logger("test_factory2")
-        logger.info("info log -> with_config ")
-
         url = config.get_url()
         url.add_parameter(LoggerConstants.LOGGER_FILE_ENABLED_KEY, True)
-        loggerFactory.logger_adapter = InternalLoggerAdapter(url)
-        logger = loggerFactory.get_logger("test_factory")
-        loggerFactory.level = LoggerLevel.DEBUG
-        logger.debug("debug log -> with_config")
+        loggerFactory.set_logger_adapter(InternalLoggerAdapter(url))
+        loggerFactory.set_level(LoggerLevel.DEBUG)
+        logger.debug("debug log -> with_config -> open file")
+
+        url.add_parameter(LoggerConstants.LOGGER_CONSOLE_ENABLED_KEY, False)
+        loggerFactory.set_logger_adapter(InternalLoggerAdapter(url))
+        loggerFactory.set_level(LoggerLevel.DEBUG)
+        logger.debug("debug log -> with_config -> lose console")

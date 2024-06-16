@@ -17,6 +17,6 @@
 from .logger import Logger, LoggerAdapter
 from .logger_factory import LoggerFactory as _LoggerFactory
 
-loggerFactory = _LoggerFactory()
+loggerFactory = _LoggerFactory
 
 __all__ = ["Logger", "LoggerAdapter", "loggerFactory"]

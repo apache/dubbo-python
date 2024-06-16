@@ -136,7 +136,7 @@ class LoggerAdapter:
         Args:
             config(URL): config (URL): The config of the logger adapter.
         """
-        pass
+        self._config = config
 
     def get_logger(self, name: str) -> Logger:
         """
