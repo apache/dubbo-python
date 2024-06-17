@@ -25,7 +25,7 @@ class TestLoggerExtension(unittest.TestCase):
 
         # Test the get_logger_adapter method.
         logger_adapter = extension.get_logger_adapter(
-            "internal", LoggerConfig().get_url()
+            "logging", LoggerConfig("logging").get_url()
         )
 
         # Test logger_adapter methods.
