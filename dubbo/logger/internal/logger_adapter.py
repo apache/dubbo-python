@@ -20,36 +20,38 @@ from functools import cache
 from logging import handlers
 
 from dubbo.common import extension
-from dubbo.common.constants import (LoggerConstants, LoggerFileRotateType,
-                                    LoggerLevel)
+from dubbo.common.constants import logger as logger_constants
+from dubbo.common.constants.logger import FileRotateType, Level
 from dubbo.common.url import URL
 from dubbo.logger import Logger, LoggerAdapter
 from dubbo.logger.internal.logger import InternalLogger
 
 """This module provides the internal logger implementation. -> logging module"""
 
+_default_format = "%(asctime)s | %(levelname)s | %(module)s:%(funcName)s:%(lineno)d - [Dubbo] %(message)s"
 
-@extension.register_logger_adapter("internal")
+
+@extension.register_logger_adapter("logging")
 class InternalLoggerAdapter(LoggerAdapter):
     """
-    Internal logger adapter.
-    Responsible for internal logger creation, encapsulated the logging.getLogger() method
+    Internal logger adapter.Responsible for internal logger creation, encapsulated the logging.getLogger() method
+    Attributes:
+        _level(Level): logging level.
+        _format(str): default logging format string.
     """
 
-    _default_format = "%(asctime)s | %(levelname)s | %(module)s:%(funcName)s:%(lineno)d - [Dubbo] %(message)s"
+    _level: Level
+    _format: str
 
     def __init__(self, config: URL):
         super().__init__(config)
         # Set level
-        level_name = config.parameters.get(LoggerConstants.LOGGER_LEVEL_KEY)
-        self._level = (
-            LoggerLevel.get_level(level_name) if level_name else LoggerLevel.DEBUG
-        )
+        level_name = config.parameters.get(logger_constants.LEVEL_KEY)
+        self._level = Level.get_level(level_name) if level_name else Level.DEBUG
         self._update_level()
         # Set format
-        self._format_str = (
-            config.parameters.get(LoggerConstants.LOGGER_FORMAT_KEY)
-            or self._default_format
+        self._format = (
+            config.parameters.get(logger_constants.FORMAT_KEY) or _default_format
         )
 
     def get_logger(self, name: str) -> Logger:
@@ -66,12 +68,16 @@ class InternalLoggerAdapter(LoggerAdapter):
         parameters = self._config.parameters
 
         # Add console handler
-        if parameters.get(LoggerConstants.LOGGER_CONSOLE_ENABLED_KEY) == str(True):
+        if parameters.get(logger_constants.CONSOLE_ENABLED_KEY) == str(True):
             logger_instance.addHandler(self._get_console_handler())
 
         # Add file handler
-        if parameters.get(LoggerConstants.LOGGER_FILE_ENABLED_KEY) == str(True):
+        if parameters.get(logger_constants.FILE_ENABLED_KEY) == str(True):
             logger_instance.addHandler(self._get_file_handler())
+
+        if not logger_instance.handlers:
+            # It's intended to be used to avoid the "No handlers could be found for logger XXX" one-off warning.
+            logger_instance.addHandler(logging.NullHandler())
 
         return InternalLogger(logger_instance)
 
@@ -84,11 +90,10 @@ class InternalLoggerAdapter(LoggerAdapter):
         """
         parameters = self._config.parameters
         console_handler = logging.StreamHandler()
-        console_format_str = (
-            parameters.get(LoggerConstants.LOGGER_CONSOLE_FORMAT_KEY)
-            or self._format_str
+        console_format = (
+            parameters.get(logger_constants.CONSOLE_FORMAT_KEY) or self._format
         )
-        console_formatter = logging.Formatter(console_format_str)
+        console_formatter = logging.Formatter(console_format)
         console_handler.setFormatter(console_formatter)
 
         return console_handler
@@ -102,59 +107,59 @@ class InternalLoggerAdapter(LoggerAdapter):
         """
         parameters = self._config.parameters
         # Get file path
-        file_dir = parameters[LoggerConstants.LOGGER_FILE_DIR_KEY]
+        file_dir = parameters[logger_constants.FILE_DIR_KEY]
         file_name = (
-            parameters[LoggerConstants.LOGGER_FILE_NAME_KEY]
-            or LoggerConstants.LOGGER_FILE_NAME_VALUE
+            parameters[logger_constants.FILE_NAME_KEY]
+            or logger_constants.DEFAULT_FILE_NAME_VALUE
         )
         file_path = os.path.join(file_dir, file_name)
         # Get backup count
         backup_count = int(
-            parameters.get(LoggerConstants.LOGGER_FILE_BACKUP_COUNT_KEY) or 0
+            parameters.get(logger_constants.FILE_BACKUP_COUNT_KEY)
+            or logger_constants.DEFAULT_FILE_BACKUP_COUNT_VALUE
         )
         # Get rotate type
-        rotate_type = parameters.get(LoggerConstants.LOGGER_FILE_ROTATE_KEY)
+        rotate_type = parameters.get(logger_constants.FILE_ROTATE_KEY)
 
         # Set file Handler
         file_handler: logging.Handler
-        if rotate_type == LoggerFileRotateType.SIZE.value:
+        if rotate_type == FileRotateType.SIZE.value:
             # Set RotatingFileHandler
-            max_bytes = int(parameters[LoggerConstants.LOGGER_FILE_MAX_BYTES_KEY])
+            max_bytes = int(parameters[logger_constants.FILE_MAX_BYTES_KEY])
             file_handler = handlers.RotatingFileHandler(
                 file_path, maxBytes=max_bytes, backupCount=backup_count
             )
-        elif rotate_type == LoggerFileRotateType.TIME.value:
+        elif rotate_type == FileRotateType.TIME.value:
             # Set TimedRotatingFileHandler
-            interval = int(parameters[LoggerConstants.LOGGER_FILE_INTERVAL_KEY])
+            interval = int(parameters[logger_constants.FILE_INTERVAL_KEY])
             file_handler = handlers.TimedRotatingFileHandler(
                 file_path, interval=interval, backupCount=backup_count
             )
         else:
             # Set FileHandler
             file_handler = logging.FileHandler(file_path)
+
         # Add file_handler
-        file_format_str = (
-            parameters.get(LoggerConstants.LOGGER_FILE_FORMAT_KEY) or self._format_str
-        )
-        file_formatter = logging.Formatter(file_format_str)
+        file_format = parameters.get(logger_constants.FILE_FORMAT_KEY) or self._format
+        file_formatter = logging.Formatter(file_format)
         file_handler.setFormatter(file_formatter)
         return file_handler
 
     @property
-    def level(self) -> LoggerLevel:
+    def level(self) -> Level:
         """
         Get the logging level.
         Returns:
-            LoggerLevel: The logging level.
+            Level: The logging level.
         """
         return self._level
 
     @level.setter
-    def level(self, level: LoggerLevel) -> None:
+    def level(self, level: Level) -> None:
         """
         Set the logging level.
         Args:
-            level (LoggerLevel): The logging level.
+            level (Level): The logging level.
         """
         if level == self._level or level is None:
             return

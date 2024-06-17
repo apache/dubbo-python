@@ -16,23 +16,24 @@
 import threading
 from typing import Dict
 
-from dubbo.common.constants import LoggerConstants, LoggerLevel
+from dubbo.common.constants import logger as logger_constants
+from dubbo.common.constants.logger import Level
 from dubbo.common.url import URL
 from dubbo.logger import Logger, LoggerAdapter
 from dubbo.logger.internal.logger_adapter import InternalLoggerAdapter
 
+# Default config of InternalLoggerAdapter
 _default_config = URL(
-    protocol=LoggerConstants.LOGGER_DRIVER_VALUE,
-    host=LoggerConstants.LOGGER_LEVEL_VALUE.value,
-    port=None,
+    protocol=logger_constants.DEFAULT_DRIVER_VALUE,
+    host=logger_constants.DEFAULT_LEVEL_VALUE.value,
     parameters={
-        LoggerConstants.LOGGER_DRIVER_KEY: LoggerConstants.LOGGER_DRIVER_VALUE,
-        LoggerConstants.LOGGER_LEVEL_KEY: LoggerConstants.LOGGER_LEVEL_VALUE.value,
-        LoggerConstants.LOGGER_CONSOLE_ENABLED_KEY: str(
-            LoggerConstants.LOGGER_CONSOLE_ENABLED_VALUE
+        logger_constants.DRIVER_KEY: logger_constants.DEFAULT_DRIVER_VALUE,
+        logger_constants.LEVEL_KEY: logger_constants.DEFAULT_LEVEL_VALUE.value,
+        logger_constants.CONSOLE_ENABLED_KEY: str(
+            logger_constants.DEFAULT_CONSOLE_ENABLED_VALUE
         ),
-        LoggerConstants.LOGGER_FILE_ENABLED_KEY: str(
-            LoggerConstants.LOGGER_FILE_ENABLED_VALUE
+        logger_constants.FILE_ENABLED_KEY: str(
+            logger_constants.DEFAULT_FILE_ENABLED_VALUE
         ),
     },
 )
@@ -41,13 +42,14 @@ _default_config = URL(
 class LoggerFactory:
     """
     Factory class to create loggers.
+    Attributes:
+        _logger_adapter(LoggerAdapter): logger adapter. Default: InternalLoggerAdapter(_default_config)
+        _loggers(Dict[str, LoggerAdapter]): A dictionary to store all the loggers.
+        _loggers_lock(threading.Lock): The lock is used to lock all loggers when the logger adapter is changed.
     """
 
-    # logger adapter
     _logger_adapter = InternalLoggerAdapter(_default_config)
-    # A dictionary to store all the loggers.
     _loggers: Dict[str, Logger] = {}
-    # A lock to protect the loggers.
     _loggers_lock = threading.Lock()
 
     @classmethod
@@ -56,11 +58,14 @@ class LoggerFactory:
         Set logger config
         """
         cls._logger_adapter = logger_adapter
-        with cls._loggers_lock:
+        cls._loggers_lock.acquire()
+        try:
             # update all loggers
             cls._loggers = {
                 name: cls._logger_adapter.get_logger(name) for name in cls._loggers
             }
+        finally:
+            cls._loggers_lock.release()
 
     @classmethod
     def get_logger_adapter(cls) -> LoggerAdapter:
@@ -85,28 +90,32 @@ class LoggerFactory:
         """
         logger = cls._loggers.get(name)
         if logger is None:
-            with cls._loggers_lock:
+            cls._loggers_lock.acquire()
+            try:
                 if name not in cls._loggers:
                     cls._loggers[name] = cls._logger_adapter.get_logger(name)
                 logger = cls._loggers[name]
+            finally:
+                cls._loggers_lock.release()
+
         return logger
 
     @classmethod
-    def get_level(cls) -> LoggerLevel:
+    def get_level(cls) -> Level:
         """
         Get the current logging level.
 
         Returns:
-            LoggerLevel: The current logging level.
+            Level: The current logging level.
         """
         return cls._logger_adapter.level
 
     @classmethod
-    def set_level(cls, level: LoggerLevel) -> None:
+    def set_level(cls, level: Level) -> None:
         """
         Set the logging level.
 
         Args:
-            level (LoggerLevel): The logging level to set.
+            level (Level): The logging level to set.
         """
         cls._logger_adapter.level = level

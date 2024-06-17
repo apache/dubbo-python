@@ -15,7 +15,8 @@
 # limitations under the License.
 import unittest
 
-from dubbo.common.constants import LoggerConstants, LoggerLevel
+from dubbo.common.constants import logger as logger_constants
+from dubbo.common.constants.logger import Level
 from dubbo.config import LoggerConfig
 from dubbo.logger import loggerFactory
 from dubbo.logger.internal.logger_adapter import InternalLoggerAdapter
@@ -30,18 +31,18 @@ class TestLoggerFactory(unittest.TestCase):
 
     def test_with_config(self):
         # Test the case where config is used
-        config = LoggerConfig()
+        config = LoggerConfig("logging")
         config.init()
         logger = loggerFactory.get_logger("test_factory")
         logger.info("info log -> with_config ")
 
         url = config.get_url()
-        url.add_parameter(LoggerConstants.LOGGER_FILE_ENABLED_KEY, True)
+        url.add_parameter(logger_constants.FILE_ENABLED_KEY, True)
         loggerFactory.set_logger_adapter(InternalLoggerAdapter(url))
-        loggerFactory.set_level(LoggerLevel.DEBUG)
+        loggerFactory.set_level(Level.DEBUG)
         logger.debug("debug log -> with_config -> open file")
 
-        url.add_parameter(LoggerConstants.LOGGER_CONSOLE_ENABLED_KEY, False)
+        url.add_parameter(logger_constants.CONSOLE_ENABLED_KEY, False)
         loggerFactory.set_logger_adapter(InternalLoggerAdapter(url))
-        loggerFactory.set_level(LoggerLevel.DEBUG)
+        loggerFactory.set_level(Level.DEBUG)
         logger.debug("debug log -> with_config -> lose console")

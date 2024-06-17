@@ -15,7 +15,7 @@
 # limitations under the License.
 from typing import Any
 
-from dubbo.common.constants import LoggerLevel
+from dubbo.common.constants.logger import Level
 from dubbo.common.url import URL
 
 
@@ -24,12 +24,12 @@ class Logger:
     Logger Interface, which is used to log messages.
     """
 
-    def log(self, level: LoggerLevel, msg: str, *args: Any, **kwargs: Any) -> None:
+    def log(self, level: Level, msg: str, *args: Any, **kwargs: Any) -> None:
         """
         Log a message at the specified logging level.
 
         Args:
-            level (LoggerLevel): The logging level.
+            level (Level): The logging level.
             msg (str): The log message.
             *args (Any): Additional positional arguments.
             **kwargs (Any): Additional keyword arguments.
@@ -113,11 +113,11 @@ class Logger:
         """
         raise NotImplementedError("exception() is not implemented.")
 
-    def is_enabled_for(self, level: LoggerLevel) -> bool:
+    def is_enabled_for(self, level: Level) -> bool:
         """
         Is this logger enabled for level 'level'?
         Args:
-            level (LoggerLevel): The logging level.
+            level (Level): The logging level.
         Return:
             bool: Whether the logging level is enabled.
         """
@@ -127,7 +127,11 @@ class Logger:
 class LoggerAdapter:
     """
     Logger Adapter Interface, which is used to support different logging libraries.
+    Attributes:
+        _config(URL): logger adapter configuration.
     """
+
+    _config: URL
 
     def __init__(self, config: URL):
         """
@@ -151,21 +155,21 @@ class LoggerAdapter:
         raise NotImplementedError("get_logger() is not implemented.")
 
     @property
-    def level(self) -> LoggerLevel:
+    def level(self) -> Level:
         """
         Get the current logging level.
 
         Returns:
-            LoggerLevel: The current logging level.
+            Level: The current logging level.
         """
         raise NotImplementedError("get_level() is not implemented.")
 
     @level.setter
-    def level(self, level: LoggerLevel) -> None:
+    def level(self, level: Level) -> None:
         """
         Set the logging level.
 
         Args:
-            level (LoggerLevel): The logging level to set.
+            level (Level): The logging level to set.
         """
         raise NotImplementedError("set_level() is not implemented.")

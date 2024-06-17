@@ -19,7 +19,7 @@ from functools import cache
 
 
 @enum.unique
-class LoggerLevel(enum.Enum):
+class Level(enum.Enum):
     """
     The logging level enum.
     """
@@ -33,7 +33,7 @@ class LoggerLevel(enum.Enum):
 
     @classmethod
     @cache
-    def get_level(cls, level_value: str) -> "LoggerLevel":
+    def get_level(cls, level_value: str) -> "Level":
         level_value = level_value.upper()
         for level in cls:
             if level_value == level.value:
@@ -42,7 +42,7 @@ class LoggerLevel(enum.Enum):
 
 
 @enum.unique
-class LoggerFileRotateType(enum.Enum):
+class FileRotateType(enum.Enum):
     """
     The file rotating type enum.
     """
@@ -55,38 +55,35 @@ class LoggerFileRotateType(enum.Enum):
     TIME = "TIME"
 
 
-class LoggerConstants:
-    """logger configuration constants."""
+"""logger config keys"""
+# global config
+LEVEL_KEY = "logger.level"
+DRIVER_KEY = "logger.driver"
+FORMAT_KEY = "logger.format"
 
-    """logger config keys"""
-    # global config
-    LOGGER_LEVEL_KEY = "logger.level"
-    LOGGER_DRIVER_KEY = "logger.driver"
-    LOGGER_FORMAT_KEY = "logger.format"
+# console config
+CONSOLE_ENABLED_KEY = "logger.console.enable"
+CONSOLE_FORMAT_KEY = "logger.console.format"
 
-    # console config
-    LOGGER_CONSOLE_ENABLED_KEY = "logger.console.enable"
-    LOGGER_CONSOLE_FORMAT_KEY = "logger.console.format"
+# file logger
+FILE_ENABLED_KEY = "logger.file.enable"
+FILE_FORMAT_KEY = "logger.file.format"
+FILE_DIR_KEY = "logger.file.dir"
+FILE_NAME_KEY = "logger.file.name"
+FILE_ROTATE_KEY = "logger.file.rotate"
+FILE_MAX_BYTES_KEY = "logger.file.maxbytes"
+FILE_INTERVAL_KEY = "logger.file.interval"
+FILE_BACKUP_COUNT_KEY = "logger.file.backupcount"
 
-    # file logger
-    LOGGER_FILE_ENABLED_KEY = "logger.file.enable"
-    LOGGER_FILE_FORMAT_KEY = "logger.file.format"
-    LOGGER_FILE_DIR_KEY = "logger.file.dir"
-    LOGGER_FILE_NAME_KEY = "logger.file.name"
-    LOGGER_FILE_ROTATE_KEY = "logger.file.rotate"
-    LOGGER_FILE_MAX_BYTES_KEY = "logger.file.maxbytes"
-    LOGGER_FILE_INTERVAL_KEY = "logger.file.interval"
-    LOGGER_FILE_BACKUP_COUNT_KEY = "logger.file.backupcount"
-
-    """some logger default value"""
-    LOGGER_DRIVER_VALUE = "internal"
-    LOGGER_LEVEL_VALUE = LoggerLevel.DEBUG
-    # console
-    LOGGER_CONSOLE_ENABLED_VALUE = True
-    # file
-    LOGGER_FILE_ENABLED_VALUE = False
-    LOGGER_FILE_DIR_VALUE = os.path.expanduser("~")
-    LOGGER_FILE_NAME_VALUE = "dubbo.log"
-    LOGGER_FILE_MAX_BYTES_VALUE = 10 * 1024 * 1024
-    LOGGER_FILE_INTERVAL_VALUE = 1
-    LOGGER_FILE_BACKUP_COUNT_VALUE = 10
+"""some logger default value"""
+DEFAULT_DRIVER_VALUE = "logging"
+DEFAULT_LEVEL_VALUE = Level.DEBUG
+# console
+DEFAULT_CONSOLE_ENABLED_VALUE = True
+# file
+DEFAULT_FILE_ENABLED_VALUE = False
+DEFAULT_FILE_DIR_VALUE = os.path.expanduser("~")
+DEFAULT_FILE_NAME_VALUE = "dubbo.log"
+DEFAULT_FILE_MAX_BYTES_VALUE = 10 * 1024 * 1024
+DEFAULT_FILE_INTERVAL_VALUE = 1
+DEFAULT_FILE_BACKUP_COUNT_VALUE = 10

@@ -15,7 +15,7 @@
 # limitations under the License.
 import unittest
 
-from dubbo.common.constants import LoggerLevel
+from dubbo.common.constants import Level
 from dubbo.config import LoggerConfig
 from dubbo.logger.internal.logger_adapter import InternalLoggerAdapter
 
@@ -25,7 +25,7 @@ class TestInternalLogger(unittest.TestCase):
     def test_log(self):
         logger_adapter = InternalLoggerAdapter(config=LoggerConfig().get_url())
         logger = logger_adapter.get_logger("test")
-        logger.log(LoggerLevel.INFO, "test log")
+        logger.log(Level.INFO, "test log")
         logger.debug("test debug")
         logger.info("test info")
         logger.warning("test warning")
@@ -38,11 +38,11 @@ class TestInternalLogger(unittest.TestCase):
             logger.exception("test exception")
 
         # test different default logger level
-        logger_adapter.level = LoggerLevel.INFO
+        logger_adapter.level = Level.INFO
         logger.debug("debug can't be logged")
 
-        logger_adapter.level = LoggerLevel.WARNING
+        logger_adapter.level = Level.WARNING
         logger.info("info can't be logged")
 
-        logger_adapter.level = LoggerLevel.ERROR
+        logger_adapter.level = Level.ERROR
         logger.warning("warning can't be logged")

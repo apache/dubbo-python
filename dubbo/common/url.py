@@ -19,7 +19,15 @@ from urllib import parse
 
 class URL:
     """
-    URL - Uniform Resource Locator
+    URL - Uniform Resource Locator.
+    Attributes:
+        _protocol (str): The protocol of the URL.
+        _host (str): The host of the URL.
+        _port (int): The port number of the URL.
+        _username (str): The username for URL authentication.
+        _password (str): The password for URL authentication.
+        _path (str): The path of the URL.
+        _parameters (Dict[str, str]): The query parameters of the URL.
 
     url example:
     - http://www.facebook.com/friends?param1=value1&param2=value2
@@ -28,33 +36,29 @@ class URL:
     - registry://192.168.1.7:9090/org.apache.dubbo.service1?param1=value1&param2=value2
     """
 
+    _protocol: str
+    _username: str
+    _password: str
+    _host: str
+    _port: int
+    _path: str
+    _parameters: Dict[str, str]
+
     def __init__(
         self,
         protocol: str,
-        host: Optional[str],
-        port: Optional[int],
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        path: Optional[str] = None,
+        host: str,
+        port: int = 0,
+        username: str = "",
+        password: str = "",
+        path: str = "",
         parameters: Optional[Dict[str, str]] = None,
     ):
-        """
-        Initializes the URL with the given components.
-
-        Args:
-            protocol (str): The protocol of the URL.
-            host (Optional[str]): The host of the URL.
-            port (Optional[int]): The port number of the URL.
-            username (Optional[str]): The username for URL authentication.
-            password (Optional[str]): The password for URL authentication.
-            path (Optional[str]): The path of the URL.
-            parameters (Optional[Dict[str, str]]): The query parameters of the URL.
-        """
         self._protocol = protocol
         self._host = host
         self._port = port
         # location -> host:port
-        self._location = f"{host}:{port}" if host and port else host or None
+        self._location = f"{host}:{port}" if port > 0 else host
         self._username = username
         self._password = password
         self._path = path
@@ -81,22 +85,22 @@ class URL:
         self._protocol = protocol
 
     @property
-    def location(self) -> Optional[str]:
+    def location(self) -> str:
         """
         Gets the location (host:port) of the URL.
 
         Returns:
-            Optional[str]: The location of the URL.
+            str: The location of the URL.
         """
         return self._location
 
     @property
-    def host(self) -> Optional[str]:
+    def host(self) -> str:
         """
         Gets the host of the URL.
 
         Returns:
-            Optional[str]: The host of the URL.
+            str: The host of the URL.
         """
         return self._host
 
@@ -112,12 +116,12 @@ class URL:
         self._location = f"{host}:{self.port}" if self.port else host
 
     @property
-    def port(self) -> Optional[int]:
+    def port(self) -> int:
         """
         Gets the port of the URL.
 
         Returns:
-            Optional[int]: The port of the URL.
+            int: The port of the URL.
         """
         return self._port
 
@@ -133,12 +137,12 @@ class URL:
         self._location = f"{self.host}:{port}" if port else self.host
 
     @property
-    def username(self) -> Optional[str]:
+    def username(self) -> str:
         """
         Gets the username for URL authentication.
 
         Returns:
-            Optional[str]: The username for URL authentication.
+            str: The username for URL authentication.
         """
         return self._username
 
@@ -153,12 +157,12 @@ class URL:
         self._username = username
 
     @property
-    def password(self) -> Optional[str]:
+    def password(self) -> str:
         """
         Gets the password for URL authentication.
 
         Returns:
-            Optional[str]: The password for URL authentication.
+            [str]: The password for URL authentication.
         """
         return self._password
 
@@ -173,12 +177,12 @@ class URL:
         self._password = password
 
     @property
-    def path(self) -> Optional[str]:
+    def path(self) -> str:
         """
         Gets the path of the URL.
 
         Returns:
-            Optional[str]: The path of the URL.
+            str: The path of the URL.
         """
         return self._path
 
@@ -198,7 +202,7 @@ class URL:
         Gets the query parameters of the URL.
 
         Returns:
-            Optional[Dict[str, str]]: The query parameters of the URL.
+            Dict[str, str]: The query parameters of the URL.
         """
         return self._parameters
 
@@ -217,7 +221,7 @@ class URL:
         Gets a query parameter from the URL.
 
         Args:
-            key (str): The parameter name.
+            key (Optional[str]): The parameter name.
 
         Returns:
             str or None: The parameter value. If the parameter does not exist, returns None.
@@ -300,10 +304,10 @@ class URL:
         parsed_url = parse.urlparse(url)
 
         protocol = parsed_url.scheme
-        host = parsed_url.hostname
-        port = parsed_url.port
-        username = parsed_url.username
-        password = parsed_url.password
+        host = parsed_url.hostname or ""
+        port = parsed_url.port or 0
+        username = parsed_url.username or ""
+        password = parsed_url.password or ""
         parameters = {k: v[0] for k, v in parse.parse_qs(parsed_url.query).items()}
         path = parsed_url.path.lstrip("/")
 

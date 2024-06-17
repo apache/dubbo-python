@@ -17,24 +17,28 @@
 import logging
 from typing import Dict
 
-from dubbo.common.constants import LoggerLevel
+from dubbo.common.constants.logger import Level
 from dubbo.logger import Logger
 
 # The mapping from the logging level to the internal logging level.
-_level_map: Dict[LoggerLevel, int] = {
-    LoggerLevel.DEBUG: logging.DEBUG,
-    LoggerLevel.INFO: logging.INFO,
-    LoggerLevel.WARNING: logging.WARNING,
-    LoggerLevel.ERROR: logging.ERROR,
-    LoggerLevel.CRITICAL: logging.CRITICAL,
-    LoggerLevel.FATAL: logging.FATAL,
+_level_map: Dict[Level, int] = {
+    Level.DEBUG: logging.DEBUG,
+    Level.INFO: logging.INFO,
+    Level.WARNING: logging.WARNING,
+    Level.ERROR: logging.ERROR,
+    Level.CRITICAL: logging.CRITICAL,
+    Level.FATAL: logging.FATAL,
 }
 
 
 class InternalLogger(Logger):
     """
     The internal logger implementation.
+    Attributes:
+        _logger (logging.Logger): The real working logger object
     """
+
+    _logger: logging.Logger
 
     def __init__(self, internal_logger: logging.Logger):
         self._logger = internal_logger
@@ -44,7 +48,7 @@ class InternalLogger(Logger):
         kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 2
         self._logger.log(level, msg, *args, **kwargs)
 
-    def log(self, level: LoggerLevel, msg: str, *args, **kwargs) -> None:
+    def log(self, level: Level, msg: str, *args, **kwargs) -> None:
         self._log(_level_map[level], msg, *args, **kwargs)
 
     def debug(self, msg: str, *args, **kwargs) -> None:
@@ -70,6 +74,6 @@ class InternalLogger(Logger):
             kwargs["exc_info"] = True
         self.error(msg, *args, **kwargs)
 
-    def is_enabled_for(self, level: LoggerLevel) -> bool:
+    def is_enabled_for(self, level: Level) -> bool:
         logging_level = _level_map.get(level)
         return self._logger.isEnabledFor(logging_level) if logging_level else False

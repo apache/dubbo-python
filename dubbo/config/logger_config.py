@@ -17,108 +17,135 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 
 from dubbo.common import extension
-from dubbo.common.constants import LoggerConstants, LoggerFileRotateType, LoggerLevel
+from dubbo.common.constants import logger as logger_constants
+from dubbo.common.constants.logger import FileRotateType, Level
 from dubbo.common.url import URL
 from dubbo.logger import loggerFactory
 
 
 @dataclass
 class ConsoleLoggerConfig:
-    """Console logger configuration"""
+    """
+    Console logger configuration.
+    Attributes:
+        console_format(Optional[str]): console format, if null, use global format.
+    """
 
-    # default is open console logger
-    console_enabled: bool = LoggerConstants.LOGGER_CONSOLE_ENABLED_VALUE
-    # default console formatter is None, use the global formatter
-    console_formatter: Optional[str] = None
+    console_format: Optional[str] = None
 
     def check(self):
         pass
 
     def dict(self) -> Dict[str, str]:
         return {
-            LoggerConstants.LOGGER_CONSOLE_ENABLED_KEY: str(self.console_enabled),
-            LoggerConstants.LOGGER_CONSOLE_FORMAT_KEY: self.console_formatter or "",
+            logger_constants.CONSOLE_FORMAT_KEY: self.console_format or "",
         }
 
 
 @dataclass
 class FileLoggerConfig:
-    """File logger configuration"""
+    """
+    File logger configuration.
+    Attributes:
+        rotate(FileRotateType): File rotate type. Optional: NONE,SIZE,TIME. Default: NONE.
+        file_formatter(Optional[str]): file format, if null, use global format.
+        file_dir(str): file directory. Default: user home dir
+        file_name(str): file name. Default: dubbo.log
+        backup_count(int): backup count. Default: 10 (when rotate is not NONE, backup_count is required)
+        max_bytes(int): maximum file size. Default: 1024.(when rotate is SIZE, max_bytes is required)
+        interval(int): interval time in seconds. Default: 1.(when rotate is TIME, interval is required, unit is day)
 
-    # default is close file logger
-    file_enabled: bool = LoggerConstants.LOGGER_FILE_ENABLED_VALUE
-    # default file formatter is None, use the global formatter
+    """
+
+    rotate: FileRotateType = FileRotateType.NONE
     file_formatter: Optional[str] = None
-    # default log file dir is user home dir
-    file_dir: str = LoggerConstants.LOGGER_FILE_DIR_VALUE
-    # default log file name is "dubbo.log"
-    file_name: str = LoggerConstants.LOGGER_FILE_NAME_VALUE
-    # default no rotate
-    rotate: LoggerFileRotateType = LoggerFileRotateType.NONE
-    # when rotate is SIZE, max_bytes is required, default 10M
-    max_bytes: int = LoggerConstants.LOGGER_FILE_MAX_BYTES_VALUE
-    # when rotate is TIME, interval is required, unit is day, default 1
-    interval: int = LoggerConstants.LOGGER_FILE_INTERVAL_VALUE
-    # when rotate is not NONE, backup_count is required, default 10
-    backup_count: int = LoggerConstants.LOGGER_FILE_BACKUP_COUNT_VALUE
+    file_dir: str = logger_constants.DEFAULT_FILE_DIR_VALUE
+    file_name: str = logger_constants.DEFAULT_FILE_NAME_VALUE
+    backup_count: int = logger_constants.DEFAULT_FILE_BACKUP_COUNT_VALUE
+    max_bytes: int = logger_constants.DEFAULT_FILE_MAX_BYTES_VALUE
+    interval: int = logger_constants.DEFAULT_FILE_INTERVAL_VALUE
 
     def check(self) -> None:
-        if self.file_enabled:
-            if self.rotate == LoggerFileRotateType.SIZE and self.max_bytes < 0:
-                raise ValueError("Max bytes can't be less than 0")
-            elif self.rotate == LoggerFileRotateType.TIME and self.interval < 1:
-                raise ValueError("Interval can't be less than 1")
+        if self.rotate == FileRotateType.SIZE and self.max_bytes < 0:
+            raise ValueError("Max bytes can't be less than 0")
+        elif self.rotate == FileRotateType.TIME and self.interval < 1:
+            raise ValueError("Interval can't be less than 1")
 
     def dict(self) -> Dict[str, str]:
         return {
-            LoggerConstants.LOGGER_FILE_ENABLED_KEY: str(self.file_enabled),
-            LoggerConstants.LOGGER_FILE_FORMAT_KEY: self.file_formatter or "",
-            LoggerConstants.LOGGER_FILE_DIR_KEY: self.file_dir,
-            LoggerConstants.LOGGER_FILE_NAME_KEY: self.file_name,
-            LoggerConstants.LOGGER_FILE_ROTATE_KEY: self.rotate.value,
-            LoggerConstants.LOGGER_FILE_MAX_BYTES_KEY: str(self.max_bytes),
-            LoggerConstants.LOGGER_FILE_INTERVAL_KEY: str(self.interval),
-            LoggerConstants.LOGGER_FILE_BACKUP_COUNT_KEY: str(self.backup_count),
+            logger_constants.FILE_FORMAT_KEY: self.file_formatter or "",
+            logger_constants.FILE_DIR_KEY: self.file_dir,
+            logger_constants.FILE_NAME_KEY: self.file_name,
+            logger_constants.FILE_ROTATE_KEY: self.rotate.value,
+            logger_constants.FILE_MAX_BYTES_KEY: str(self.max_bytes),
+            logger_constants.FILE_INTERVAL_KEY: str(self.interval),
+            logger_constants.FILE_BACKUP_COUNT_KEY: str(self.backup_count),
         }
 
 
 class LoggerConfig:
+    """
+    Logger configuration.
+
+    Attributes:
+        _driver(str): logger driver type.
+        _level(Level): logger level.
+        _formatter(Optional[str]): logger formatter.
+        _console_enabled(bool): logger console enabled.
+        _console_config(ConsoleLoggerConfig): logger console config.
+        _file_enabled(bool): logger file enabled.
+        _file_config(FileLoggerConfig): logger file config.
+    """
+
+    # global
+    _driver: str
+    _level: Level
+    _formatter: Optional[str]
+    # console
+    _console_enabled: bool
+    _console_config: ConsoleLoggerConfig
+    # file
+    _file_enabled: bool
+    _file_config: FileLoggerConfig
 
     def __init__(
         self,
-        driver: str = LoggerConstants.LOGGER_DRIVER_VALUE,
-        level: LoggerLevel = LoggerConstants.LOGGER_LEVEL_VALUE,
+        driver,
+        level=logger_constants.DEFAULT_LEVEL_VALUE,
         formatter: Optional[str] = None,
-        console: ConsoleLoggerConfig = ConsoleLoggerConfig(),
-        file: FileLoggerConfig = FileLoggerConfig(),
+        console_enabled: bool = logger_constants.DEFAULT_CONSOLE_ENABLED_VALUE,
+        console_config: ConsoleLoggerConfig = ConsoleLoggerConfig(),
+        file_enabled: bool = logger_constants.DEFAULT_FILE_ENABLED_VALUE,
+        file_config: FileLoggerConfig = FileLoggerConfig(),
     ):
         # set global config
         self._driver = driver
         self._level = level
         self._formatter = formatter
         # set console config
-        self._console = console
-        self._console.check()
+        self._console_enabled = console_enabled
+        self._console_config = console_config
+        if console_enabled:
+            self._console_config.check()
         # set file comfig
-        self._file = file
-        self._file.check()
+        self._file_enabled = file_enabled
+        self._file_config = file_config
+        if file_enabled:
+            self._file_config.check()
 
     def get_url(self) -> URL:
         # get LoggerConfig parameters
-        parameters: Dict[str, str] = {
-            **self._console.dict(),
-            **self._file.dict(),
-            LoggerConstants.LOGGER_DRIVER_KEY: self._driver,
-            LoggerConstants.LOGGER_LEVEL_KEY: self._level.value,
-            LoggerConstants.LOGGER_FORMAT_KEY: self._formatter or "",
+        parameters = {
+            logger_constants.DRIVER_KEY: self._driver,
+            logger_constants.LEVEL_KEY: self._level.value,
+            logger_constants.FORMAT_KEY: self._formatter or "",
+            logger_constants.CONSOLE_ENABLED_KEY: str(self._console_enabled),
+            logger_constants.FILE_ENABLED_KEY: str(self._file_enabled),
+            **self._console_config.dict(),
+            **self._file_config.dict(),
         }
 
-        return URL(
-            protocol=self._driver,
-            host=self._level.value,
-            port=None,
-            parameters=parameters,
-        )
+        return URL(protocol=self._driver, host=self._level.value, parameters=parameters)
 
     def init(self):
         # get logger_adapter and initialize loggerFactory
