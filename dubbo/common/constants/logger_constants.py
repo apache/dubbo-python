@@ -59,15 +59,12 @@ class FileRotateType(enum.Enum):
 # global config
 LEVEL_KEY = "logger.level"
 DRIVER_KEY = "logger.driver"
-FORMAT_KEY = "logger.format"
 
 # console config
 CONSOLE_ENABLED_KEY = "logger.console.enable"
-CONSOLE_FORMAT_KEY = "logger.console.format"
 
 # file logger
 FILE_ENABLED_KEY = "logger.file.enable"
-FILE_FORMAT_KEY = "logger.file.format"
 FILE_DIR_KEY = "logger.file.dir"
 FILE_NAME_KEY = "logger.file.name"
 FILE_ROTATE_KEY = "logger.file.rotate"

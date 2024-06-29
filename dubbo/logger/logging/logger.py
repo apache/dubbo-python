@@ -17,10 +17,10 @@
 import logging
 from typing import Dict
 
-from dubbo.common.constants.logger import Level
+from dubbo.common.constants.logger_constants import Level
 from dubbo.logger import Logger
 
-# The mapping from the logging level to the internal logging level.
+# The mapping from the logging level to the logging level.
 _level_map: Dict[Level, int] = {
     Level.DEBUG: logging.DEBUG,
     Level.INFO: logging.INFO,
@@ -31,9 +31,9 @@ _level_map: Dict[Level, int] = {
 }
 
 
-class InternalLogger(Logger):
+class LoggingLogger(Logger):
     """
-    The internal logger implementation.
+    The logging logger implementation.
     Attributes:
         _logger (logging.Logger): The real working logger object
     """

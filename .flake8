@@ -24,6 +24,6 @@ exclude =
 per-file-ignores =
     __init__.py:F401
     # module level import not at top of file
-    dubbo/imports.py:F401
+    dubbo/_imports.py:F401
     # module level import not at top of file
     dubbo/common/extension/logger_extension.py:E402

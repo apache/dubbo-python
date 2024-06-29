@@ -20,14 +20,15 @@ from urllib import parse
 class URL:
     """
     URL - Uniform Resource Locator.
-    Attributes:
-        _protocol (str): The protocol of the URL.
-        _host (str): The host of the URL.
-        _port (int): The port number of the URL.
-        _username (str): The username for URL authentication.
-        _password (str): The password for URL authentication.
-        _path (str): The path of the URL.
-        _parameters (Dict[str, str]): The query parameters of the URL.
+    Args:
+        protocol (str): The protocol of the URL.
+        host (str): The host of the URL.
+        port (int): The port number of the URL.
+        username (str): The username for URL authentication.
+        password (str): The password for URL authentication.
+        path (str): The path of the URL.
+        parameters (Dict[str, str]): The query parameters of the URL.
+        attributes (Dict[str, Any]): The attributes of the URL. (non-transferable)
 
     url example:
     - http://www.facebook.com/friends?param1=value1&param2=value2
@@ -35,14 +36,6 @@ class URL:
     - ftp://username:password@192.168.1.7:21/1/read.txt
     - registry://192.168.1.7:9090/org.apache.dubbo.service1?param1=value1&param2=value2
     """
-
-    _protocol: str
-    _username: str
-    _password: str
-    _host: str
-    _port: int
-    _path: str
-    _parameters: Dict[str, str]
 
     def __init__(
         self,
@@ -53,6 +46,7 @@ class URL:
         password: str = "",
         path: str = "",
         parameters: Optional[Dict[str, str]] = None,
+        attributes: Optional[Dict[str, Any]] = None,
     ):
         self._protocol = protocol
         self._host = host
@@ -63,6 +57,7 @@ class URL:
         self._password = password
         self._path = path
         self._parameters = parameters or {}
+        self._attributes = attributes or {}
 
     @property
     def protocol(self) -> str:
@@ -238,6 +233,34 @@ class URL:
         """
         self._parameters[key] = str(value) if value is not None else ""
 
+    @property
+    def attributes(self):
+        """
+        Gets the attributes of the URL.
+        Returns:
+            Dict[str, Any]: The attributes of the URL.
+        """
+        return self._attributes
+
+    def add_attribute(self, key: str, value: Any) -> None:
+        """
+        ADDs an attribute to the URL.
+        Args:
+            key (str): The attribute name.
+            value (Any): The attribute value.
+        """
+        self._attributes[key] = value
+
+    def get_attribute(self, key: str) -> Optional[Any]:
+        """
+        Gets an attribute from the URL.
+        Args:
+            key (str): The attribute name.
+        Returns:
+            Any: The attribute value. If the attribute does not exist, returns None.
+        """
+        return self._attributes.get(key, None)
+
     def build_string(self, encode: bool = False) -> str:
         """
         Generates the URL string based on the current components.
@@ -292,7 +315,7 @@ class URL:
             URL: The created URL object.
         """
         if not url:
-            raise ValueError()
+            raise ValueError("URL string cannot be empty or None.")
 
         # If the URL is encoded, decode it
         if encoded:

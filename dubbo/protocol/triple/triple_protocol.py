@@ -13,8 +13,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .application_config import ApplicationConfig
-from .consumer_config import ConsumerConfig
-from .logger_config import FileLoggerConfig, LoggerConfig
-from .protocol_config import ProtocolConfig
-from .reference_config import ReferenceConfig
+from dubbo.common.url import URL
+from dubbo.logger.logger_factory import loggerFactory
+from dubbo.protocol.invoker import Invoker
+from dubbo.protocol.protocol import Protocol
+
+logger = loggerFactory.get_logger(__name__)
+
+
+class TripleProtocol(Protocol):
+
+    def refer(self, url: URL) -> Invoker:
+
+        pass

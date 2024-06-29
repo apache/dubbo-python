@@ -15,15 +15,17 @@
 # limitations under the License.
 import unittest
 
-from dubbo.common.constants.logger import Level
+from dubbo.common.constants.logger_constants import Level
 from dubbo.config import LoggerConfig
-from dubbo.logger.internal.logger_adapter import InternalLoggerAdapter
+from dubbo.logger.logging.logger_adapter import LoggingLoggerAdapter
 
 
 class TestInternalLogger(unittest.TestCase):
 
     def test_log(self):
-        logger_adapter = InternalLoggerAdapter(config=LoggerConfig("logging").get_url())
+        logger_adapter = LoggingLoggerAdapter(
+            config=LoggerConfig.default_config().get_url()
+        )
         logger = logger_adapter.get_logger("test")
         logger.log(Level.INFO, "test log")
         logger.debug("test debug")

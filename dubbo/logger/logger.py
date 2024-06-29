@@ -15,7 +15,7 @@
 # limitations under the License.
 from typing import Any
 
-from dubbo.common.constants.logger import Level
+from dubbo.common.constants.logger_constants import Level
 from dubbo.common.url import URL
 
 

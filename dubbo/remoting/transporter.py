@@ -13,8 +13,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .application_config import ApplicationConfig
-from .consumer_config import ConsumerConfig
-from .logger_config import FileLoggerConfig, LoggerConfig
-from .protocol_config import ProtocolConfig
-from .reference_config import ReferenceConfig
+from dubbo.common.url import URL
+
+
+class RemotingServer:
+
+    pass
+
+
+class RemotingClient:
+
+    pass
+
+
+class Transporter:
+    def bind(self, url: URL) -> RemotingServer:
+        """
+        Bind a server.
+        """
+        pass
+
+    def connect(self, url: URL) -> RemotingClient:
+        """
+        Connect to a server.
+        """
+        pass

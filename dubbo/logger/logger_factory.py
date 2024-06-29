@@ -16,13 +16,13 @@
 import threading
 from typing import Dict
 
-from dubbo.common.constants import logger as logger_constants
-from dubbo.common.constants.logger import Level
+from dubbo.common.constants import logger_constants as logger_constants
+from dubbo.common.constants.logger_constants import Level
 from dubbo.common.url import URL
-from dubbo.logger import Logger, LoggerAdapter
-from dubbo.logger.internal.logger_adapter import InternalLoggerAdapter
+from dubbo.logger.logger import Logger, LoggerAdapter
+from dubbo.logger.logging.logger_adapter import LoggingLoggerAdapter
 
-# Default config of InternalLoggerAdapter
+# Default logger config with default values.
 _default_config = URL(
     protocol=logger_constants.DEFAULT_DRIVER_VALUE,
     host=logger_constants.DEFAULT_LEVEL_VALUE.value,
@@ -39,16 +39,16 @@ _default_config = URL(
 )
 
 
-class LoggerFactory:
+class _LoggerFactory:
     """
-    Factory class to create loggers.
+    LoggerFactory
     Attributes:
-        _logger_adapter(LoggerAdapter): logger adapter. Default: InternalLoggerAdapter(_default_config)
-        _loggers(Dict[str, LoggerAdapter]): A dictionary to store all the loggers.
-        _loggers_lock(threading.Lock): The lock is used to lock all loggers when the logger adapter is changed.
+        _logger_adapter (LoggerAdapter): The logger adapter.
+        _loggers (Dict[str, Logger]): The logger cache.
+        _loggers_lock (threading.Lock): The logger lock to protect the logger cache.
     """
 
-    _logger_adapter = InternalLoggerAdapter(_default_config)
+    _logger_adapter = LoggingLoggerAdapter(_default_config)
     _loggers: Dict[str, Logger] = {}
     _loggers_lock = threading.Lock()
 
@@ -89,7 +89,7 @@ class LoggerFactory:
             Logger: An instance of the requested logger.
         """
         logger = cls._loggers.get(name)
-        if logger is None:
+        if not logger:
             cls._loggers_lock.acquire()
             try:
                 if name not in cls._loggers:
@@ -97,7 +97,6 @@ class LoggerFactory:
                 logger = cls._loggers[name]
             finally:
                 cls._loggers_lock.release()
-
         return logger
 
     @classmethod
@@ -119,3 +118,6 @@ class LoggerFactory:
             level (Level): The logging level to set.
         """
         cls._logger_adapter.level = level
+
+
+loggerFactory = _LoggerFactory

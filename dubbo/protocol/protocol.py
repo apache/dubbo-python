@@ -13,8 +13,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .application_config import ApplicationConfig
-from .consumer_config import ConsumerConfig
-from .logger_config import FileLoggerConfig, LoggerConfig
-from .protocol_config import ProtocolConfig
-from .reference_config import ReferenceConfig
+from dubbo.common.url import URL
+from dubbo.protocol.invoker import Invoker
+
+
+class Protocol:
+
+    def refer(self, url: URL) -> Invoker:
+        """
+        Refer a remote service.
+        Args:
+            url (URL): The URL of the remote service.
+        Returns:
+            Invoker: The invoker of the remote service.
+        """
+        raise NotImplementedError("refer() is not implemented.")

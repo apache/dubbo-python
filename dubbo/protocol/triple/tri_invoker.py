@@ -13,8 +13,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .application_config import ApplicationConfig
-from .consumer_config import ConsumerConfig
-from .logger_config import FileLoggerConfig, LoggerConfig
-from .protocol_config import ProtocolConfig
-from .reference_config import ReferenceConfig
+from dubbo.common.url import URL
+from dubbo.protocol.invocation import Invocation
+from dubbo.protocol.invoker import Invoker
+from dubbo.protocol.result import Result
+
+
+class TripleInvoker(Invoker):
+
+    def __init__(self, url: URL):
+        self.url = url
+
+    def invoke(self, invocation: Invocation) -> Result:
+        pass
+
+    def get_url(self) -> URL:
+        return self.url
+
+    def is_available(self) -> bool:
+        pass
+
+    def destroy(self) -> None:
+        pass

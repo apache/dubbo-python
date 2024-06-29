@@ -13,8 +13,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .application_config import ApplicationConfig
-from .consumer_config import ConsumerConfig
-from .logger_config import FileLoggerConfig, LoggerConfig
-from .protocol_config import ProtocolConfig
-from .reference_config import ReferenceConfig
+from dubbo.common.node import Node
+from dubbo.protocol.invocation import Invocation
+from dubbo.protocol.result import Result
+
+
+class Invoker(Node):
+
+    def get_interface(self):
+        """
+        Get service interface.
+        """
+        raise NotImplementedError("get_interface() is not implemented.")
+
+    def invoke(self, invocation: Invocation) -> Result:
+        """
+        Invoke the service.
+        Returns:
+            Result: The result of the invocation.
+        """
+        raise NotImplementedError("invoke() is not implemented.")

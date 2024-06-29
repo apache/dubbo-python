@@ -16,32 +16,29 @@
 
 import logging
 import os
+import sys
 from functools import cache
 from logging import handlers
 
-from dubbo.common import extension
-from dubbo.common.constants import logger as logger_constants
-from dubbo.common.constants.logger import FileRotateType, Level
+from dubbo.common.constants import common_constants
+from dubbo.common.constants import logger_constants as logger_constants
+from dubbo.common.constants.logger_constants import FileRotateType, Level
 from dubbo.common.url import URL
 from dubbo.logger import Logger, LoggerAdapter
-from dubbo.logger.internal.logger import InternalLogger
+from dubbo.logger.logging import formatter
+from dubbo.logger.logging.logger import LoggingLogger
 
-"""This module provides the internal logger implementation. -> logging module"""
-
-_default_format = "%(asctime)s | %(levelname)s | %(module)s:%(funcName)s:%(lineno)d - [Dubbo] %(message)s"
+"""This module provides the logging logger implementation. -> logging module"""
 
 
-@extension.register_logger_adapter("logging")
-class InternalLoggerAdapter(LoggerAdapter):
+class LoggingLoggerAdapter(LoggerAdapter):
     """
-    Internal logger adapter.Responsible for internal logger creation, encapsulated the logging.getLogger() method
+    Internal logger adapter.Responsible for logging logger creation, encapsulated the logging.getLogger() method
     Attributes:
         _level(Level): logging level.
-        _format(str): default logging format string.
     """
 
     _level: Level
-    _format: str
 
     def __init__(self, config: URL):
         super().__init__(config)
@@ -49,10 +46,6 @@ class InternalLoggerAdapter(LoggerAdapter):
         level_name = config.parameters.get(logger_constants.LEVEL_KEY)
         self._level = Level.get_level(level_name) if level_name else Level.DEBUG
         self._update_level()
-        # Set format
-        self._format = (
-            config.parameters.get(logger_constants.FORMAT_KEY) or _default_format
-        )
 
     def get_logger(self, name: str) -> Logger:
         """
@@ -68,18 +61,29 @@ class InternalLoggerAdapter(LoggerAdapter):
         parameters = self._config.parameters
 
         # Add console handler
-        if parameters.get(logger_constants.CONSOLE_ENABLED_KEY) == str(True):
+        if parameters.get(
+            logger_constants.CONSOLE_ENABLED_KEY,
+            logger_constants.DEFAULT_CONSOLE_ENABLED_VALUE,
+        ).lower() == common_constants.TRUE_VALUE or bool(
+            sys.stdout and sys.stdout.isatty()
+        ):
             logger_instance.addHandler(self._get_console_handler())
 
         # Add file handler
-        if parameters.get(logger_constants.FILE_ENABLED_KEY) == str(True):
+        if (
+            parameters.get(
+                logger_constants.FILE_ENABLED_KEY,
+                logger_constants.DEFAULT_FILE_ENABLED_VALUE,
+            ).lower()
+            == common_constants.TRUE_VALUE
+        ):
             logger_instance.addHandler(self._get_file_handler())
 
         if not logger_instance.handlers:
             # It's intended to be used to avoid the "No handlers could be found for logger XXX" one-off warning.
             logger_instance.addHandler(logging.NullHandler())
 
-        return InternalLogger(logger_instance)
+        return LoggingLogger(logger_instance)
 
     @cache
     def _get_console_handler(self) -> logging.StreamHandler:
@@ -88,13 +92,8 @@ class InternalLoggerAdapter(LoggerAdapter):
         Returns:
             logging.StreamHandler: The console handler.
         """
-        parameters = self._config.parameters
         console_handler = logging.StreamHandler()
-        console_format = (
-            parameters.get(logger_constants.CONSOLE_FORMAT_KEY) or self._format
-        )
-        console_formatter = logging.Formatter(console_format)
-        console_handler.setFormatter(console_formatter)
+        console_handler.setFormatter(formatter.ColorFormatter())
 
         return console_handler
 
@@ -140,9 +139,7 @@ class InternalLoggerAdapter(LoggerAdapter):
             file_handler = logging.FileHandler(file_path)
 
         # Add file_handler
-        file_format = parameters.get(logger_constants.FILE_FORMAT_KEY) or self._format
-        file_formatter = logging.Formatter(file_format)
-        file_handler.setFormatter(file_formatter)
+        file_handler.setFormatter(formatter.NoColorFormatter())
         return file_handler
 
     @property

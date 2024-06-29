@@ -16,30 +16,12 @@
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from dubbo.common import extension
-from dubbo.common.constants import logger as logger_constants
-from dubbo.common.constants.logger import FileRotateType, Level
+from dubbo.common.constants import logger_constants as logger_constants
+from dubbo.common.constants.logger_constants import FileRotateType, Level
 from dubbo.common.url import URL
-from dubbo.logger import loggerFactory
-
-
-@dataclass
-class ConsoleLoggerConfig:
-    """
-    Console logger configuration.
-    Attributes:
-        console_format(Optional[str]): console format, if null, use global format.
-    """
-
-    console_format: Optional[str] = None
-
-    def check(self):
-        pass
-
-    def dict(self) -> Dict[str, str]:
-        return {
-            logger_constants.CONSOLE_FORMAT_KEY: self.console_format or "",
-        }
+from dubbo.extension import extensionLoader
+from dubbo.logger import LoggerAdapter
+from dubbo.logger.logger_factory import loggerFactory
 
 
 @dataclass
@@ -73,7 +55,6 @@ class FileLoggerConfig:
 
     def dict(self) -> Dict[str, str]:
         return {
-            logger_constants.FILE_FORMAT_KEY: self.file_formatter or "",
             logger_constants.FILE_DIR_KEY: self.file_dir,
             logger_constants.FILE_NAME_KEY: self.file_name,
             logger_constants.FILE_ROTATE_KEY: self.rotate.value,
@@ -90,9 +71,7 @@ class LoggerConfig:
     Attributes:
         _driver(str): logger driver type.
         _level(Level): logger level.
-        _formatter(Optional[str]): logger formatter.
         _console_enabled(bool): logger console enabled.
-        _console_config(ConsoleLoggerConfig): logger console config.
         _file_enabled(bool): logger file enabled.
         _file_config(FileLoggerConfig): logger file config.
     """
@@ -100,33 +79,34 @@ class LoggerConfig:
     # global
     _driver: str
     _level: Level
-    _formatter: Optional[str]
     # console
     _console_enabled: bool
-    _console_config: ConsoleLoggerConfig
     # file
     _file_enabled: bool
     _file_config: FileLoggerConfig
 
+    __slots__ = [
+        "_driver",
+        "_level",
+        "_console_enabled",
+        "_console_config",
+        "_file_enabled",
+        "_file_config",
+    ]
+
     def __init__(
         self,
         driver,
-        level=logger_constants.DEFAULT_LEVEL_VALUE,
-        formatter: Optional[str] = None,
-        console_enabled: bool = logger_constants.DEFAULT_CONSOLE_ENABLED_VALUE,
-        console_config: ConsoleLoggerConfig = ConsoleLoggerConfig(),
-        file_enabled: bool = logger_constants.DEFAULT_FILE_ENABLED_VALUE,
-        file_config: FileLoggerConfig = FileLoggerConfig(),
+        level,
+        console_enabled: bool,
+        file_enabled: bool,
+        file_config: FileLoggerConfig,
     ):
         # set global config
         self._driver = driver
         self._level = level
-        self._formatter = formatter
         # set console config
         self._console_enabled = console_enabled
-        self._console_config = console_config
-        if console_enabled:
-            self._console_config.check()
         # set file comfig
         self._file_enabled = file_enabled
         self._file_config = file_config
@@ -138,10 +118,8 @@ class LoggerConfig:
         parameters = {
             logger_constants.DRIVER_KEY: self._driver,
             logger_constants.LEVEL_KEY: self._level.value,
-            logger_constants.FORMAT_KEY: self._formatter or "",
             logger_constants.CONSOLE_ENABLED_KEY: str(self._console_enabled),
             logger_constants.FILE_ENABLED_KEY: str(self._file_enabled),
-            **self._console_config.dict(),
             **self._file_config.dict(),
         }
 
@@ -149,5 +127,21 @@ class LoggerConfig:
 
     def init(self):
         # get logger_adapter and initialize loggerFactory
-        logger_adapter = extension.get_logger_adapter(self._driver, self.get_url())
-        loggerFactory.logger_adapter = logger_adapter
+        logger_adapter_class = extensionLoader.get_extension(
+            LoggerAdapter, self._driver
+        )
+        logger_adapter = logger_adapter_class(self.get_url())
+        loggerFactory.set_logger_adapter(logger_adapter)
+
+    @classmethod
+    def default_config(cls):
+        """
+        Get default logger configuration.
+        """
+        return LoggerConfig(
+            driver=logger_constants.DEFAULT_DRIVER_VALUE,
+            level=logger_constants.DEFAULT_LEVEL_VALUE,
+            console_enabled=logger_constants.DEFAULT_CONSOLE_ENABLED_VALUE,
+            file_enabled=logger_constants.DEFAULT_FILE_ENABLED_VALUE,
+            file_config=FileLoggerConfig(),
+        )

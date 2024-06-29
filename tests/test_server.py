@@ -13,8 +13,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .application_config import ApplicationConfig
-from .consumer_config import ConsumerConfig
-from .logger_config import FileLoggerConfig, LoggerConfig
-from .protocol_config import ProtocolConfig
-from .reference_config import ReferenceConfig
+
+
+import asyncio
+
+
+class EchoServerProtocol(asyncio.Protocol):
+    def connection_made(self, transport):
+        self.transport = transport
+        print("Connection from", transport.get_extra_info("peername"))
+
+    def data_received(self, data):
+        message = data.decode()
+        print("Data received:", message)
+        self.transport.write(data)  # Echo the received data back
+
+    def connection_lost(self, exc):
+        print("Client disconnected")
+
+
+async def run_server():
+    loop = asyncio.get_running_loop()
+    server = await loop.create_server(lambda: EchoServerProtocol(), "127.0.0.1", 8888)
+    async with server:
+        await server.serve_forever()
+
+
+if __name__ == "__main__":
+    asyncio.run(run_server())

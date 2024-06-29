@@ -13,8 +13,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .application_config import ApplicationConfig
-from .consumer_config import ConsumerConfig
-from .logger_config import FileLoggerConfig, LoggerConfig
-from .protocol_config import ProtocolConfig
-from .reference_config import ReferenceConfig
+
+
+class ApplicationConfig:
+    """
+    Application configuration.
+    Attributes:
+        _name(str): Application name
+        _version(str): Application version
+        _owner(str): Application owner
+        _organization(str): Application organization (BU)
+        _environment(str): Application environment, e.g. dev, test or production
+    """
+
+    _name: str
+    _version: str
+    _owner: str
+    _organization: str
+    _environment: str
+
+    def clone(self) -> "ApplicationConfig":
+        """
+        Clone the current configuration.
+        Returns:
+            ApplicationConfig: A new instance of ApplicationConfig.
+        """
+        return ApplicationConfig()
+
+    @classmethod
+    def default_config(cls):
+        return cls()
