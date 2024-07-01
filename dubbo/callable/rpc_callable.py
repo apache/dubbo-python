@@ -38,7 +38,7 @@ class RpcCallable:
             method_url.get_attribute(common_constants.SERIALIZATION) or None
         )
 
-    def _do_call(self, argument: Any):
+    async def _do_call(self, argument: Any):
         """
         Real call method.
         """
@@ -66,10 +66,11 @@ class RpcCallable:
             self._res_serializer,
         )
         # Do invoke.
-        return self._invoker.invoke(invocation)
+        result = self._invoker.invoke(invocation)
+        return result
 
-    def __call__(self, argument: Any):
-        return self._do_call(argument)
+    async def __call__(self, argument: Any):
+        return await self._do_call(argument)
 
 
 class AsyncRpcCallable:

@@ -17,9 +17,9 @@ from typing import Any
 
 from dubbo.common.constants import common_constants
 from dubbo.common.url import URL
-from dubbo.logger import logger_factory
+from dubbo.logger.logger_factory import loggerFactory
 
-logger = logger_factory.get_logger(__name__)
+logger = loggerFactory.get_logger(__name__)
 
 
 def serialize(method: str, url: URL, *args, **kwargs) -> bytes:

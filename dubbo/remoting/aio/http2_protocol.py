@@ -16,150 +16,312 @@
 import asyncio
 from typing import List, Optional, Tuple
 
+import h2.events
 from h2.config import H2Configuration
 from h2.connection import H2Connection
-from h2.events import (DataReceived, RemoteSettingsChanged, RequestReceived,
-                       ResponseReceived, StreamEnded, TrailersReceived,
-                       WindowUpdated)
-from h2.exceptions import ProtocolError, StreamClosedError
-from h2.settings import SettingCodes
+from h2.events import (
+    DataReceived,
+    PingReceived,
+    RemoteSettingsChanged,
+    RequestReceived,
+    ResponseReceived,
+    StreamEnded,
+    StreamReset,
+    TrailersReceived,
+    WindowUpdated,
+)
 
 from dubbo.logger.logger_factory import loggerFactory
+from dubbo.remoting.aio.constants import END_DATA_SENTINEL
 
 logger = loggerFactory.get_logger(__name__)
 
 
-class Http2Protocol(asyncio.Protocol):
+class HTTP2Protocol(asyncio.Protocol):
 
     def __init__(self, h2_config: H2Configuration):
-        h2_config.logger = logger
-        self.conn = H2Connection(config=h2_config)
-        self.transport = None
-        self.flow_control_futures = {}
+        # Create the H2 state machine
+        self.conn: H2Connection = H2Connection(config=h2_config)
+
+        # the backing transport.
+        self.transport: Optional[asyncio.Transport] = None
+
+        # The asyncio event loop.
+        self._loop = asyncio.get_running_loop()
+
+        # A mapping of stream ID to stream object.
+        self.streams = {}
+
+        # The `write_data_queue`, `flow_controlled_data`, and `send_data_loop_task` together form the flow control mechanism.
+        # Data flows between `write_queue` and `flow_controlled_data`.
+        # The `send_data_loop_task` blocks while reading data from the `write_queue` and attempts to send it.
+        # If a flow control limit is encountered, the unsent data is stored in `flow_controlled_data`,
+        # awaiting a WINDOW_UPDATE frame, at which point it is moved back from `flow_controlled_data` to `write_queue`.
+        self._write_data_queue = asyncio.Queue()
+        self._flow_controlled_data = {}
+        self._send_data_loop_task = None
+
+        # Any streams that have been remotely reset.
+        self._reset_streams = set()
 
     def connection_made(self, transport: asyncio.Transport) -> None:
+        """
+        Called when the connection is first established. We complete the following actions:
+        1. Save the transport.
+        2. Initialize the H2 connection.
+        3. Create the send data loop task.
+        """
         self.transport = transport
         self.conn.initiate_connection()
-
-    def connection_lost(self, exc: Exception) -> None:
-        if exc:
-            logger.error(f"Connection lost: {exc}")
-        else:
-            logger.info("Connection closed cleanly.")
-            self.transport.close()
-
-    async def send_headers(
-        self,
-        headers: List[Tuple[str, str]],
-        stream_id: Optional[int] = None,
-        end_stream=False,
-    ) -> int:
-        """
-        Send headers to the server or client.
-        Args:
-            headers: A list of header tuples.
-            stream_id: The stream ID to send the headers on. If None, a new stream will be created.
-            end_stream: Whether to close the stream after sending the headers.
-        Returns:
-            The stream ID the headers were sent on.
-        """
-        if not stream_id:
-            # Get the next available stream ID.
-            stream_id = self.conn.get_next_available_stream_id()
-        self.conn.send_headers(stream_id, headers, end_stream=end_stream)
         self.transport.write(self.conn.data_to_send())
-        return stream_id
+        self._send_data_loop_task = self._loop.create_task(self._send_data_loop())
 
-    async def send_data(self, stream_id: int, data: bytes, end_stream=False) -> None:
+    def connection_lost(self, exc) -> None:
         """
-         Send data according to the flow control rules.
-        Args:
-            stream_id: The stream ID to send the data on.
-            data: The data to send.
-            end_stream: Whether to close the stream after sending the data.
+        Called when the connection is lost.
         """
-        while data:
-            # Check the flow control window.
-            while self.conn.local_flow_control_window(stream_id) < 1:
-                try:
-                    # Wait for flow control window to open.
-                    await self.wait_for_flow_control(stream_id)
-                except asyncio.CancelledError:
-                    return
-            # Determine how much data to send.
-            chunk_size = min(
-                self.conn.local_flow_control_window(stream_id),
-                len(data),
-                self.conn.max_outbound_frame_size,
-            )
-            try:
-                # Send the data.
-                self.conn.send_data(
-                    stream_id,
-                    data[:chunk_size],
-                    end_stream=(chunk_size == len(data) and end_stream),
-                )
-            except (StreamClosedError, ProtocolError):
-                logger.error(
-                    f"Stream {stream_id} closed unexpectedly, aborting data send."
-                )
-                break
+        self._send_data_loop_task.cancel()
 
+    def send_head_frame(
+        self,
+        stream_id: int,
+        headers: List[Tuple[str, str]],
+        end_stream=False,
+        head_event: Optional[asyncio.Event] = None,
+    ) -> asyncio.Event:
+        """
+        Send headers to the remote peer.
+        Because flow control is only for data frames, we can directly send the head frame rate.
+        Note: Only the first call sends a head frame, if called again, a trailer frame is sent.
+        """
+        head_event = head_event or asyncio.Event()
+
+        def _inner_send_header_frame(stream_id, headers, event):
+            self.conn.send_headers(stream_id, headers, end_stream)
             self.transport.write(self.conn.data_to_send())
-            data = data[chunk_size:]
+            event.set()
+
+        # Send the header frame
+        self._loop.call_soon_threadsafe(
+            _inner_send_header_frame, stream_id, headers, head_event
+        )
+
+        return head_event
+
+    def send_data_frame(self, stream_id: int, data) -> asyncio.Event:
+        """
+        Send data to the remote peer.
+        The sending of data frames is subject to traffic control,
+        so we put them in a queue and send them according to traffic control rules
+        Args:
+            stream_id: stream id
+            data: data
+        """
+        event = asyncio.Event()
+
+        def _inner_send_data_frame(stream_id: int, data, event: asyncio.Event):
+            self._write_data_queue.put_nowait((stream_id, data, event))
+
+        self._loop.call_soon_threadsafe(_inner_send_data_frame, stream_id, data, event)
+
+        return event
+
+    async def _send_data_loop(self) -> None:
+        """
+        Asynchronous blocking to get data from write_data_queue and try to send it,
+        this method implements the flow control mechanism
+        """
+        while True:
+            stream_id, data, event = await self._write_data_queue.get()
+
+            # If this stream got reset, just drop the data on the floor.
+            if stream_id in self._reset_streams:
+                event.set()
+                continue
+
+            if data is END_DATA_SENTINEL:
+                self.conn.end_stream(stream_id)
+                self.transport.write(self.conn.data_to_send())
+                event.set()
+                continue
+
+            # We need to send data, but not to exceed the flow control window.
+            window_size = self.conn.local_flow_control_window(stream_id)
+            chunk_size = min(window_size, len(data))
+            data_to_send = data[:chunk_size]
+            data_to_buffer = data[chunk_size:]
+
+            if data_to_send:
+                # Send the data frame
+                max_size = self.conn.max_outbound_frame_size
+                chunks = (
+                    data_to_send[x : x + max_size]
+                    for x in range(0, len(data_to_send), max_size)
+                )
+                for chunk in chunks:
+                    self.conn.send_data(stream_id, chunk)
+                self.transport.write(self.conn.data_to_send())
+
+            if data_to_buffer:
+                # We still have data to send, but it's blocked by traffic control,
+                # so we need to wait for the traffic window to open again.
+                self._flow_controlled_data[stream_id] = (
+                    stream_id,
+                    data_to_buffer,
+                    event,
+                )
+            else:
+                # We sent everything.
+                event.set()
 
     def data_received(self, data: bytes) -> None:
-        try:
-            # Parse the received data.
-            events = self.conn.receive_data(data)
-
-            if not events:
-                self.transport.write(self.conn.data_to_send())
-            else:
-                # Process the events.
-                for event in events:
-                    if isinstance(event, ResponseReceived) or isinstance(
-                        event, RequestReceived
-                    ):
-                        self.receive_headers(event.stream_id, event.headers)
-                    elif isinstance(event, DataReceived):
-                        self.receive_data(event.stream_id, event.data)
-                    elif isinstance(event, TrailersReceived):
-                        self.receive_trailers(event.stream_id, event.headers)
-                    elif isinstance(event, StreamEnded):
-                        self.receive_end(event.stream_id)
-                    elif isinstance(event, WindowUpdated):
-                        self.window_updated(event.stream_id, event.delta)
-                    elif isinstance(event, RemoteSettingsChanged):
-                        if SettingCodes.INITIAL_WINDOW_SIZE in event.changed_settings:
-                            self.window_updated(None, 0)
-
-                data = self.conn.data_to_send()
-                if data:
-                    self.transport.write(data)
-
-        except ProtocolError:
-            logger.exception("Parse HTTP2 frame error")
-            self.transport.write(self.conn.data_to_send())
-            self.transport.close()
-
-    async def wait_for_flow_control(self, stream_id) -> None:
         """
-        Waits for a Future that fires when the flow control window is opened.
+        Process inbound data.
         """
-        f = asyncio.Future()
-        self.flow_control_futures[stream_id] = f
-        await f
+        events = self.conn.receive_data(data)
+        for event in events:
+            self._process_event(event)
+            outbound_data = self.conn.data_to_send()
+            if outbound_data:
+                self.transport.write(outbound_data)
 
-    def window_updated(self, stream_id, delta) -> None:
+    def _process_event(self, event: h2.events.Event) -> Optional[bool]:
         """
-        A window update frame was received. Unblock some number of flow control Futures.
+        Process an event.
         """
-        if stream_id and stream_id in self.flow_control_futures:
-            future = self.flow_control_futures.pop(stream_id)
-            future.set_result(delta)
+        if isinstance(event, (RemoteSettingsChanged, PingReceived)):
+            # Events that are handled automatically by the H2 library.
+            # 1. RemoteSettingsChanged: h2 automatically acknowledges settings changes
+            # 2. PingReceived: A ping acknowledgment with the same opaque data is automatically emitted after receiving a ping.
+            pass
+        elif isinstance(event, WindowUpdated):
+            self.window_updated(event)
+        elif isinstance(event, StreamReset):
+            self.reset_stream(event)
         else:
-            # If it does not match, remove all flow control.
-            for f in self.flow_control_futures.values():
-                f.set_result(delta)
-            self.flow_control_futures.clear()
+            # A False here means that the current event is not handled and needs to be handled by the subclass.
+            return False
+
+    def window_updated(self, event: WindowUpdated) -> None:
+        """
+        The flow control window got opened.
+
+        """
+        if event.stream_id:
+            # This is specific to a single stream.
+            if event.stream_id in self._flow_controlled_data:
+                self._write_data_queue.put_nowait(
+                    self._flow_controlled_data.pop(event.stream_id)
+                )
+        else:
+            # This event is specific to the connection.
+            # Free up all the streams.
+            for data in self._flow_controlled_data.values():
+                self._write_data_queue.put_nowait(data)
+
+            self._flow_controlled_data = {}
+
+    def reset_stream(self, event: StreamReset) -> None:
+        """
+        The remote peer reset the stream.
+        """
+        if event.stream_id in self._flow_controlled_data:
+            del self._flow_controlled_data
+
+        self._reset_streams.add(event.stream_id)
+
+
+class HTTP2ClientProtocol(HTTP2Protocol):
+    """
+    An HTTP/2 client protocol.
+    """
+
+    def __init__(self):
+        h2_config = H2Configuration(client_side=True, header_encoding="utf-8")
+        super().__init__(h2_config)
+
+    def register_stream(self, stream_id, stream):
+        self.streams[stream_id] = stream
+
+    def _process_event(self, event):
+        if super()._process_event(event) is False:
+            if isinstance(event, ResponseReceived):
+                self.receive_headers(event)
+            elif isinstance(event, DataReceived):
+                self.receive_data(event)
+            elif isinstance(event, TrailersReceived):
+                self.receive_trailers(event)
+            elif isinstance(event, StreamEnded):
+                self.stream_ended(event)
+
+    def receive_headers(self, event: ResponseReceived):
+        """
+        The response headers have been received.
+        """
+        self.streams[event.stream_id].receive_headers(event.headers)
+
+    def receive_data(self, event: DataReceived):
+        """
+        Data has been received.
+        """
+        self.streams[event.stream_id].receive_data(event.data)
+        # Acknowledge the data, so the remote peer can send more.
+        self.conn.acknowledge_received_data(
+            event.flow_controlled_length, event.stream_id
+        )
+
+    def receive_trailers(self, event):
+        """
+        Trailers have been received.
+        """
+        self.streams[event.stream_id].receive_trailers(event.headers)
+
+    def stream_ended(self, event):
+        """
+        The stream has ended.
+        """
+        self.streams[event.stream_id].receive_complete()
+        # Clean up the stream.
+        del self.streams[event.stream_id]
+
+    def reset_stream(self, event: StreamReset) -> None:
+        super().reset_stream(event)
+        # TODO Pass the exception to the corresponding stream object
+
+
+class HTTP2ServerProtocol(HTTP2Protocol):
+
+    def __init__(self):
+        h2_config = H2Configuration(client_side=False, header_encoding="utf-8")
+        super().__init__(h2_config)
+
+    def _process_event(self, event: h2.events.Event):
+        if super()._process_event(event) is False:
+            if isinstance(event, RequestReceived):
+                self.receive_headers(event)
+            elif isinstance(event, DataReceived):
+                self.receive_data(event)
+            elif isinstance(event, StreamEnded):
+                self.stream_ended(event)
+
+    def receive_headers(self, event: RequestReceived):
+        """
+        The request headers have been received.
+        """
+        from dubbo.remoting.aio.aio_stream import AioServerStream
+
+        s = AioServerStream(event.stream_id, self._loop, self)
+        self.streams[event.stream_id] = s
+        s.receive_headers(event.headers)
+
+    def receive_data(self, event: DataReceived):
+        """
+        Data has been received.
+        """
+        self.streams[event.stream_id].receive_data(event.data)
+
+    def stream_ended(self, event: StreamEnded):
+        """
+        The stream has ended.
+        """
+        self.streams[event.stream_id].receive_complete()

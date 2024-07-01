@@ -18,8 +18,10 @@ from typing import Optional, Union
 from dubbo.callable.rpc_callable import AsyncRpcCallable, RpcCallable
 from dubbo.callable.rpc_callable_factory import DefaultRpcCallableFactory
 from dubbo.common.constants import common_constants
-from dubbo.common.constants.type_constants import (DeserializingFunction,
-                                                   SerializingFunction)
+from dubbo.common.constants.type_constants import (
+    DeserializingFunction,
+    SerializingFunction,
+)
 from dubbo.common.url import URL
 from dubbo.config import ConsumerConfig, ReferenceConfig
 from dubbo.logger.logger_factory import loggerFactory

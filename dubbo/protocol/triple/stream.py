@@ -23,64 +23,97 @@ class Stream:
     Outbound data to remote peer is sent directly by Stream.
     """
 
+    def __init__(self, stream_id: int):
+        self._stream_id = stream_id
+
     def send_headers(self, headers: List[Tuple[str, str]]) -> None:
         """
-        Send the headers frame
+        First call: head frame
+        Second call: trailer frame.
         Args:
             headers: The headers to send.
         """
         raise NotImplementedError("send_headers() is not implemented")
 
-    def send_data(self, stream_id: int, data: bytes, end_stream: bool = False) -> None:
+    def send_data(self, data: bytes) -> None:
         """
         Send the data frame
         Args:
-            stream_id: The stream ID the data is associated with.
             data: The data to send.
-            end_stream: Whether to end the stream.
         """
         raise NotImplementedError("send_data() is not implemented")
 
+    def send_end_stream(self) -> None:
+        """
+        Send the end stream frame -> An empty data frame will be sent (end_stream=True)
+        """
+        raise NotImplementedError("send_completed() is not implemented")
+
     class Listener:
         """
-        Listener is the interface to receive the data flow from the remote peer
+        Listener is the interface that receives the data from the stream.
         """
 
-        def receive_headers(
-            self, stream_id: int, headers: List[Tuple[str, str]]
-        ) -> None:
+        def on_headers(self, headers: List[Tuple[str, str]]) -> None:
             """
             Called when the header frame is received
             Args:
-                stream_id: The stream ID the headers are associated with.
                 headers: The headers received.
             """
             raise NotImplementedError("receive_headers() is not implemented")
 
-        def receive_data(self, stream_id: int, data: bytes) -> None:
+        def on_data(self, data: bytes) -> None:
             """
             Called when the data frame is received
             Args:
-                stream_id: The stream ID the data is associated with.
                 data: The data received.
             """
             raise NotImplementedError("receive_data() is not implemented")
 
-        def receive_trailers(
-            self, stream_id: int, headers: List[Tuple[str, str]]
-        ) -> None:
+        def on_complete(self) -> None:
+            """
+            Complete the stream.
+            """
+            raise NotImplementedError("complete() is not implemented")
+
+
+class ClientStream(Stream):
+    """
+    ClientStream is a Stream that is initiated by the client.
+    """
+
+    pass
+
+    class Listener(Stream.Listener):
+        """
+        Listener is the interface that receives the data from the stream.
+        """
+
+        def on_trailers(self, headers: List[Tuple[str, str]]) -> None:
             """
             Called when the trailers frame is received
             Args:
-                stream_id: The stream ID the trailers are associated with.
                 headers: The trailers received.
             """
             raise NotImplementedError("receive_trailers() is not implemented")
 
-        def receive_end(self, stream_id: int) -> None:
-            """
-            Called when the stream is ended
-            Args:
-                stream_id: The stream ID that was ended.
-            """
-            raise NotImplementedError("receive_end() is not implemented")
+
+class ServerStream(Stream):
+    """
+    ServerStream is a Stream that is initiated by the server.
+    """
+
+    def send_trailers(self, trailers: List[Tuple[str, str]]) -> None:
+        """
+        Send the trailers frame
+        Args:
+            trailers: The trailers to send.
+        """
+        raise NotImplementedError("send_trailers() is not implemented")
+
+    class Listener(Stream.Listener):
+        """
+        Listener is the interface that receives the data from the stream.
+        """
+
+        pass
