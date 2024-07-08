@@ -18,15 +18,8 @@ import sys
 import time
 from typing import Any, Dict, Optional
 
-from h2.events import (
-    DataReceived,
-    Event,
-    RequestReceived,
-    ResponseReceived,
-    StreamReset,
-    TrailersReceived,
-    WindowUpdated,
-)
+from h2.events import (DataReceived, Event, RequestReceived, ResponseReceived,
+                       StreamReset, TrailersReceived, WindowUpdated)
 
 
 class H2FrameType(enum.Enum):

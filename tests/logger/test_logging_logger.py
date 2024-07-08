@@ -15,7 +15,7 @@
 # limitations under the License.
 import unittest
 
-from dubbo.common.constants.logger_constants import Level
+from dubbo.constants.logger_constants import Level
 from dubbo.config import LoggerConfig
 from dubbo.logger.logging.logger_adapter import LoggingLoggerAdapter
 

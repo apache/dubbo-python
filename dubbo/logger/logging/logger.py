@@ -17,7 +17,7 @@
 import logging
 from typing import Dict
 
-from dubbo.common.constants.logger_constants import Level
+from dubbo.constants.logger_constants import Level
 from dubbo.logger import Logger
 
 # The mapping from the logging level to the logging level.

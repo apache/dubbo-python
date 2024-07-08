@@ -15,7 +15,7 @@
 # limitations under the License.
 import unittest
 
-from dubbo.common.url import URL
+from dubbo.url import URL
 
 
 class TestUrl(unittest.TestCase):
@@ -24,7 +24,7 @@ class TestUrl(unittest.TestCase):
         url_0 = URL.value_of(
             "http://www.facebook.com/friends?param1=value1&param2=value2"
         )
-        self.assertEqual("http", url_0.protocol)
+        self.assertEqual("http", url_0.scheme)
         self.assertEqual("www.facebook.com", url_0.host)
         self.assertEqual(0, url_0.port)
         self.assertEqual("friends", url_0.path)
@@ -32,7 +32,7 @@ class TestUrl(unittest.TestCase):
         self.assertEqual("value2", url_0.get_parameter("param2"))
 
         url_1 = URL.value_of("ftp://username:password@192.168.1.7:21/1/read.txt")
-        self.assertEqual("ftp", url_1.protocol)
+        self.assertEqual("ftp", url_1.scheme)
         self.assertEqual("username", url_1.username)
         self.assertEqual("password", url_1.password)
         self.assertEqual("192.168.1.7", url_1.host)
@@ -41,14 +41,14 @@ class TestUrl(unittest.TestCase):
         self.assertEqual("1/read.txt", url_1.path)
 
         url_2 = URL.value_of("file:///home/user1/router.js?type=script")
-        self.assertEqual("file", url_2.protocol)
+        self.assertEqual("file", url_2.scheme)
         self.assertEqual("home/user1/router.js", url_2.path)
 
         url_3 = URL.value_of(
             "http%3A//www.facebook.com/friends%3Fparam1%3Dvalue1%26param2%3Dvalue2",
             encoded=True,
         )
-        self.assertEqual("http", url_3.protocol)
+        self.assertEqual("http", url_3.scheme)
         self.assertEqual("www.facebook.com", url_3.host)
         self.assertEqual(0, url_3.port)
         self.assertEqual("friends", url_3.path)
@@ -57,7 +57,7 @@ class TestUrl(unittest.TestCase):
 
     def test_url_to_str(self):
         url_0 = URL(
-            protocol="tri",
+            scheme="tri",
             host="127.0.0.1",
             port=12,
             username="username",
@@ -70,7 +70,7 @@ class TestUrl(unittest.TestCase):
         )
 
         url_1 = URL(
-            protocol="tri",
+            scheme="tri",
             host="127.0.0.1",
             port=12,
             path="path",
@@ -78,5 +78,5 @@ class TestUrl(unittest.TestCase):
         )
         self.assertEqual("tri://127.0.0.1:12/path?type=a", url_1.build_string())
 
-        url_2 = URL(protocol="tri", host="127.0.0.1", port=12, parameters={"type": "a"})
+        url_2 = URL(scheme="tri", host="127.0.0.1", port=12, parameters={"type": "a"})
         self.assertEqual("tri://127.0.0.1:12/?type=a", url_2.build_string())

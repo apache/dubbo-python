@@ -13,7 +13,38 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Any
 
 
 class Result:
-    pass
+    """
+    Result of a call
+    """
+
+    def set_value(self, value: Any) -> None:
+        """
+        Set the value of the result
+        Args:
+            value: Value to set
+        """
+        raise NotImplementedError("set_value() is not implemented.")
+
+    def get_value(self) -> Any:
+        """
+        Get the value of the result
+        """
+        raise NotImplementedError("get_value() is not implemented.")
+
+    def set_exception(self, exception: Exception) -> None:
+        """
+        Set the exception to the result
+        Args:
+            exception: Exception to set
+        """
+        raise NotImplementedError("set_exception() is not implemented.")
+
+    def get_exception(self) -> Exception:
+        """
+        Get the exception to the result
+        """
+        raise NotImplementedError("get_exception() is not implemented.")

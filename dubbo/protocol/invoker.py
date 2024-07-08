@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from dubbo.common.node import Node
+from dubbo.node import Node
 from dubbo.protocol.invocation import Invocation
 from dubbo.protocol.result import Result
 

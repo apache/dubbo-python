@@ -13,28 +13,66 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from dubbo.common.url import URL
+from dubbo.url import URL
 
 
-class RemotingServer:
+class Client:
 
-    pass
+    def __init__(self, url: URL):
+        self._url = url
+        # flag to indicate whether the client is opened
+        self._opened = False
+        # flag to indicate whether the client is connected
+        self._connected = False
+        # flag to indicate whether the client is closed
+        self._closed = False
+
+    @property
+    def opened(self):
+        return self._opened
+
+    @property
+    def connected(self):
+        return self._connected
+
+    @property
+    def closed(self):
+        return self._closed
+
+    def open(self):
+        """
+        Open the client.
+        """
+        raise NotImplementedError("open() is not implemented.")
+
+    def connect(self):
+        """
+        Connect to the server.
+        """
+        raise NotImplementedError("connect() is not implemented.")
+
+    def close(self):
+        """
+        Close the client.
+        """
+        raise NotImplementedError("close() is not implemented.")
 
 
-class RemotingClient:
-
+class Server:
+    # TODO define the interface of the server.
     pass
 
 
 class Transporter:
-    def bind(self, url: URL) -> RemotingServer:
-        """
-        Bind a server.
-        """
-        pass
 
-    def connect(self, url: URL) -> RemotingClient:
+    def connect(self, url: URL) -> Client:
         """
         Connect to a server.
         """
-        pass
+        raise NotImplementedError("connect() is not implemented.")
+
+    def bind(self, url: URL) -> Server:
+        """
+        Bind a server.
+        """
+        raise NotImplementedError("bind() is not implemented.")

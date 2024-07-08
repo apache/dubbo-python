@@ -14,14 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import threading
+from concurrent.futures import Future as ThreadingFuture
 from typing import Dict, Optional, Tuple
 
 from h2.config import H2Configuration
 from h2.connection import H2Connection
 
+from dubbo.constants import common_constants
 from dubbo.logger.logger_factory import loggerFactory
 from dubbo.remoting.aio.h2_frame import H2Frame, H2FrameType, H2FrameUtils
 from dubbo.remoting.aio.h2_stream_handler import StreamHandler
+from dubbo.url import URL
 
 logger = loggerFactory.get_logger(__name__)
 
@@ -198,13 +202,20 @@ class H2Protocol(asyncio.Protocol):
     It handles connection state, stream mapping, and data flow control.
 
     Args:
-        h2_config (H2Configuration): The configuration for the H2 connection.
-        stream_handler (StreamHandler): The handler for managing streams.
-
+        url (URL): The URL object that contains the connection parameters.
     """
 
-    def __init__(self, h2_config: H2Configuration, stream_handler: StreamHandler):
+    def __init__(self, url: URL):
+        self.url = url
         # Create the H2 state machine
+        client_side = (
+            self.url.parameters.get(
+                common_constants.TRANSPORTER_SIDE_KEY,
+                common_constants.TRANSPORTER_SIDE_CLIENT,
+            )
+            == common_constants.TRANSPORTER_SIDE_CLIENT
+        )
+        h2_config = H2Configuration(client_side=client_side, header_encoding="utf-8")
         self.conn: H2Connection = H2Connection(config=h2_config)
 
         # the backing transport.
@@ -214,7 +225,7 @@ class H2Protocol(asyncio.Protocol):
         self.loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
 
         # A mapping of stream ID to stream object.
-        self._stream_handler: StreamHandler = stream_handler
+        self._stream_handler: StreamHandler = self.url.attributes["stream_handler"]
 
         self._data_follow_control: Optional[DataFlowControl] = None
 
@@ -246,6 +257,19 @@ class H2Protocol(asyncio.Protocol):
         self._stream_handler.destroy()
         self._data_follow_control.cancel()
 
+        # Handle the connection close event
+        if on_conn_lost := self.url.attributes.get(
+            common_constants.TRANSPORTER_ON_CONN_CLOSE_KEY
+        ):
+            if isinstance(on_conn_lost, (asyncio.Event, threading.Event)):
+                on_conn_lost.set()
+            elif isinstance(on_conn_lost, (asyncio.Future, ThreadingFuture)):
+                on_conn_lost.set_result(exc)
+            elif callable(on_conn_lost):
+                on_conn_lost(exc)
+            else:
+                logger.error("Unable to handle the connection close event")
+
     def send_headers_frame(self, headers_frame: H2Frame) -> asyncio.Event:
         """
         Send headers to the remote peer. (thread-safe)
@@ -258,9 +282,9 @@ class H2Protocol(asyncio.Protocol):
         """
         headers_event = asyncio.Event()
 
-        def _inner_send_headers_frame(headers_frame: H2Frame, event: asyncio.Event):
+        def _inner_send_headers_frame(_headers_frame: H2Frame, event: asyncio.Event):
             self.conn.send_headers(
-                headers_frame.stream_id, headers_frame.data, headers_frame.end_stream
+                _headers_frame.stream_id, _headers_frame.data, _headers_frame.end_stream
             )
             self.transport.write(self.conn.data_to_send())
             # Set the event to indicate that the headers frame has been sent.
@@ -316,8 +340,8 @@ class H2Protocol(asyncio.Protocol):
             frame = H2FrameUtils.create_frame_by_event(event)
             if not frame:
                 # If frame is None, there are two possible cases:
-                # 1. Events that are handled automatically by the H2 library. -> We just need to send it.
-                #    e.g. RemoteSettingsChanged, PingReceived
+                # 1. Events that are handled automatically by the H2 library (e.g. RemoteSettingsChanged, PingReceived).
+                #    -> We just need to send it.
                 # 2. Events that are not implemented or do not require attention. -> We'll ignore it for now.
                 pass
             else:
@@ -326,6 +350,9 @@ class H2Protocol(asyncio.Protocol):
                     # Update the flow control window
                     self._data_follow_control.release(frame)
                 else:
+                    if frame.frame_type == H2FrameType.RST_STREAM:
+                        # Reset the stream
+                        self._data_follow_control.reset(frame)
                     # Handle the frame
                     self._stream_handler.handle_frame(frame)
 

@@ -16,12 +16,12 @@
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from dubbo.common.constants import logger_constants as logger_constants
-from dubbo.common.constants.logger_constants import FileRotateType, Level
-from dubbo.common.url import URL
+from dubbo.constants import logger_constants as logger_constants
+from dubbo.constants.logger_constants import FileRotateType, Level
 from dubbo.extension import extensionLoader
 from dubbo.logger import LoggerAdapter
 from dubbo.logger.logger_factory import loggerFactory
+from dubbo.url import URL
 
 
 @dataclass
@@ -123,7 +123,7 @@ class LoggerConfig:
             **self._file_config.dict(),
         }
 
-        return URL(protocol=self._driver, host=self._level.value, parameters=parameters)
+        return URL(scheme=self._driver, host=self._level.value, parameters=parameters)
 
     def init(self):
         # get logger_adapter and initialize loggerFactory

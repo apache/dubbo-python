@@ -16,7 +16,8 @@
 import threading
 from typing import Dict, List
 
-from dubbo.config import ApplicationConfig, ConsumerConfig, LoggerConfig, ProtocolConfig
+from dubbo.config import (ApplicationConfig, ConsumerConfig, LoggerConfig,
+                          ProtocolConfig)
 from dubbo.logger.logger_factory import loggerFactory
 
 logger = loggerFactory.get_logger(__name__)

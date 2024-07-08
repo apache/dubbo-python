@@ -16,15 +16,15 @@
 import threading
 from typing import Dict
 
-from dubbo.common.constants import logger_constants as logger_constants
-from dubbo.common.constants.logger_constants import Level
-from dubbo.common.url import URL
+from dubbo.constants import logger_constants as logger_constants
+from dubbo.constants.logger_constants import Level
 from dubbo.logger.logger import Logger, LoggerAdapter
 from dubbo.logger.logging.logger_adapter import LoggingLoggerAdapter
+from dubbo.url import URL
 
 # Default logger config with default values.
 _default_config = URL(
-    protocol=logger_constants.DEFAULT_DRIVER_VALUE,
+    scheme=logger_constants.DEFAULT_DRIVER_VALUE,
     host=logger_constants.DEFAULT_LEVEL_VALUE.value,
     parameters={
         logger_constants.DRIVER_KEY: logger_constants.DEFAULT_DRIVER_VALUE,

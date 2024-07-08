@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any
+from typing import Any, Dict, Optional
 
 
 class Invocation:
@@ -44,8 +44,8 @@ class RpcInvocation(Invocation):
         service_name (str): The name of the service.
         method_name (str): The name of the method.
         argument (Any): The method argument.
-        req_serializer (Any): The request serializer.
-        res_serializer (Any): The response serializer.
+        attachments (Optional[Dict[str, str]]): Passed to the remote server during RPC call
+        attributes (Optional[Dict[str, Any]]): Only used on the caller side, will not appear on the wire.
     """
 
     def __init__(
@@ -53,26 +53,63 @@ class RpcInvocation(Invocation):
         service_name: str,
         method_name: str,
         argument: Any,
-        req_serializer=None,
-        res_serializer=None,
+        attachments: Optional[Dict[str, str]] = None,
+        attributes: Optional[Dict[str, Any]] = None,
     ):
         self._service_name = service_name
         self._method_name = method_name
         self._argument = argument
-        self._req_serializer = req_serializer
-        self._res_serializer = res_serializer
+        self._attachments = attachments or {}
+        self._attributes = attributes or {}
 
-    def get_service_name(self):
+    def add_attachment(self, key: str, value: str) -> None:
+        """
+        Add an attachment to the invocation.
+        Args:
+            key (str): The key of the attachment.
+            value (str): The value of the attachment.
+        """
+        self._attachments[key] = value
+
+    def get_attachment(self, key: str) -> Optional[str]:
+        """
+        Get the attachment of the invocation.
+        Args:
+            key (str): The key of the attachment.
+        Returns:
+            The value of the attachment. If the attachment does not exist, return None.
+        """
+        return self._attachments.get(key, None)
+
+    def add_attribute(self, key: str, value: Any) -> None:
+        """
+        Add an attribute to the invocation.
+        Args:
+            key (str): The key of the attribute.
+            value (Any): The value of the attribute.
+        """
+        self._attributes[key] = value
+
+    def get_attribute(self, key: str) -> Optional[Any]:
+        """
+        Get the attribute of the invocation.
+        Args:
+            key (str): The key of the attribute.
+        Returns:
+            The value of the attribute. If the attribute does not exist, return None.
+        """
+        return self._attributes.get(key, None)
+
+    def get_service_name(self) -> str:
+        """
+        Get the service name.
+        Returns:
+            The service name.
+        """
         return self._service_name
 
-    def get_method_name(self):
+    def get_method_name(self) -> str:
         return self._method_name
 
-    def get_argument(self):
+    def get_argument(self) -> Any:
         return self._argument
-
-    def get_req_serializer(self):
-        return self._req_serializer
-
-    def get_res_serializer(self):
-        return self._res_serializer

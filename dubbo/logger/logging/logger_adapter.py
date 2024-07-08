@@ -20,13 +20,13 @@ import sys
 from functools import cache
 from logging import handlers
 
-from dubbo.common.constants import common_constants
-from dubbo.common.constants import logger_constants as logger_constants
-from dubbo.common.constants.logger_constants import FileRotateType, Level
-from dubbo.common.url import URL
+from dubbo.constants import common_constants
+from dubbo.constants import logger_constants as logger_constants
+from dubbo.constants.logger_constants import FileRotateType, Level
 from dubbo.logger import Logger, LoggerAdapter
 from dubbo.logger.logging import formatter
 from dubbo.logger.logging.logger import LoggingLogger
+from dubbo.url import URL
 
 """This module provides the logging logger implementation. -> logging module"""
 

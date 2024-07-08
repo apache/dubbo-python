@@ -16,9 +16,11 @@
 import inspect
 import sys
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 from dubbo.logger import LoggerAdapter
+from dubbo.protocol.protocol import Protocol
+from dubbo.remoting.transporter import Transporter
 
 
 @dataclass
@@ -38,9 +40,18 @@ class ExtendedRegistry:
 protocolRegistry = ExtendedRegistry(
     interface=Protocol,
     impls={
-        "tri": "dubbo.protocol.triple.triple_protocol.TripleProtocol",
+        "tri": "dubbo.protocol.triple.tri_protocol.TripleProtocol",
     },
 )
+
+"""Transporter registry."""
+transporterRegistry = ExtendedRegistry(
+    interface=Transporter,
+    impls={
+        "aio": "dubbo.remoting.aio.aio_transporter.AioTransporter",
+    },
+)
+
 
 """LoggerAdapter registry."""
 loggerAdapterRegistry = ExtendedRegistry(

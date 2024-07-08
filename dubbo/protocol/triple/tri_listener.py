@@ -13,16 +13,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from dubbo.common.url import URL
-from dubbo.logger.logger_factory import loggerFactory
-from dubbo.protocol.invoker import Invoker
-from dubbo.protocol.protocol import Protocol
+from typing import List, Tuple
 
-logger = loggerFactory.get_logger(__name__)
+from dubbo.remoting.aio.h2_stream import Stream
 
 
-class TripleProtocol(Protocol):
+class TriClientStreamListener(Stream.Listener):
 
-    def refer(self, url: URL) -> Invoker:
+    def on_headers(self, headers: List[Tuple[str, str]]) -> None:
+        pass
 
+    def on_data(self, data: bytes) -> None:
+        pass
+
+    def on_complete(self) -> None:
+        pass
+
+    def on_reset(self, err_code: int) -> None:
         pass

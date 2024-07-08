@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import copy
 from typing import Any, Dict, Optional
 from urllib import parse
 
@@ -21,7 +22,7 @@ class URL:
     """
     URL - Uniform Resource Locator.
     Args:
-        protocol (str): The protocol of the URL.
+        scheme (str): The protocol of the URL.
         host (str): The host of the URL.
         port (int): The port number of the URL.
         username (str): The username for URL authentication.
@@ -39,7 +40,7 @@ class URL:
 
     def __init__(
         self,
-        protocol: str,
+        scheme: str,
         host: str,
         port: int = 0,
         username: str = "",
@@ -48,7 +49,7 @@ class URL:
         parameters: Optional[Dict[str, str]] = None,
         attributes: Optional[Dict[str, Any]] = None,
     ):
-        self._protocol = protocol
+        self._scheme = scheme
         self._host = host
         self._port = port
         # location -> host:port
@@ -60,24 +61,24 @@ class URL:
         self._attributes = attributes or {}
 
     @property
-    def protocol(self) -> str:
+    def scheme(self) -> str:
         """
         Gets the protocol of the URL.
 
         Returns:
             str: The protocol of the URL.
         """
-        return self._protocol
+        return self._scheme
 
-    @protocol.setter
-    def protocol(self, protocol: str) -> None:
+    @scheme.setter
+    def scheme(self, scheme: str) -> None:
         """
         Sets the protocol of the URL.
 
         Args:
-            protocol (str): The protocol to set.
+            scheme (str): The protocol to set.
         """
-        self._protocol = protocol
+        self._scheme = scheme
 
     @property
     def location(self) -> str:
@@ -272,7 +273,7 @@ class URL:
             str: The generated URL string.
         """
         # Set protocol
-        url = f"{self.protocol}://" if self.protocol else ""
+        url = f"{self.scheme}://" if self.scheme else ""
         # Set auth
         if self.username:
             url += f"{self.username}"
@@ -292,6 +293,23 @@ class URL:
         if encode:
             url = parse.quote(url)
         return url
+
+    def clone(self) -> "URL":
+        """
+        Clones the URL object. Ignores the attributes.
+
+        Returns:
+            URL: The cloned URL object.
+        """
+        return URL(
+            self.scheme,
+            self.host,
+            self.port,
+            self.username,
+            self.password,
+            self.path,
+            copy.deepcopy(self.parameters),
+        )
 
     def __str__(self) -> str:
         """

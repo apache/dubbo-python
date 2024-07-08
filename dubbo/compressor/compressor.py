@@ -15,7 +15,27 @@
 # limitations under the License.
 
 
+class Compressor:
+
+    def compress(self, data: bytes) -> bytes:
+        """
+        Compress the data
+        Args:
+            data (bytes): Data to compress
+        Returns:
+            bytes: Compressed data
+        """
+        raise NotImplementedError("compress() is not implemented.")
+
+
 class DeCompressor:
 
     def decompress(self, data: bytes) -> bytes:
-        pass
+        """
+        Decompress the data
+        Args:
+            data (bytes): Data to decompress
+        Returns:
+            bytes: Decompressed data
+        """
+        raise NotImplementedError("decompress() is not implemented.")

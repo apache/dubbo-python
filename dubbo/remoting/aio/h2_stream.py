@@ -17,12 +17,8 @@ import asyncio
 from typing import List, Optional, Tuple
 
 from dubbo.logger.logger_factory import loggerFactory
-from dubbo.remoting.aio.h2_frame import (
-    DATA_COMPLETED_FRAME,
-    H2Frame,
-    H2FrameType,
-    H2FrameUtils,
-)
+from dubbo.remoting.aio.h2_frame import (DATA_COMPLETED_FRAME, H2Frame,
+                                         H2FrameType, H2FrameUtils)
 
 logger = loggerFactory.get_logger(__name__)
 
@@ -220,20 +216,29 @@ class Stream:
 
     Args:
            stream_id (int): The stream identifier.
-           protocol (H2Protocol): The protocol instance used to send frames.
+           listener (Stream.Listener): The listener for the stream to handle the received frames.
            loop (asyncio.AbstractEventLoop): The asyncio event loop.
+           protocol (H2Protocol): The protocol instance used to send frames.
 
     """
 
-    def __init__(self, stream_id: int, protocol, loop: asyncio.AbstractEventLoop):
+    def __init__(
+        self,
+        stream_id: int,
+        listener: "Stream.Listener",
+        loop: asyncio.AbstractEventLoop,
+        protocol,
+    ):
         # import here to avoid circular import
         from dubbo.remoting.aio.h2_protocol import H2Protocol
 
-        # The protocol.
-        self._protocol: H2Protocol = protocol
-
         # The stream ID.
         self._stream_id: int = stream_id
+        # The listener for the stream to handle the received frames.
+        self._listener: "Stream.Listener" = listener
+
+        # The protocol.
+        self._protocol: H2Protocol = protocol
 
         # The asyncio event loop.
         self._loop = loop
@@ -268,17 +273,10 @@ class Stream:
                 self._stream_id, _headers, _end_stream
             )
             self._stream_frame_control.put_headers(headers_frame)
-            if end_stream:
-                # The data is completed.
-                self._stream_frame_control.put_data(DATA_COMPLETED_FRAME)
 
         self._loop.call_soon_threadsafe(_inner_send_headers, headers, end_stream)
-
-    def close(self) -> None:
-        """
-        Close the stream by cancelling the frame sender loop.
-        """
-        self._stream_frame_control.cancel()
+        # Try to close the stream
+        self.try_close()
 
     def send_data(self, data: bytes, end_stream: bool = False) -> None:
         """
@@ -289,7 +287,6 @@ class Stream:
             end_stream (bool): Whether to end the stream after sending this frame.
         """
         if self._send_completed:
-            logger.info("Send completed.")
             return
         else:
             self._send_completed = end_stream
@@ -301,6 +298,18 @@ class Stream:
             self._stream_frame_control.put_data(data_frame)
 
         self._loop.call_soon_threadsafe(_inner_send_data, data, end_stream)
+        # Try to close the stream
+        self.try_close()
+
+    def send_data_completed(self) -> None:
+        """
+        Indicates that the data frame has been fully sent, but other frames (such as trailers) may still need to be sent.
+        """
+
+        def _inner_send_data_completed():
+            self._stream_frame_control.put_data(DATA_COMPLETED_FRAME)
+
+        self._loop.call_soon_threadsafe(_inner_send_data_completed)
 
     def send_reset(self, error_code: int) -> None:
         """
@@ -322,6 +331,9 @@ class Stream:
 
         self._loop.call_soon_threadsafe(_inner_send_reset, error_code)
 
+        # Close the stream immediately.
+        self.close()
+
     def receive_headers(self, headers: List[Tuple[str, str]]) -> None:
         """
         Called when a headers frame is received.
@@ -329,7 +341,7 @@ class Stream:
         Args:
             headers (List[Tuple[str, str]]): The headers received.
         """
-        raise NotImplementedError("receive_headers() is not implemented")
+        self._listener.on_headers(headers)
 
     def receive_data(self, data: bytes) -> None:
         """
@@ -338,29 +350,74 @@ class Stream:
         Args:
             data (bytes): The data received.
         """
-        raise NotImplementedError("receive_data() is not implemented")
+        self._listener.on_data(data)
 
     def receive_complete(self) -> None:
         """
         Called when the stream is completed.
         """
         self._receive_completed = True
+        # notify the listener
+        self._listener.on_complete()
+        # Try to close the stream
+        self.try_close()
 
-    def cancel_by_remote(self, err_code: int) -> None:
+    def receive_reset(self, err_code: int) -> None:
         """
         Called when the stream is cancelled by the remote peer.
 
         Args:
             err_code (int): The error code indicating the reason for cancellation.
         """
-        raise NotImplementedError("cancel_by_remote() is not implemented")
+        self._listener.on_reset(err_code)
 
+    def try_close(self) -> None:
+        """
+        Try to close the stream.
+        """
+        if self._send_completed and self._receive_completed:
+            self.close()
 
-class ClientStream(Stream):
-    # TODO implement the ClientStream
-    pass
+    def close(self) -> None:
+        """
+        Close the stream by cancelling the frame sender loop.
+        """
+        self._stream_frame_control.cancel()
 
+    class Listener:
+        """
+        The listener for the stream to handle the received frames.
+        """
 
-class ServerStream(Stream):
-    # TODO implement the ServerStream
-    pass
+        def on_headers(self, headers: List[Tuple[str, str]]) -> None:
+            """
+            Called when a headers frame is received.
+
+            Args:
+                headers (List[Tuple[str, str]]): The headers received.
+            """
+            raise NotImplementedError("on_headers() is not implemented")
+
+        def on_data(self, data: bytes) -> None:
+            """
+            Called when a data frame is received.
+
+            Args:
+                data (bytes): The data received.
+            """
+            raise NotImplementedError("on_data() is not implemented")
+
+        def on_complete(self) -> None:
+            """
+            Called when the stream is completed.
+            """
+            raise NotImplementedError("on_complete() is not implemented")
+
+        def on_reset(self, err_code: int) -> None:
+            """
+            Called when the stream is cancelled by the remote peer.
+
+            Args:
+                err_code (int): The error code indicating the reason for cancellation.
+            """
+            raise NotImplementedError("on_reset() is not implemented")

@@ -15,9 +15,9 @@
 # limitations under the License.
 from typing import Any
 
-from dubbo.common.constants import common_constants
-from dubbo.common.url import URL
+from dubbo.constants import common_constants
 from dubbo.logger.logger_factory import loggerFactory
+from dubbo.url import URL
 
 logger = loggerFactory.get_logger(__name__)
 

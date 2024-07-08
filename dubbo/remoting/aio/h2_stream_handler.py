@@ -16,11 +16,11 @@
 import asyncio
 from concurrent.futures import Future as ThreadingFuture
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from dubbo.logger.logger_factory import loggerFactory
 from dubbo.remoting.aio.h2_frame import H2Frame, H2FrameType
-from dubbo.remoting.aio.h2_stream import ClientStream, ServerStream, Stream
+from dubbo.remoting.aio.h2_stream import Stream
 
 logger = loggerFactory.get_logger(__name__)
 
@@ -42,7 +42,7 @@ class StreamHandler:
         self._protocol: Optional[H2Protocol] = None
 
         # The event loop to run the asynchronous function.
-        self._loop: Optional[asyncio.AbstractEventLoop] = asyncio.get_event_loop()
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
 
         # The streams managed by the handler
         self._streams: Dict[int, Stream] = {}
@@ -59,6 +59,7 @@ class StreamHandler:
         """
         self._loop = loop
         self._protocol = protocol
+        self._streams.clear()
 
     def handle_frame(self, frame: H2Frame) -> None:
         """
@@ -87,18 +88,20 @@ class StreamHandler:
         elif frame_type == H2FrameType.DATA:
             stream.receive_data(frame.data)
         elif frame_type == H2FrameType.RST_STREAM:
-            stream.cancel_by_remote(frame.data)
+            stream.receive_reset(frame.data)
         else:
             logger.debug(f"Unhandled frame: {frame_type}")
 
         if frame.end_stream:
             stream.receive_complete()
 
-    def create(self) -> Stream:
+    def create(self, listener: Stream.Listener) -> Stream:
         """
         Create a new stream. -> Client
+        Args:
+            listener: The listener to the stream.
         Returns:
-            Stream: The stream object.
+            Stream: The new stream.
         """
         raise NotImplementedError("create() is not implemented")
 
@@ -129,33 +132,44 @@ class StreamHandler:
 
 class ClientStreamHandler(StreamHandler):
 
-    def create(self) -> Stream:
+    def create(self, listener: Stream.Listener) -> Stream:
         """
         Create a new stream. -> Client
+        Args:
+            listener: The listener to the stream.
+        Returns:
+            Stream: The new stream.
         """
         # Create a new client stream
         future = ThreadingFuture()
 
-        def _inner_create(future: ThreadingFuture):
+        def _inner_create(_future: ThreadingFuture):
             new_stream_id = self._protocol.conn.get_next_available_stream_id()
-            new_stream = ClientStream(new_stream_id, self._protocol, self._loop)
+            new_stream = Stream(new_stream_id, listener, self._loop, self._protocol)
             self._streams[new_stream_id] = new_stream
-            future.set_result(new_stream)
+            _future.set_result(new_stream)
 
         self._loop.call_soon_threadsafe(_inner_create, future)
+        # Return the stream and the listener
         return future.result()
-
-    # TODO implement ClientStreamHandler...
 
 
 class ServerStreamHandler(StreamHandler):
 
-    def register(self, stream_id: int) -> None:
+    def register(self, stream_id: int) -> Tuple[Stream, Stream.Listener]:
         """
         Register the stream to the handler -> Server
+        Args:
+            stream_id: The stream ID.
+        Returns:
+            (Stream, Stream.Listener): A tuple containing the stream and the listener.
         """
-        new_stream = ServerStream(stream_id, self._protocol, self._loop)
+        # TODO Create a new listener
+        new_listener = Stream.Listener()
+        new_stream = Stream(stream_id, new_listener, self._loop, self._protocol)
         self._streams[stream_id] = new_stream
+        # Return the stream and the listener
+        return new_stream, new_listener
 
     def handle_frame(self, frame: H2Frame) -> None:
         # Register the stream if it is a HEADERS frame and the stream is not registered.
@@ -165,5 +179,3 @@ class ServerStreamHandler(StreamHandler):
         ):
             self.register(frame.stream_id)
         super().handle_frame(frame)
-
-    # TODO implement ServerStreamHandler...

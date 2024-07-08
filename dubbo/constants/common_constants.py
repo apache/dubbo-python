@@ -14,24 +14,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dubbo.callable.rpc_callable import RpcCallable
-from dubbo.common.url import URL
-from dubbo.protocol.invoker import Invoker
+
+TRIPLE = "tri"
+
+LOCALHOST_KEY = "localhost"
+LOCALHOST_VALUE = "127.0.0.1"
+
+CALL_KEY = "call"
+CALL_UNARY = "unary"
+CALL_CLIENT_STREAM = "client-stream"
+CALL_SERVER_STREAM = "server-stream"
+CALL_BIDI_STREAM = "bidi-stream"
+
+SERIALIZATION = "serialization"
+DESERIALIZATION = "deserialization"
+COMPRESSOR_KEY = "compressor"
+DECOMPRESSOR_KEY = "decompressor"
+
+SERVER_KEY = "server"
+METHOD_KEY = "method"
+
+TRUE_VALUE = "true"
+FALSE_VALUE = "false"
 
 
-class RpcCallableFactory:
-
-    def get_proxy(self, url: URL, invoker: Invoker) -> RpcCallable:
-        """
-        Get the callable object.
-        Args:
-            url (URL): The URL.
-            invoker (Invoker): The invoker object.
-        """
-        raise NotImplementedError("get_proxy() is not implemented")
-
-
-class DefaultRpcCallableFactory(RpcCallableFactory):
-
-    def get_proxy(self, url: URL, invoker: Invoker) -> RpcCallable:
-        pass
+# Constants about the transporter.
+TRANSPORTER_KEY = "transporter"
+TRANSPORTER_SIDE_KEY = "transporter-side"
+TRANSPORTER_SIDE_SERVER = "server"
+TRANSPORTER_SIDE_CLIENT = "client"
+TRANSPORTER_ON_CONN_CLOSE_KEY = "on-conn-close"

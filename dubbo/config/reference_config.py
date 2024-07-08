@@ -16,12 +16,11 @@
 import threading
 from typing import List, Optional
 
-from dubbo.callable.rpc_callable_factory import RpcCallableFactory
-from dubbo.common.url import URL
 from dubbo.config.method_config import MethodConfig
 from dubbo.extension import extensionLoader
 from dubbo.protocol.invoker import Invoker
 from dubbo.protocol.protocol import Protocol
+from dubbo.url import URL
 
 
 class ReferenceConfig:
@@ -37,12 +36,10 @@ class ReferenceConfig:
     _destroyed: bool
     _protocol_ins: Optional[Protocol]
     _invoker: Optional[Invoker]
-    _proxy_factory: Optional[RpcCallableFactory]
 
     def __init__(
         self,
         interface_name: str,
-        check: bool,
         url: str,
         protocol: str,
         methods: Optional[List[MethodConfig]] = None,
@@ -55,6 +52,8 @@ class ReferenceConfig:
         self._protocol = protocol
         self._methods = methods or []
 
+        self._invoker = None
+
     def get_invoker(self):
         if not self._invoker:
             self._do_init()
@@ -66,9 +65,12 @@ class ReferenceConfig:
                 return
 
             clazz = extensionLoader.get_extension(Protocol, self._protocol)
-            self._protocol_ins = clazz()
+            # TODO set real URL
+            self._protocol_ins = clazz(URL.value_of(self._url))
             self._create_invoker()
             self._initialized = True
 
     def _create_invoker(self):
-        self._invoker = self._protocol_ins.refer(URL.value_of(self._url))
+        url = URL.value_of(self._url)
+        url.path = self._interface_name
+        self._invoker = self._protocol_ins.refer(url)
