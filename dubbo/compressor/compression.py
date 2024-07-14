@@ -13,21 +13,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import List, Tuple
-
-from dubbo.remoting.aio.h2_stream import Stream
 
 
-class TriClientStreamListener(Stream.Listener):
+class Compression:
+    """
+    Compression interface
+    """
 
-    def on_headers(self, headers: List[Tuple[str, str]]) -> None:
-        pass
+    def compress(self, data: bytes) -> bytes:
+        """
+        Compress the data
+        Args:
+            data (bytes): Data to compress
+        Returns:
+            bytes: Compressed data
+        """
+        raise NotImplementedError("compress() is not implemented.")
 
-    def on_data(self, data: bytes) -> None:
-        pass
-
-    def on_complete(self) -> None:
-        pass
-
-    def on_reset(self, err_code: int) -> None:
-        pass
+    def decompress(self, data: bytes) -> bytes:
+        """
+        Decompress the data
+        Args:
+            data (bytes): Data to decompress
+        Returns:
+            bytes: Decompressed data
+        """
+        raise NotImplementedError("decompress() is not implemented.")

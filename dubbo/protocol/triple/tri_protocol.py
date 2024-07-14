@@ -21,8 +21,8 @@ from dubbo.logger.logger_factory import loggerFactory
 from dubbo.protocol.invoker import Invoker
 from dubbo.protocol.protocol import Protocol
 from dubbo.protocol.triple.tri_invoker import TriInvoker
-from dubbo.remoting.aio.h2_protocol import H2Protocol
-from dubbo.remoting.aio.h2_stream_handler import ClientStreamHandler
+from dubbo.remoting.aio.http2.protocol import Http2Protocol
+from dubbo.remoting.aio.http2.stream_handler import StreamClientMultiplexHandler
 from dubbo.remoting.transporter import Transporter
 from dubbo.url import URL
 
@@ -45,14 +45,17 @@ class TripleProtocol(Protocol):
         Args:
             url (URL): The URL of the remote service.
         """
-        # TODO Simply create it here, then set up a more appropriate configuration that can be configured by the user
         executor = ThreadPoolExecutor(thread_name_prefix="dubbo-tri-")
         # Create a stream handler
-        stream_handler = ClientStreamHandler(executor)
-        url.add_attribute("protocol", H2Protocol)
-        url.add_attribute("stream_handler", stream_handler)
+        stream_multiplexer = StreamClientMultiplexHandler(executor)
+        # set stream handler and protocol
+        url.attributes[common_constants.TRANSPORTER_STREAM_HANDLER_KEY] = (
+            stream_multiplexer
+        )
+        url.attributes[common_constants.TRANSPORTER_PROTOCOL_KEY] = Http2Protocol
+
         # Create a client
         client = self._transporter.connect(url)
-        invoker = TriInvoker(url, client, stream_handler)
+        invoker = TriInvoker(url, client, stream_multiplexer)
         self._invokers.append(invoker)
         return invoker

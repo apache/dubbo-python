@@ -29,7 +29,7 @@ class Result:
         """
         raise NotImplementedError("set_value() is not implemented.")
 
-    def get_value(self) -> Any:
+    def value(self) -> Any:
         """
         Get the value of the result
         """
@@ -43,8 +43,25 @@ class Result:
         """
         raise NotImplementedError("set_exception() is not implemented.")
 
-    def get_exception(self) -> Exception:
+    def exception(self) -> Exception:
         """
         Get the exception to the result
         """
         raise NotImplementedError("get_exception() is not implemented.")
+
+    def add_attachment(self, key: str, value: Any) -> None:
+        """
+        Add an attachment to the result
+        Args:
+            key: Key of the attachment
+            value: Value of the attachment
+        """
+        raise NotImplementedError("add_attachment() is not implemented.")
+
+    def get_attachment(self, key: str) -> Any:
+        """
+        Get an attachment from the result
+        Args:
+            key: Key of the attachment
+        """
+        raise NotImplementedError("get_attachment() is not implemented.")

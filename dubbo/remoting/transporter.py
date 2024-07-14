@@ -20,36 +20,30 @@ class Client:
 
     def __init__(self, url: URL):
         self._url = url
-        # flag to indicate whether the client is opened
-        self._opened = False
-        # flag to indicate whether the client is connected
-        self._connected = False
-        # flag to indicate whether the client is closed
-        self._closed = False
 
-    @property
-    def opened(self):
-        return self._opened
-
-    @property
-    def connected(self):
-        return self._connected
-
-    @property
-    def closed(self):
-        return self._closed
-
-    def open(self):
+    def is_connected(self) -> bool:
         """
-        Open the client.
+        Check if the client is connected.
         """
-        raise NotImplementedError("open() is not implemented.")
+        raise NotImplementedError("is_connected() is not implemented.")
+
+    def is_closed(self) -> bool:
+        """
+        Check if the client is closed.
+        """
+        raise NotImplementedError("is_closed() is not implemented.")
 
     def connect(self):
         """
         Connect to the server.
         """
         raise NotImplementedError("connect() is not implemented.")
+
+    def reconnect(self):
+        """
+        Reconnect to the server.
+        """
+        raise NotImplementedError("reconnect() is not implemented.")
 
     def close(self):
         """

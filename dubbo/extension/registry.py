@@ -18,6 +18,7 @@ import sys
 from dataclasses import dataclass
 from typing import Any
 
+from dubbo.compressor.compression import Compression
 from dubbo.logger import LoggerAdapter
 from dubbo.protocol.protocol import Protocol
 from dubbo.remoting.transporter import Transporter
@@ -43,6 +44,15 @@ protocolRegistry = ExtendedRegistry(
         "tri": "dubbo.protocol.triple.tri_protocol.TripleProtocol",
     },
 )
+
+"""Compression registry."""
+compressionRegistry = ExtendedRegistry(
+    interface=Compression,
+    impls={
+        "gzip": "dubbo.compressor.gzip_compression.GzipCompression",
+    },
+)
+
 
 """Transporter registry."""
 transporterRegistry = ExtendedRegistry(

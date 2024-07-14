@@ -13,7 +13,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import gzip
 
-from dubbo.extension.extension_loader import ExtensionLoader as _ExtensionLoader
+from dubbo.compressor.compression import Compression
 
-extensionLoader = _ExtensionLoader()
+
+class GzipCompression(Compression):
+    """
+    GZIP Compression implementation
+    """
+
+    def compress(self, data: bytes) -> bytes:
+        """
+        Compress the data using GZIP
+        Args:
+            data (bytes): Data to compress
+        Returns:
+            bytes: Compressed data
+        """
+        return gzip.compress(data)
+
+    def decompress(self, data: bytes) -> bytes:
+        """
+        Decompress the data using GZIP
+        Args:
+            data (bytes): Data to decompress
+        Returns:
+            bytes: Decompressed data
+        """
+        return gzip.decompress(data)

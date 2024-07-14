@@ -21,39 +21,34 @@ from dubbo.protocol.invoker import Invoker
 from dubbo.url import URL
 
 
-class RpcCallable:
+class AbstractRpcCallable:
 
     def __init__(self, invoker: Invoker, url: URL):
         self._invoker = invoker
         self._url = url
-        self._service_name = self._url.path or ""
-        self._method_name = self._url.get_parameter(common_constants.METHOD_KEY) or ""
+        self._service_name = self._url.path
+        self._method_name = self._url.get_parameter(common_constants.METHOD_KEY)
         self._call_type = self._url.get_parameter(common_constants.CALL_KEY)
-        self._request_serializer = (
-            self._url.get_attribute(common_constants.SERIALIZATION) or None
-        )
-        self._response_serializer = (
-            self._url.get_attribute(common_constants.DESERIALIZATION) or None
-        )
 
-    def _do_call(self, argument: Any) -> Any:
-        """
-        Real call method.
-        """
-        # Create a new RpcInvocation object.
-        invocation = RpcInvocation(
+        self._serialization = self._url.attributes[common_constants.SERIALIZATION]
+
+    def _create_invocation(self, argument: Any) -> RpcInvocation:
+        return RpcInvocation(
             self._service_name,
             self._method_name,
             argument,
             attributes={
                 common_constants.CALL_KEY: self._call_type,
-                common_constants.SERIALIZATION: self._request_serializer,
-                common_constants.DESERIALIZATION: self._response_serializer,
+                common_constants.SERIALIZATION: self._serialization,
             },
         )
-        # Do invoke.
-        result = self._invoker.invoke(invocation)
-        return result.get_value()
+
+
+class RpcCallable(AbstractRpcCallable):
 
     def __call__(self, argument: Any) -> Any:
-        return self._do_call(argument)
+        # Create a new RpcInvocation
+        invocation = self._create_invocation(argument)
+        # Do invoke.
+        result = self._invoker.invoke(invocation)
+        return result.value()

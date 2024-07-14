@@ -38,11 +38,23 @@ class URL:
     - registry://192.168.1.7:9090/org.apache.dubbo.service1?param1=value1&param2=value2
     """
 
+    __slots__ = [
+        "_scheme",
+        "_host",
+        "_port",
+        "_location",
+        "_username",
+        "_password",
+        "_path",
+        "_parameters",
+        "_attributes",
+    ]
+
     def __init__(
         self,
         scheme: str,
         host: str,
-        port: int = 0,
+        port: Optional[int] = None,
         username: str = "",
         password: str = "",
         path: str = "",
@@ -53,7 +65,7 @@ class URL:
         self._host = host
         self._port = port
         # location -> host:port
-        self._location = f"{host}:{port}" if port > 0 else host
+        self._location = f"{host}:{port}" if port else host
         self._username = username
         self._password = password
         self._path = path
@@ -112,7 +124,7 @@ class URL:
         self._location = f"{host}:{self.port}" if self.port else host
 
     @property
-    def port(self) -> int:
+    def port(self) -> Optional[int]:
         """
         Gets the port of the URL.
 
@@ -129,7 +141,7 @@ class URL:
         Args:
             port (int): The port to set.
         """
-        self._port = max(port, 0)
+        port = port if port > 0 else None
         self._location = f"{self.host}:{port}" if port else self.host
 
     @property
@@ -192,26 +204,6 @@ class URL:
         """
         self._path = path
 
-    @property
-    def parameters(self) -> Dict[str, str]:
-        """
-        Gets the query parameters of the URL.
-
-        Returns:
-            Dict[str, str]: The query parameters of the URL.
-        """
-        return self._parameters
-
-    @parameters.setter
-    def parameters(self, parameters: Dict[str, str]) -> None:
-        """
-        Sets the query parameters of the URL.
-
-        Args:
-            parameters (Dict[str, str]): The query parameters to set.
-        """
-        self._parameters = parameters
-
     def get_parameter(self, key: str) -> Optional[str]:
         """
         Gets a query parameter from the URL.
@@ -243,25 +235,6 @@ class URL:
         """
         return self._attributes
 
-    def add_attribute(self, key: str, value: Any) -> None:
-        """
-        ADDs an attribute to the URL.
-        Args:
-            key (str): The attribute name.
-            value (Any): The attribute value.
-        """
-        self._attributes[key] = value
-
-    def get_attribute(self, key: str) -> Optional[Any]:
-        """
-        Gets an attribute from the URL.
-        Args:
-            key (str): The attribute name.
-        Returns:
-            Any: The attribute value. If the attribute does not exist, returns None.
-        """
-        return self._attributes.get(key, None)
-
     def build_string(self, encode: bool = False) -> str:
         """
         Generates the URL string based on the current components.
@@ -287,12 +260,28 @@ class URL:
         if self.path:
             url += f"{self.path}"
         # Set params
-        if self.parameters:
-            url += "?" + "&".join([f"{k}={v}" for k, v in self.parameters.items()])
+        if self._parameters:
+            url += "?" + "&".join([f"{k}={v}" for k, v in self._parameters.items()])
         # If the URL needs to be encoded, encode it
         if encode:
             url = parse.quote(url)
         return url
+
+    def clone_without_attributes(self) -> "URL":
+        """
+        Clones the URL object without the attributes.
+        Returns:
+            URL: The cloned URL object.
+        """
+        return URL(
+            self.scheme,
+            self.host,
+            self.port,
+            self.username,
+            self.password,
+            self.path,
+            self._parameters.copy(),
+        )
 
     def clone(self) -> "URL":
         """
@@ -308,7 +297,8 @@ class URL:
             self.username,
             self.password,
             self.path,
-            copy.deepcopy(self.parameters),
+            self._parameters.copy(),
+            copy.deepcopy(self._attributes),
         )
 
     def __str__(self) -> str:
@@ -346,7 +336,7 @@ class URL:
 
         protocol = parsed_url.scheme
         host = parsed_url.hostname or ""
-        port = parsed_url.port or 0
+        port = parsed_url.port or None
         username = parsed_url.username or ""
         password = parsed_url.password or ""
         parameters = {k: v[0] for k, v in parse.parse_qs(parsed_url.query).items()}

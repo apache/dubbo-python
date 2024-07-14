@@ -14,9 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import threading
-from typing import List, Optional
+from typing import Optional, Union
 
-from dubbo.config.method_config import MethodConfig
 from dubbo.extension import extensionLoader
 from dubbo.protocol.invoker import Invoker
 from dubbo.protocol.protocol import Protocol
@@ -25,36 +24,24 @@ from dubbo.url import URL
 
 class ReferenceConfig:
 
-    _interface_name: str
-    _check: bool
-    _url: str
-    _protocol: str
-    _methods: List[MethodConfig]
+    __slots__ = [
+        "_initialized",
+        "_global_lock",
+        "_service_name",
+        "_url",
+        "_protocol",
+        "_invoker",
+    ]
 
-    _global_lock: threading.Lock
-    _initialized: bool
-    _destroyed: bool
-    _protocol_ins: Optional[Protocol]
-    _invoker: Optional[Invoker]
-
-    def __init__(
-        self,
-        interface_name: str,
-        url: str,
-        protocol: str,
-        methods: Optional[List[MethodConfig]] = None,
-    ):
+    def __init__(self, url: Union[str, URL], service_name: str):
         self._initialized = False
         self._global_lock = threading.Lock()
-        self._destroyed = False
-        self._interface_name = interface_name
-        self._url = url
-        self._protocol = protocol
-        self._methods = methods or []
+        self._url: URL = url if isinstance(url, URL) else URL.value_of(url)
+        self._service_name = service_name
+        self._protocol: Optional[Protocol] = None
+        self._invoker: Optional[Invoker] = None
 
-        self._invoker = None
-
-    def get_invoker(self):
+    def get_invoker(self) -> Invoker:
         if not self._invoker:
             self._do_init()
         return self._invoker
@@ -63,14 +50,13 @@ class ReferenceConfig:
         with self._global_lock:
             if self._initialized:
                 return
-
-            clazz = extensionLoader.get_extension(Protocol, self._protocol)
-            # TODO set real URL
-            self._protocol_ins = clazz(URL.value_of(self._url))
+            # Get the interface name from the URL path
+            self._url.path = self._service_name
+            self._protocol = extensionLoader.get_extension(Protocol, self._url.scheme)(
+                self._url
+            )
             self._create_invoker()
             self._initialized = True
 
     def _create_invoker(self):
-        url = URL.value_of(self._url)
-        url.path = self._interface_name
-        self._invoker = self._protocol_ins.refer(url)
+        self._invoker = self._protocol.refer(self._url)

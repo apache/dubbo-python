@@ -14,13 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import concurrent
 import threading
-import uuid
-from typing import Optional, Tuple
+from typing import Optional
 
 from dubbo.constants import common_constants
 from dubbo.logger.logger_factory import loggerFactory
-from dubbo.remoting.aio import loop
+from dubbo.remoting.aio.event_loop import EventLoop
+from dubbo.remoting.aio.exceptions import RemotingException
 from dubbo.remoting.transporter import Client, Server, Transporter
 from dubbo.url import URL
 
@@ -38,99 +39,102 @@ class AioClient(Client):
         super().__init__(url)
 
         # Set the side of the transporter to client.
+        self._protocol = None
+
+        # the event to indicate the connection status of the client
+        self._connect_event = threading.Event()
+        # the event to indicate the close status of the client
+        self._close_future = concurrent.futures.Future()
+        self._closing = False
+
         self._url.add_parameter(
             common_constants.TRANSPORTER_SIDE_KEY,
             common_constants.TRANSPORTER_SIDE_CLIENT,
         )
+        self._url.attributes["connect-event"] = self._connect_event
+        self._url.attributes["close-future"] = self._close_future
 
-        # Set connection closed function
-        def _connection_lost(exc: Optional[Exception]) -> None:
-            if exc:
-                logger.error("Connection lost", exc)
-            self._connected = False
+        self._event_loop: Optional[EventLoop] = None
 
-        self._url.add_attribute(
-            common_constants.TRANSPORTER_ON_CONN_CLOSE_KEY, _connection_lost
-        )
-
-        self._thread: Optional[threading.Thread] = None
-        self._loop: Optional[asyncio.AbstractEventLoop] = None
-
-        self._transport: Optional[asyncio.Transport] = None
-        self._protocol: Optional[asyncio.Protocol] = None
-
-        self._closing = False
-
-        # Open and connect the client
-        self.open()
+        # connect to the server
         self.connect()
 
-    def open(self) -> None:
+    def is_connected(self) -> bool:
         """
-        Create a thread and run asyncio loop in it.
+        Check if the client is connected.
         """
-        self._loop, self._thread = loop.start_loop_in_thread(
-            f"dubbo-aio-client-{uuid.uuid4()}"
-        )
-        self._opened = True
+        return self._connect_event.is_set()
 
-    def _create_protocol(self) -> asyncio.Protocol:
+    def is_closed(self) -> bool:
         """
-        Create the protocol.
+        Check if the client is closed.
         """
+        return self._close_future.done() or self._closing
 
-        return self._url.attributes["protocol"](self._url)
+    def reconnect(self) -> None:
+        """
+        Reconnect to the server.
+        """
+        self.close()
+        self._connect_event = threading.Event()
+        self._close_future = concurrent.futures.Future()
+        self.connect()
 
     def connect(self) -> None:
         """
         Connect to the server.
         """
-        if not self._opened:
-            raise RuntimeError("The client is not opened yet.")
-        elif self._closed:
-            raise RuntimeError("The client is closed.")
+        if self.is_connected():
+            return
+        elif self.is_closed():
+            raise RemotingException("The client is closed.")
 
-        async def _inner_connect() -> Tuple[asyncio.Transport, asyncio.Protocol]:
+        async def _inner_operate():
             running_loop = asyncio.get_running_loop()
-
-            transport, protocol = await running_loop.create_connection(
-                lambda: self._url.get_attribute("protocol")(self._url),
+            _, protocol = await running_loop.create_connection(
+                lambda: self._url.attributes[common_constants.TRANSPORTER_PROTOCOL_KEY](
+                    self._url
+                ),
                 self._url.host,
                 self._url.port,
             )
-            return transport, protocol
+            return protocol
 
-        future = asyncio.run_coroutine_threadsafe(_inner_connect(), self._loop)
+        # Run the connection logic in the event loop.
+        if self._event_loop:
+            self._event_loop.stop()
+        self._event_loop = EventLoop()
+        self._event_loop.start()
 
+        future = asyncio.run_coroutine_threadsafe(
+            _inner_operate(), self._event_loop.loop
+        )
         try:
-            self._transport, self._protocol = future.result()
-            self._connected = True
-            logger.info(
-                f"Connected to the server: ip={self._url.host}, port={self._url.port}"
-            )
-        except Exception as e:
-            logger.error(f"Failed to connect to the server: {e}")
-            raise e
+            self._protocol = future.result()
+        except ConnectionRefusedError as e:
+            raise RemotingException("Failed to connect to the server") from e
 
     def close(self) -> None:
         """
-        Close the client. just stop the transport.
+        Close the client.
         """
-        if not self._opened:
-            raise RuntimeError("The client is not opened yet.")
-        if self._closing or self._closed:
+        if self.is_closed():
             return
 
         self._closing = True
-
         try:
-            # Close the transport
-            self._transport.close()
-            self._connected = False
-            # Stop the loop
-            loop.stop_loop_in_thread(self._loop, self._thread)
-            self._closed = True
+            self._protocol.close()
+            if exc := self._protocol.exception():
+                raise RemotingException(f"Failed to close the client: {exc}")
+        except Exception as e:
+            if not isinstance(e, RemotingException):
+                # Ignore the exception if it is not RemotingException
+                pass
+            else:
+                # Re-raise RemotingException
+                raise e
         finally:
+            self._event_loop.stop()
             self._closing = False
 
 
@@ -142,11 +146,6 @@ class AioServer(Server):
     def __init__(self, url: URL):
         self._url = url
         # Set the side of the transporter to server.
-        self._url.add_parameter(
-            common_constants.TRANSPORTER_SIDE_KEY,
-            common_constants.TRANSPORTER_SIDE_SERVER,
-        )
-        # TODO implement the server
 
 
 class AioTransporter(Transporter):

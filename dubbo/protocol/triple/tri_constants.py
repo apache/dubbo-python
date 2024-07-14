@@ -13,29 +13,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import enum
 
 
-class Compressor:
+class TripleHeaderName(enum.Enum):
+    """
+    Header names used in triple protocol.
+    """
 
-    def compress(self, data: bytes) -> bytes:
-        """
-        Compress the data
-        Args:
-            data (bytes): Data to compress
-        Returns:
-            bytes: Compressed data
-        """
-        raise NotImplementedError("compress() is not implemented.")
+    CONTENT_TYPE = "content-type"
+
+    TE = "te"
+    GRPC_STATUS = "grpc-status"
+    GRPC_MESSAGE = "grpc-message"
+    GRPC_STATUS_DETAILS_BIN = "grpc-status-details-bin"
+    GRPC_TIMEOUT = "grpc-timeout"
+    GRPC_ENCODING = "grpc-encoding"
+    GRPC_ACCEPT_ENCODING = "grpc-accept-encoding"
 
 
-class DeCompressor:
+class TripleHeaderValue(enum.Enum):
+    """
+    Header values used in triple protocol.
+    """
 
-    def decompress(self, data: bytes) -> bytes:
-        """
-        Decompress the data
-        Args:
-            data (bytes): Data to decompress
-        Returns:
-            bytes: Decompressed data
-        """
-        raise NotImplementedError("decompress() is not implemented.")
+    TRAILERS = "trailers"
+    HTTP = "http"
+    HTTPS = "https"
+    APPLICATION_GRPC_PROTO = "application/grpc+proto"
+    APPLICATION_GRPC = "application/grpc"

@@ -18,9 +18,9 @@ from typing import Optional
 from dubbo.callable import RpcCallable
 from dubbo.config import ConsumerConfig, ReferenceConfig
 from dubbo.constants import common_constants
-from dubbo.constants.type_constants import (DeserializingFunction,
-                                            SerializingFunction)
+from dubbo.constants.type_constants import DeserializingFunction, SerializingFunction
 from dubbo.logger.logger_factory import loggerFactory
+from dubbo.serialization import Serialization
 
 logger = loggerFactory.get_logger(__name__)
 
@@ -42,7 +42,10 @@ class Client:
         response_deserializer: Optional[DeserializingFunction] = None,
     ) -> RpcCallable:
         return self._callable(
-            common_constants.CALL_UNARY, method_name, request_serializer, response_deserializer
+            common_constants.CALL_UNARY,
+            method_name,
+            request_serializer,
+            response_deserializer,
         )
 
     def client_stream(
@@ -106,11 +109,12 @@ class Client:
         url = invoker.get_url()
 
         # clone url
-        url = url.clone()
+        url = url.clone_without_attributes()
         url.add_parameter(common_constants.METHOD_KEY, method_name)
         url.add_parameter(common_constants.CALL_KEY, call_type)
-        url.add_attribute(common_constants.SERIALIZATION, request_serializer)
-        url.add_attribute(common_constants.DESERIALIZATION, response_deserializer)
+
+        serialization = Serialization(request_serializer, response_deserializer)
+        url.attributes[common_constants.SERIALIZATION] = serialization
 
         # create callable
         return RpcCallable(invoker, url)

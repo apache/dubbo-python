@@ -16,7 +16,7 @@
 import struct
 from typing import Optional
 
-from dubbo.compressor.compressor import Compressor, DeCompressor
+from dubbo.compressor.compression import Compression
 
 """
     gRPC Message Format Diagram
@@ -42,29 +42,28 @@ class TriEncoder:
     This class is responsible for encoding the gRPC message format, which is composed of a header and payload.
 
     Args:
-        compressor (Optional[Compressor]): The compressor to use for compressing the payload.
+        compression (Optional[Compression]): The Compression to use for compressing or decompressing the payload.
     """
 
     HEADER_LENGTH: int = 5
     COMPRESSED_FLAG_MASK: int = 1
 
-    def __init__(self, compressor: Optional[Compressor]):
-        self._compressor: Optional[Compressor] = compressor
+    def __init__(self, compression: Optional[Compression]):
+        self._compression = compression
 
-    def encode(self, message: bytes, compressed: bool = False) -> bytes:
+    def encode(self, message: bytes) -> bytes:
         """
         Encode the message into the gRPC message format.
 
         Args:
             message (bytes): The message to encode.
-            compressed (bool): Whether to compress the message.
         Returns:
             bytes: The encoded message in gRPC format.
         """
-        compressed_flag = COMPRESSED_FLAG_MASK if compressed else 0
-        if compressed:
+        compressed_flag = COMPRESSED_FLAG_MASK if self._compression else 0
+        if self._compression:
             # Compress the payload
-            message = self._compressor.compress(message)
+            message = self._compression.compress(message)
 
         message_length = len(message)
         if message_length > 0xFFFFFFFF:
@@ -82,18 +81,18 @@ class TriDecoder:
 
     Args:
         listener (TriDecoder.Listener): The listener to deliver the decoded payload to.
-        decompressor (Optional[DeCompressor]): The decompressor to use for decompressing the payload.
+        compression (Optional[Compression]): The Compression to use for compressing or decompressing the payload.
     """
 
     def __init__(
         self,
         listener: "TriDecoder.Listener",
-        decompressor: Optional[DeCompressor],
+        compression: Optional[Compression],
     ):
         # store data for decoding
         self._accumulate = bytearray()
         self._listener = listener
-        self._decompressor = decompressor
+        self._compression = compression
 
         self._state = HEADER
         self._required_length = HEADER_LENGTH
@@ -107,21 +106,21 @@ class TriDecoder:
         self._closing = False
         self._closed = False
 
-    def decode(self, data: bytes):
+    def decode(self, data: bytes) -> None:
         """
         Process the incoming bytes, decoding the gRPC message and delivering the payload to the listener.
         """
         self._accumulate.extend(data)
         self._do_decode()
 
-    def close(self):
+    def close(self) -> None:
         """
         Close the decoder and listener.
         """
         self._closing = True
         self._do_decode()
 
-    def _do_decode(self):
+    def _do_decode(self) -> None:
         """
         Deliver the accumulated bytes to the listener, processing the header and payload as necessary.
         """
@@ -143,13 +142,13 @@ class TriDecoder:
         finally:
             self._decoding = False
 
-    def _has_enough_bytes(self):
+    def _has_enough_bytes(self) -> bool:
         """
         Check if the accumulated bytes are enough to process the header or payload
         """
         return len(self._accumulate) >= self._required_length
 
-    def _process_header(self):
+    def _process_header(self) -> None:
         """
         Processes the GRPC compression header which is composed of the compression flag and the outer frame length.
         """
@@ -165,7 +164,7 @@ class TriDecoder:
         # Continue to process the payload
         self._state = PAYLOAD
 
-    def _process_payload(self):
+    def _process_payload(self) -> None:
         """
         Processes the GRPC message body, which depending on frame header flags may be compressed.
         """
@@ -174,7 +173,7 @@ class TriDecoder:
 
         if self._compressed:
             # Decompress the payload
-            payload_bytes = self._decompressor.decompress(payload_bytes)
+            payload_bytes = self._compression.decompress(payload_bytes)
 
         self._listener.on_message(bytes(payload_bytes))
 

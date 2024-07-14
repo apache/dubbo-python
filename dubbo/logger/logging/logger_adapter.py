@@ -43,7 +43,7 @@ class LoggingLoggerAdapter(LoggerAdapter):
     def __init__(self, config: URL):
         super().__init__(config)
         # Set level
-        level_name = config.parameters.get(logger_constants.LEVEL_KEY)
+        level_name = config.get_parameter(logger_constants.LEVEL_KEY)
         self._level = Level.get_level(level_name) if level_name else Level.DEBUG
         self._update_level()
 
@@ -58,25 +58,21 @@ class LoggingLoggerAdapter(LoggerAdapter):
         logger_instance = logging.getLogger(name)
         # clean up handlers
         logger_instance.handlers.clear()
-        parameters = self._config.parameters
 
         # Add console handler
-        if parameters.get(
-            logger_constants.CONSOLE_ENABLED_KEY,
-            logger_constants.DEFAULT_CONSOLE_ENABLED_VALUE,
-        ).lower() == common_constants.TRUE_VALUE or bool(
+        console_enabled = self._config.get_parameter(
+            logger_constants.CONSOLE_ENABLED_KEY
+        ) or str(logger_constants.DEFAULT_CONSOLE_ENABLED_VALUE)
+        if console_enabled.lower() == common_constants.TRUE_VALUE or bool(
             sys.stdout and sys.stdout.isatty()
         ):
             logger_instance.addHandler(self._get_console_handler())
 
         # Add file handler
-        if (
-            parameters.get(
-                logger_constants.FILE_ENABLED_KEY,
-                logger_constants.DEFAULT_FILE_ENABLED_VALUE,
-            ).lower()
-            == common_constants.TRUE_VALUE
-        ):
+        file_enabled = self._config.get_parameter(
+            logger_constants.FILE_ENABLED_KEY
+        ) or str(logger_constants.DEFAULT_FILE_ENABLED_VALUE)
+        if file_enabled.lower() == common_constants.TRUE_VALUE:
             logger_instance.addHandler(self._get_file_handler())
 
         if not logger_instance.handlers:
@@ -104,33 +100,36 @@ class LoggingLoggerAdapter(LoggerAdapter):
         Returns:
             logging.Handler: The file handler.
         """
-        parameters = self._config.parameters
         # Get file path
-        file_dir = parameters[logger_constants.FILE_DIR_KEY]
+        file_dir = self._config.get_parameter(logger_constants.FILE_DIR_KEY)
         file_name = (
-            parameters[logger_constants.FILE_NAME_KEY]
+            self._config.get_parameter(logger_constants.FILE_NAME_KEY)
             or logger_constants.DEFAULT_FILE_NAME_VALUE
         )
         file_path = os.path.join(file_dir, file_name)
         # Get backup count
         backup_count = int(
-            parameters.get(logger_constants.FILE_BACKUP_COUNT_KEY)
+            self._config.get_parameter(logger_constants.FILE_BACKUP_COUNT_KEY)
             or logger_constants.DEFAULT_FILE_BACKUP_COUNT_VALUE
         )
         # Get rotate type
-        rotate_type = parameters.get(logger_constants.FILE_ROTATE_KEY)
+        rotate_type = self._config.get_parameter(logger_constants.FILE_ROTATE_KEY)
 
         # Set file Handler
         file_handler: logging.Handler
         if rotate_type == FileRotateType.SIZE.value:
             # Set RotatingFileHandler
-            max_bytes = int(parameters[logger_constants.FILE_MAX_BYTES_KEY])
+            max_bytes = int(
+                self._config.get_parameter(logger_constants.FILE_MAX_BYTES_KEY)
+            )
             file_handler = handlers.RotatingFileHandler(
                 file_path, maxBytes=max_bytes, backupCount=backup_count
             )
         elif rotate_type == FileRotateType.TIME.value:
             # Set TimedRotatingFileHandler
-            interval = int(parameters[logger_constants.FILE_INTERVAL_KEY])
+            interval = int(
+                self._config.get_parameter(logger_constants.FILE_INTERVAL_KEY)
+            )
             file_handler = handlers.TimedRotatingFileHandler(
                 file_path, interval=interval, backupCount=backup_count
             )
