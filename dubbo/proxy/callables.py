@@ -24,8 +24,6 @@ from dubbo.proxy import RpcCallable
 
 __all__ = ["MultipleRpcCallable"]
 
-from dubbo.proxy.handlers import RpcServiceHandler
-
 
 class MultipleRpcCallable(RpcCallable):
     """

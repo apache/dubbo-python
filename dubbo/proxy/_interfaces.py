@@ -16,10 +16,6 @@
 
 import abc
 
-from dubbo.common import URL
-from dubbo.protocol import Invoker
-from dubbo.proxy.handlers import RpcServiceHandler
-
 __all__ = ["RpcCallable"]
 
 
