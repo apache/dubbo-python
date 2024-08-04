@@ -13,17 +13,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import threading
-from typing import Dict
 
-from dubbo.constants import logger_constants as logger_constants
-from dubbo.constants.logger_constants import Level
-from dubbo.logger.logger import Logger, LoggerAdapter
-from dubbo.logger.logging.logger_adapter import LoggingLoggerAdapter
-from dubbo.url import URL
+import threading
+from typing import Dict, Optional
+
+from dubbo.common import SingletonBase
+from dubbo.common.url import URL
+from dubbo.logger import Logger, LoggerAdapter
+from dubbo.logger import constants as logger_constants
+from dubbo.logger.constants import Level
+
+__all__ = ["LoggerFactory"]
 
 # Default logger config with default values.
-_default_config = URL(
+_DEFAULT_CONFIG = URL(
     scheme=logger_constants.DEFAULT_DRIVER_VALUE,
     host=logger_constants.DEFAULT_LEVEL_VALUE.value,
     parameters={
@@ -39,85 +42,86 @@ _default_config = URL(
 )
 
 
-class _LoggerFactory:
+class LoggerFactory(SingletonBase):
     """
-    LoggerFactory
-    Attributes:
-        _logger_adapter (LoggerAdapter): The logger adapter.
-        _loggers (Dict[str, Logger]): The logger cache.
-        _loggers_lock (threading.Lock): The logger lock to protect the logger cache.
+    Singleton factory class for creating and managing loggers.
+
+    This class ensures a single instance of the logger factory, provides methods to set and get
+    logger adapters, and manages logger instances.
     """
 
-    _logger_adapter = LoggingLoggerAdapter(_default_config)
-    _loggers: Dict[str, Logger] = {}
-    _loggers_lock = threading.Lock()
+    def __init__(self):
+        """
+        Initialize the logger factory.
 
-    @classmethod
-    def set_logger_adapter(cls, logger_adapter) -> None:
+        This method sets up the internal lock, logger adapter, and logger cache.
         """
-        Set logger config
+        self._lock = threading.RLock()
+        self._logger_adapter: Optional[LoggerAdapter] = None
+        self._loggers: Dict[str, Logger] = {}
+
+    def _ensure_logger_adapter(self) -> None:
         """
-        cls._logger_adapter = logger_adapter
-        cls._loggers_lock.acquire()
-        try:
-            # update all loggers
-            cls._loggers = {
-                name: cls._logger_adapter.get_logger(name) for name in cls._loggers
+        Ensure the logger adapter is set.
+
+        If the logger adapter is not set, this method sets it to the default adapter.
+        """
+        if not self._logger_adapter:
+            with self._lock:
+                if not self._logger_adapter:
+                    # Import here to avoid circular imports
+                    from dubbo.logger.logging.logger_adapter import LoggingLoggerAdapter
+
+                    self.set_logger_adapter(LoggingLoggerAdapter(_DEFAULT_CONFIG))
+
+    def set_logger_adapter(self, logger_adapter: LoggerAdapter) -> None:
+        """
+        Set the logger adapter.
+
+        :param logger_adapter: The new logger adapter to use.
+        :type logger_adapter: LoggerAdapter
+        """
+        with self._lock:
+            self._logger_adapter = logger_adapter
+            # Update all loggers
+            self._loggers = {
+                name: self._logger_adapter.get_logger(name) for name in self._loggers
             }
-        finally:
-            cls._loggers_lock.release()
 
-    @classmethod
-    def get_logger_adapter(cls) -> LoggerAdapter:
+    def get_logger_adapter(self) -> LoggerAdapter:
         """
-        Get the logger adapter.
+        Get the current logger adapter.
 
-        Returns:
-            LoggerAdapter: The current logger adapter.
+        :return: The current logger adapter.
+        :rtype: LoggerAdapter
         """
-        return cls._logger_adapter
+        self._ensure_logger_adapter()
+        return self._logger_adapter
 
-    @classmethod
-    def get_logger(cls, name: str) -> Logger:
+    def get_logger(self, name: str) -> Logger:
         """
         Get the logger by name.
 
-        Args:
-            name (str): The name of the logger to retrieve.
-
-        Returns:
-            Logger: An instance of the requested logger.
+        :param name: The name of the logger to retrieve.
+        :type name: str
+        :return: An instance of the requested logger.
+        :rtype: Logger
         """
-        logger = cls._loggers.get(name)
+        self._ensure_logger_adapter()
+        logger = self._loggers.get(name)
         if not logger:
-            cls._loggers_lock.acquire()
-            try:
-                if name not in cls._loggers:
-                    cls._loggers[name] = cls._logger_adapter.get_logger(name)
-                logger = cls._loggers[name]
-            finally:
-                cls._loggers_lock.release()
+            with self._lock:
+                if name not in self._loggers:
+                    self._loggers[name] = self._logger_adapter.get_logger(name)
+                logger = self._loggers[name]
         return logger
 
-    @classmethod
-    def get_level(cls) -> Level:
+    def get_level(self) -> Level:
         """
         Get the current logging level.
 
-        Returns:
-            Level: The current logging level.
+        :return: The current logging level.
+        :rtype: Level
         """
-        return cls._logger_adapter.level
-
-    @classmethod
-    def set_level(cls, level: Level) -> None:
-        """
-        Set the logging level.
-
-        Args:
-            level (Level): The logging level to set.
-        """
-        cls._logger_adapter.level = level
-
-
-loggerFactory = _LoggerFactory
+        self._ensure_logger_adapter()
+        return self._logger_adapter.level

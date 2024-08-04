@@ -13,10 +13,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import time
+
+from typing import Union
 
 from dubbo.remoting.aio.http2.headers import Http2Headers
 from dubbo.remoting.aio.http2.registries import Http2ErrorCode, Http2FrameType
+
+__all__ = [
+    "Http2Frame",
+    "HeadersFrame",
+    "DataFrame",
+    "WindowUpdateFrame",
+    "ResetStreamFrame",
+    "UserActionFrames",
+]
 
 
 class Http2Frame:
@@ -27,6 +37,8 @@ class Http2Frame:
         frame_type: The frame type.
     """
 
+    __slots__ = ["stream_id", "frame_type", "end_stream", "timestamp"]
+
     def __init__(
         self,
         stream_id: int,
@@ -36,12 +48,6 @@ class Http2Frame:
         self.stream_id = stream_id
         self.frame_type = frame_type
         self.end_stream = end_stream
-
-        # The timestamp of the generated frame. -> comparison for Priority Queue
-        self.timestamp = int(round(time.time() * 1000))
-
-    def __lt__(self, other: "Http2Frame") -> bool:
-        return self.timestamp <= other.timestamp
 
     def __repr__(self) -> str:
         return f"<Http2Frame stream_id={self.stream_id} frame_type={self.frame_type} end_stream={self.end_stream}>"
@@ -55,6 +61,8 @@ class HeadersFrame(Http2Frame):
         headers: The HTTP/2 headers.
         end_stream: Whether the stream is ended.
     """
+
+    __slots__ = ["headers"]
 
     def __init__(
         self,
@@ -75,20 +83,22 @@ class DataFrame(Http2Frame):
     Args:
         stream_id: The stream identifier.
         data: The data to send.
-        data_length: The amount of data received that counts against the flow control window.
+        length: The amount of data received that counts against the flow control window.
         end_stream: Whether the stream
     """
+
+    __slots__ = ["data", "padding"]
 
     def __init__(
         self,
         stream_id: int,
         data: bytes,
-        data_length: int,
+        length: int,
         end_stream: bool = False,
     ):
         super().__init__(stream_id, Http2FrameType.DATA, end_stream)
         self.data = data
-        self.data_length = data_length
+        self.padding = length
 
     def __repr__(self) -> str:
         return f"<DataFrame stream_id={self.stream_id} data={self.data} end_stream={self.end_stream}>"
@@ -101,6 +111,8 @@ class WindowUpdateFrame(Http2Frame):
         stream_id: The stream identifier.
         delta: The number of bytes by which to increase the flow control window.
     """
+
+    __slots__ = ["delta"]
 
     def __init__(
         self,
@@ -122,6 +134,8 @@ class ResetStreamFrame(Http2Frame):
         error_code: The error code that indicates the reason for closing the stream.
     """
 
+    __slots__ = ["error_code"]
+
     def __init__(
         self,
         stream_id: int,
@@ -132,3 +146,6 @@ class ResetStreamFrame(Http2Frame):
 
     def __repr__(self) -> str:
         return f"<ResetStreamFrame stream_id={self.stream_id} error_code={self.error_code}>"
+
+
+UserActionFrames = Union[HeadersFrame, DataFrame, ResetStreamFrame]

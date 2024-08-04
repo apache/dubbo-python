@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import enum
 from collections import OrderedDict
 from typing import List, Optional, Tuple, Union
@@ -32,10 +33,19 @@ class PseudoHeaderName(enum.Enum):
     # Response pseudo-headers
     STATUS = ":status"
 
+    @classmethod
+    def to_list(cls) -> List[str]:
+        """
+        Get all pseudo-header names.
+        Returns:
+            The pseudo-header names list.
+        """
+        return [header.value for header in cls]
 
-class MethodType(enum.Enum):
+
+class HttpMethod(enum.Enum):
     """
-    HTTP/2 method types.
+    HTTP method types.
     """
 
     GET = "GET"
@@ -54,50 +64,29 @@ class Http2Headers:
     HTTP/2 headers.
     """
 
+    __slots__ = ["_headers"]
+
     def __init__(self):
         self._headers: OrderedDict[str, Optional[str]] = OrderedDict()
         self._init()
 
     def _init(self):
         # keep the order of headers
-        self._headers[PseudoHeaderName.SCHEME.value] = None
-        self._headers[PseudoHeaderName.METHOD.value] = None
-        self._headers[PseudoHeaderName.AUTHORITY.value] = None
-        self._headers[PseudoHeaderName.PATH.value] = None
-        self._headers[PseudoHeaderName.STATUS.value] = None
+        self._headers = {name: "" for name in PseudoHeaderName.to_list()}
 
     def add(self, name: str, value: str) -> None:
-        """
-        Add a header.
-        Args:
-            name: The header name.
-            value: The header value.
-        """
-        self._headers[name] = value
+        self._headers[name] = str(value)
 
-    def get(self, name: str) -> Optional[str]:
-        """
-        Get the header value.
-        Returns:
-            The header value: If the header exists, return the value. Otherwise, return None.
-        """
-        return self._headers.get(name, None)
+    def get(self, name: str, default: Optional[str] = None) -> Optional[str]:
+        return self._headers.get(name, default)
 
     @property
     def method(self) -> Optional[str]:
-        """
-        Get the method.
-        """
         return self.get(PseudoHeaderName.METHOD.value)
 
     @method.setter
-    def method(self, value: Union[MethodType, str]) -> None:
-        """
-        Set the method.
-        Args:
-            value: The method value.
-        """
-        if isinstance(value, MethodType):
+    def method(self, value: Union[HttpMethod, str]) -> None:
+        if isinstance(value, HttpMethod):
             value = value.value
         else:
             value = value.upper()
@@ -105,77 +94,61 @@ class Http2Headers:
 
     @property
     def scheme(self) -> Optional[str]:
-        """
-        Get the scheme.
-        """
         return self.get(PseudoHeaderName.SCHEME.value)
 
     @scheme.setter
     def scheme(self, value: str) -> None:
-        """
-        Set the scheme.
-        Args:
-            value: The scheme value.
-        """
         self.add(PseudoHeaderName.SCHEME.value, value)
 
     @property
     def authority(self) -> Optional[str]:
-        """
-        Get the authority.
-        """
         return self.get(PseudoHeaderName.AUTHORITY.value)
 
     @authority.setter
     def authority(self, value: str) -> None:
-        """
-        Set the authority.
-        Args:
-            value: The authority value.
-        """
         self.add(PseudoHeaderName.AUTHORITY.value, value)
 
     @property
     def path(self) -> Optional[str]:
-        """
-        Get the path.
-        """
         return self.get(PseudoHeaderName.PATH.value)
 
     @path.setter
     def path(self, value: str) -> None:
-        """
-        Set the path.
-        Args:
-            value: The path value.
-        """
         self.add(PseudoHeaderName.PATH.value, value)
 
     @property
     def status(self) -> Optional[str]:
-        """
-        Get the status code.
-        """
         return self.get(PseudoHeaderName.STATUS.value)
 
     @status.setter
     def status(self, value: str) -> None:
-        """
-        Set the status code.
-        Args:
-            value: The status code.
-        """
         self.add(PseudoHeaderName.STATUS.value, value)
 
     def to_list(self) -> List[Tuple[str, str]]:
         """
         Convert the headers to a list. The list contains all non-None headers.
-        Returns:
-            The headers list.
+        :return: The headers list.
+        :rtype: List[Tuple[str, str]]
         """
-        return [
-            (name, value) for name, value in self._headers.items() if value is not None
-        ]
+        headers = []
+        pseudo_headers = PseudoHeaderName.to_list()
+        for name, value in list(self._headers.items()):
+            if name in pseudo_headers and value == "":
+                continue
+            headers.append((str(name), str(value) or ""))
+        return headers
+
+    def to_dict(self) -> OrderedDict[str, str]:
+        """
+        Convert the headers to an ordered dict.
+        :return: The headers' dict.
+        :rtype: OrderedDict[str, Optional[str]]
+        """
+        headers_dict = OrderedDict()
+        for key, value in self._headers.items():
+            if value is not None and value != "":
+                headers_dict[key] = value
+        return headers_dict
 
     def __repr__(self) -> str:
         return f"<Http2Headers {self.to_list()}>"
@@ -190,6 +163,5 @@ class Http2Headers:
             The Http2Headers object.
         """
         http2_headers = cls()
-        for name, value in headers:
-            http2_headers.add(name, value)
+        http2_headers._headers = dict(headers)
         return http2_headers

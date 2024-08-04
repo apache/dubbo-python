@@ -15,16 +15,20 @@
 # limitations under the License.
 
 
-class RemotingException(RuntimeError):
+class RemotingError(Exception):
     """
     The base exception class for remoting.
     """
 
     def __init__(self, message: str):
         super().__init__(message)
+        self.message = message
+
+    def __str__(self):
+        return self.message
 
 
-class ProtocolException(RemotingException):
+class ProtocolError(RemotingError):
     """
     The exception class for protocol errors.
     """
@@ -33,7 +37,7 @@ class ProtocolException(RemotingException):
         super().__init__(message)
 
 
-class StreamException(RemotingException):
+class StreamError(RemotingError):
     """
     The exception class for stream errors.
     """

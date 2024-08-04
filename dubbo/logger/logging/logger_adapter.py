@@ -20,58 +20,67 @@ import sys
 from functools import cache
 from logging import handlers
 
-from dubbo.constants import common_constants
-from dubbo.constants import logger_constants as logger_constants
-from dubbo.constants.logger_constants import FileRotateType, Level
+from dubbo.common import constants as common_constants
+from dubbo.common.url import URL
 from dubbo.logger import Logger, LoggerAdapter
+from dubbo.logger import constants as logger_constants
+from dubbo.logger.constants import LEVEL_KEY, Level
 from dubbo.logger.logging import formatter
 from dubbo.logger.logging.logger import LoggingLogger
-from dubbo.url import URL
 
 """This module provides the logging logger implementation. -> logging module"""
+
+__all__ = ["LoggingLoggerAdapter"]
 
 
 class LoggingLoggerAdapter(LoggerAdapter):
     """
-    Internal logger adapter.Responsible for logging logger creation, encapsulated the logging.getLogger() method
-    Attributes:
-        _level(Level): logging level.
+    Internal logger adapter responsible for creating loggers and encapsulating the logging.getLogger() method.
     """
 
-    _level: Level
+    __slots__ = ["_level"]
 
     def __init__(self, config: URL):
+        """
+        Initialize the LoggingLoggerAdapter with the given configuration.
+
+        :param config: The configuration URL for the logger adapter.
+        :type config: URL
+        """
         super().__init__(config)
         # Set level
-        level_name = config.get_parameter(logger_constants.LEVEL_KEY)
+        level_name = config.parameters.get(LEVEL_KEY)
         self._level = Level.get_level(level_name) if level_name else Level.DEBUG
         self._update_level()
 
     def get_logger(self, name: str) -> Logger:
         """
         Create a logger instance by name.
-        Args:
-            name (str): The logger name.
-        Returns:
-            Logger: The InternalLogger instance.
+
+        :param name: The logger name.
+        :type name: str
+        :return: An instance of the logger.
+        :rtype: Logger
         """
         logger_instance = logging.getLogger(name)
         # clean up handlers
         logger_instance.handlers.clear()
 
         # Add console handler
-        console_enabled = self._config.get_parameter(
-            logger_constants.CONSOLE_ENABLED_KEY
-        ) or str(logger_constants.DEFAULT_CONSOLE_ENABLED_VALUE)
+        console_enabled = self._config.parameters.get(
+            logger_constants.CONSOLE_ENABLED_KEY,
+            str(logger_constants.DEFAULT_CONSOLE_ENABLED_VALUE),
+        )
         if console_enabled.lower() == common_constants.TRUE_VALUE or bool(
             sys.stdout and sys.stdout.isatty()
         ):
             logger_instance.addHandler(self._get_console_handler())
 
         # Add file handler
-        file_enabled = self._config.get_parameter(
-            logger_constants.FILE_ENABLED_KEY
-        ) or str(logger_constants.DEFAULT_FILE_ENABLED_VALUE)
+        file_enabled = self._config.parameters.get(
+            logger_constants.FILE_ENABLED_KEY,
+            str(logger_constants.DEFAULT_FILE_ENABLED_VALUE),
+        )
         if file_enabled.lower() == common_constants.TRUE_VALUE:
             logger_instance.addHandler(self._get_file_handler())
 
@@ -84,9 +93,10 @@ class LoggingLoggerAdapter(LoggerAdapter):
     @cache
     def _get_console_handler(self) -> logging.StreamHandler:
         """
-        Get the console handler.(Avoid duplicate consoleHandler creation with @cache)
-        Returns:
-            logging.StreamHandler: The console handler.
+        Get the console handler, avoiding duplicate creation with caching.
+
+        :return: The console handler.
+        :rtype: logging.StreamHandler
         """
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter.ColorFormatter())
@@ -96,39 +106,41 @@ class LoggingLoggerAdapter(LoggerAdapter):
     @cache
     def _get_file_handler(self) -> logging.Handler:
         """
-        Get the file handler.(Avoid duplicate fileHandler creation with @cache)
-        Returns:
-            logging.Handler: The file handler.
+        Get the file handler, avoiding duplicate creation with caching.
+
+        :return: The file handler.
+        :rtype: logging.Handler
         """
         # Get file path
-        file_dir = self._config.get_parameter(logger_constants.FILE_DIR_KEY)
-        file_name = (
-            self._config.get_parameter(logger_constants.FILE_NAME_KEY)
-            or logger_constants.DEFAULT_FILE_NAME_VALUE
+        file_dir = self._config.parameters.get(logger_constants.FILE_DIR_KEY)
+        file_name = self._config.parameters.get(
+            logger_constants.FILE_NAME_KEY, logger_constants.DEFAULT_FILE_NAME_VALUE
         )
         file_path = os.path.join(file_dir, file_name)
         # Get backup count
         backup_count = int(
-            self._config.get_parameter(logger_constants.FILE_BACKUP_COUNT_KEY)
-            or logger_constants.DEFAULT_FILE_BACKUP_COUNT_VALUE
+            self._config.parameters.get(
+                logger_constants.FILE_BACKUP_COUNT_KEY,
+                logger_constants.DEFAULT_FILE_BACKUP_COUNT_VALUE,
+            )
         )
         # Get rotate type
-        rotate_type = self._config.get_parameter(logger_constants.FILE_ROTATE_KEY)
+        rotate_type = self._config.parameters.get(logger_constants.FILE_ROTATE_KEY)
 
         # Set file Handler
         file_handler: logging.Handler
-        if rotate_type == FileRotateType.SIZE.value:
+        if rotate_type == logger_constants.FileRotateType.SIZE.value:
             # Set RotatingFileHandler
             max_bytes = int(
-                self._config.get_parameter(logger_constants.FILE_MAX_BYTES_KEY)
+                self._config.parameters.get(logger_constants.FILE_MAX_BYTES_KEY)
             )
             file_handler = handlers.RotatingFileHandler(
                 file_path, maxBytes=max_bytes, backupCount=backup_count
             )
-        elif rotate_type == FileRotateType.TIME.value:
+        elif rotate_type == logger_constants.FileRotateType.TIME.value:
             # Set TimedRotatingFileHandler
             interval = int(
-                self._config.get_parameter(logger_constants.FILE_INTERVAL_KEY)
+                self._config.parameters.get(logger_constants.FILE_INTERVAL_KEY)
             )
             file_handler = handlers.TimedRotatingFileHandler(
                 file_path, interval=interval, backupCount=backup_count
@@ -145,8 +157,9 @@ class LoggingLoggerAdapter(LoggerAdapter):
     def level(self) -> Level:
         """
         Get the logging level.
-        Returns:
-            Level: The logging level.
+
+        :return: The current logging level.
+        :rtype: Level
         """
         return self._level
 
@@ -154,8 +167,9 @@ class LoggingLoggerAdapter(LoggerAdapter):
     def level(self, level: Level) -> None:
         """
         Set the logging level.
-        Args:
-            level (Level): The logging level.
+
+        :param level: The logging level to set.
+        :type level: Level
         """
         if level == self._level or level is None:
             return
@@ -164,10 +178,9 @@ class LoggingLoggerAdapter(LoggerAdapter):
 
     def _update_level(self):
         """
-        Update log level.
-        Complete the log level change by modifying the root logger
+        Update the log level by modifying the root logger.
         """
         # Get the root logger
         root_logger = logging.getLogger()
         # Set the logging level
-        root_logger.setLevel(self._level.name)
+        root_logger.setLevel(self._level.value)

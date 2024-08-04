@@ -14,4 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .logger import Logger, LoggerAdapter
+from ._interfaces import Logger, LoggerAdapter
+from .logger_factory import LoggerFactory as _LoggerFactory
+
+# The logger factory instance.
+loggerFactory = _LoggerFactory()
+
+__all__ = ["Logger", "LoggerAdapter", "loggerFactory"]

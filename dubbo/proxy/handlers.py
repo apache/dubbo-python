@@ -1,0 +1,136 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from typing import Callable, Dict, Optional
+
+from dubbo.common import constants as common_constants
+from dubbo.common.types import DeserializingFunction, SerializingFunction
+
+__all__ = ["RpcMethodHandler", "RpcServiceHandler"]
+
+
+class RpcMethodHandler:
+    """
+    Rpc method handler
+    """
+
+    def __init__(
+        self,
+        call_type: str,
+        behavior: Callable,
+        request_serializer: Optional[SerializingFunction] = None,
+        response_serializer: Optional[DeserializingFunction] = None,
+    ):
+        """
+        Initialize the RpcMethodHandler
+        :param call_type: the call type.
+        :type call_type: str
+        :param behavior: the behavior of the method.
+        :type behavior: Callable
+        :param request_serializer: the request serializer.
+        :type request_serializer: Optional[SerializingFunction]
+        :param response_serializer: the response serializer.
+        :type response_serializer: Optional[DeserializingFunction]
+        """
+        self.call_type = call_type
+        self.behavior = behavior
+        self.request_serializer = request_serializer
+        self.response_serializer = response_serializer
+
+    @classmethod
+    def unary(
+        cls,
+        behavior: Callable,
+        request_serializer: Optional[SerializingFunction] = None,
+        response_serializer: Optional[DeserializingFunction] = None,
+    ):
+        """
+        Create a unary method handler
+        """
+        return cls(
+            common_constants.UNARY_CALL_VALUE,
+            behavior,
+            request_serializer,
+            response_serializer,
+        )
+
+    @classmethod
+    def client_stream(
+        cls,
+        behavior: Callable,
+        request_serializer: SerializingFunction,
+        response_serializer: DeserializingFunction,
+    ):
+        """
+        Create a client stream method handler
+        """
+        return cls(
+            common_constants.CLIENT_STREAM_CALL_VALUE,
+            behavior,
+            request_serializer,
+            response_serializer,
+        )
+
+    @classmethod
+    def server_stream(
+        cls,
+        behavior: Callable,
+        request_serializer: SerializingFunction,
+        response_serializer: DeserializingFunction,
+    ):
+        """
+        Create a server stream method handler
+        """
+        return cls(
+            common_constants.SERVER_STREAM_CALL_VALUE,
+            behavior,
+            request_serializer,
+            response_serializer,
+        )
+
+    @classmethod
+    def bi_stream(
+        cls,
+        behavior: Callable,
+        request_serializer: SerializingFunction,
+        response_serializer: DeserializingFunction,
+    ):
+        """
+        Create a bidi stream method handler
+        """
+        return cls(
+            common_constants.BI_STREAM_CALL_VALUE,
+            behavior,
+            request_serializer,
+            response_serializer,
+        )
+
+
+class RpcServiceHandler:
+    """
+    Rpc service handler
+    """
+
+    def __init__(self, service_name: str, method_handlers: Dict[str, RpcMethodHandler]):
+        """
+        Initialize the RpcServiceHandler
+        :param service_name: the name of the service.
+        :type service_name: str
+        :param method_handlers: the method handlers.
+        :type method_handlers: Dict[str, RpcMethodHandler]
+        """
+        self.service_name = service_name
+        self.method_handlers = method_handlers

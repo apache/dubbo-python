@@ -13,27 +13,43 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
-import concurrent
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 from h2.config import H2Configuration
 from h2.connection import H2Connection
 
-from dubbo.constants import common_constants
-from dubbo.logger.logger_factory import loggerFactory
-from dubbo.remoting.aio.exceptions import ProtocolException
-from dubbo.remoting.aio.http2.controllers import FollowController
-from dubbo.remoting.aio.http2.frames import Http2Frame
+from dubbo.common import constants as common_constants
+from dubbo.common.url import URL
+from dubbo.common.utils import EventHelper, FutureHelper
+from dubbo.logger import loggerFactory
+from dubbo.remoting.aio import constants as h2_constants
+from dubbo.remoting.aio.exceptions import ProtocolError
+from dubbo.remoting.aio.http2.controllers import RemoteFlowController
+from dubbo.remoting.aio.http2.frames import UserActionFrames
 from dubbo.remoting.aio.http2.registries import Http2FrameType
 from dubbo.remoting.aio.http2.stream import Http2Stream
 from dubbo.remoting.aio.http2.utils import Http2EventUtils
-from dubbo.url import URL
 
-logger = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger(__name__)
+
+__all__ = ["Http2Protocol"]
 
 
 class Http2Protocol(asyncio.Protocol):
+    """
+    HTTP/2 protocol implementation.
+    """
+
+    __slots__ = [
+        "_url",
+        "_loop",
+        "_h2_connection",
+        "_transport",
+        "_flow_controller",
+        "_stream_handler",
+    ]
 
     def __init__(self, url: URL):
         self._url = url
@@ -41,8 +57,8 @@ class Http2Protocol(asyncio.Protocol):
 
         # Create the H2 state machine
         side_client = (
-            self._url.get_parameter(common_constants.TRANSPORTER_SIDE_KEY)
-            == common_constants.TRANSPORTER_SIDE_CLIENT
+            self._url.parameters.get(common_constants.SIDE_KEY)
+            == common_constants.CLIENT_VALUE
         )
         h2_config = H2Configuration(client_side=side_client, header_encoding="utf-8")
         self._h2_connection: H2Connection = H2Connection(config=h2_config)
@@ -50,11 +66,9 @@ class Http2Protocol(asyncio.Protocol):
         # The transport instance
         self._transport: Optional[asyncio.Transport] = None
 
-        self._follow_controller: Optional[FollowController] = None
+        self._flow_controller: Optional[RemoteFlowController] = None
 
-        self._stream_handler = self._url.attributes[
-            common_constants.TRANSPORTER_STREAM_HANDLER_KEY
-        ]
+        self._stream_handler = self._url.attributes[h2_constants.STREAM_HANDLER_KEY]
 
     def connection_made(self, transport: asyncio.Transport):
         """
@@ -69,47 +83,32 @@ class Http2Protocol(asyncio.Protocol):
         self._transport.write(self._h2_connection.data_to_send())
 
         # Create and start the follow controller
-        self._follow_controller = FollowController(
-            self._loop, self._h2_connection, self._transport
+        self._flow_controller = RemoteFlowController(
+            self._h2_connection, self._transport, self._loop
         )
-        self._follow_controller.start()
 
         # Initialize the stream handler
         self._stream_handler.do_init(self._loop, self)
 
-        # Notify the connection is established
-        if event := self._url.attributes.get("connect-event"):
-            event.set()
-
-    def get_next_stream_id(
-        self, future: Union[asyncio.Future, concurrent.futures.Future]
-    ) -> None:
+    def get_next_stream_id(self, future) -> None:
         """
         Create a new stream.(thread-safe)
         Args:
             future: The future to set the stream identifier.
         """
 
-        def _inner_operation(_future: Union[asyncio.Future, concurrent.futures.Future]):
+        def _inner_operation(_future):
             stream_id = self._h2_connection.get_next_available_stream_id()
-            _future.set_result(stream_id)
+            FutureHelper.set_result(_future, stream_id)
 
         self._loop.call_soon_threadsafe(_inner_operation, future)
 
-    def write(self, frame: Http2Frame, stream: Http2Stream) -> asyncio.Event:
-        """
-        Send the HTTP/2 frame.(thread-safe)
-        Args:
-            frame: The HTTP/2 frame.
-            stream: The HTTP/2 stream.
-        Returns:
-            The event to be set after sending the frame.
-        """
-        event = asyncio.Event()
-        self._loop.call_soon_threadsafe(self._send_frame, frame, stream, event)
-        return event
-
-    def _send_frame(self, frame: Http2Frame, stream: Http2Stream, event: asyncio.Event):
+    def send_frame(
+        self,
+        frame: UserActionFrames,
+        stream: Http2Stream,
+        event: Optional[asyncio.Event] = None,
+    ):
         """
         Send the HTTP/2 frame.(thread-unsafe)
         Args:
@@ -123,13 +122,11 @@ class Http2Protocol(asyncio.Protocol):
                 frame.stream_id, frame.headers.to_list(), frame.end_stream, event
             )
         elif frame_type == Http2FrameType.DATA:
-            self._follow_controller.send_data(
-                stream, frame.data, frame.end_stream, event
-            )
+            self._flow_controller.write_data(stream, frame, event)
         elif frame_type == Http2FrameType.RST_STREAM:
             self._send_reset_frame(frame.stream_id, frame.error_code.value, event)
         else:
-            logger.warning(f"Unhandled frame: {frame}")
+            _LOGGER.warning(f"Unhandled frame: {frame}")
 
     def _send_headers_frame(
         self,
@@ -148,8 +145,7 @@ class Http2Protocol(asyncio.Protocol):
         """
         self._h2_connection.send_headers(stream_id, headers, end_stream=end_stream)
         self._transport.write(self._h2_connection.data_to_send())
-        if event:
-            event.set()
+        EventHelper.set(event)
 
     def _send_reset_frame(
         self, stream_id: int, error_code: int, event: Optional[asyncio.Event] = None
@@ -163,8 +159,7 @@ class Http2Protocol(asyncio.Protocol):
         """
         self._h2_connection.reset_stream(stream_id, error_code)
         self._transport.write(self._h2_connection.data_to_send())
-        if event:
-            event.set()
+        EventHelper.set(event)
 
     def data_received(self, data):
         events = self._h2_connection.receive_data(data)
@@ -175,9 +170,7 @@ class Http2Protocol(asyncio.Protocol):
                 if frame is not None:
                     if frame.frame_type == Http2FrameType.WINDOW_UPDATE:
                         # Because flow control may be at the connection level, it is handled here
-                        self._follow_controller.increment_flow_control_window(
-                            frame.stream_id
-                        )
+                        self._flow_controller.release_flow_control(frame)
                     else:
                         self._stream_handler.handle_frame(frame)
 
@@ -185,11 +178,23 @@ class Http2Protocol(asyncio.Protocol):
                 # 1. Events that are handled automatically by the H2 library (e.g. RemoteSettingsChanged, PingReceived).
                 #    -> We just need to send it.
                 # 2. Events that are not implemented or do not require attention. -> We'll ignore it for now.
-                if outbound_data := self._h2_connection.data_to_send():
+                outbound_data = self._h2_connection.data_to_send()
+                if outbound_data:
                     self._transport.write(outbound_data)
 
         except Exception as e:
-            raise ProtocolException("Failed to process the Http/2 event.") from e
+            raise ProtocolError("Failed to process the Http/2 event.") from e
+
+    def ack_received_data(self, stream_id: int, padding: int):
+        """
+        Acknowledge the received data.
+        Args:
+            stream_id: The stream identifier.
+            padding: The amount of data received that counts against the flow control window.
+        """
+
+        self._h2_connection.acknowledge_received_data(padding, stream_id)
+        self._transport.write(self._h2_connection.data_to_send())
 
     def close(self):
         """
@@ -204,10 +209,11 @@ class Http2Protocol(asyncio.Protocol):
         """
         Called when the connection is lost.
         """
-        self._follow_controller.stop()
+        self._flow_controller.close()
         # Notify the connection is established
-        if future := self._url.attributes.get("close-future"):
+        future = self._url.attributes.get(h2_constants.CLOSE_FUTURE_KEY)
+        if future:
             if exc:
-                future.set_exception(exc)
+                FutureHelper.set_exception(future, exc)
             else:
-                future.set_result(None)
+                FutureHelper.set_result(future, None)

@@ -13,23 +13,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
 from concurrent import futures
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
-from dubbo.logger.logger_factory import loggerFactory
-from dubbo.remoting.aio.exceptions import ProtocolException
-from dubbo.remoting.aio.http2.frames import Http2Frame
+from dubbo.logger import loggerFactory
+from dubbo.remoting.aio.exceptions import ProtocolError
+from dubbo.remoting.aio.http2.frames import UserActionFrames
 from dubbo.remoting.aio.http2.registries import Http2FrameType
-from dubbo.remoting.aio.http2.stream import Http2Stream, StreamListener
+from dubbo.remoting.aio.http2.stream import DefaultHttp2Stream, Http2Stream
 
-logger = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger(__name__)
+
+_all__ = [
+    "StreamMultiplexHandler",
+    "StreamClientMultiplexHandler",
+    "StreamServerMultiplexHandler",
+]
 
 
 class StreamMultiplexHandler:
     """
     The StreamMultiplexHandler class is responsible for managing the HTTP/2 streams.
     """
+
+    __slots__ = ["_loop", "_protocol", "_streams", "_executor"]
 
     def __init__(self, executor: Optional[futures.ThreadPoolExecutor] = None):
         # Import the Http2Protocol class here to avoid circular imports.
@@ -39,7 +48,7 @@ class StreamMultiplexHandler:
         self._protocol: Optional[Http2Protocol] = None
 
         # The map of stream_id to stream.
-        self._streams: Optional[Dict[int, Http2Stream]] = None
+        self._streams: Optional[Dict[int, DefaultHttp2Stream]] = None
 
         # The executor for handling received frames.
         self._executor = executor
@@ -55,7 +64,7 @@ class StreamMultiplexHandler:
         self._protocol = protocol
         self._streams = {}
 
-    def put_stream(self, stream_id: int, stream: Http2Stream) -> None:
+    def put_stream(self, stream_id: int, stream: DefaultHttp2Stream) -> None:
         """
         Put the stream into the stream map.
         Args:
@@ -64,7 +73,7 @@ class StreamMultiplexHandler:
         """
         self._streams[stream_id] = stream
 
-    def get_stream(self, stream_id: int) -> Optional[Http2Stream]:
+    def get_stream(self, stream_id: int) -> Optional[DefaultHttp2Stream]:
         """
         Get the stream by stream identifier.
         Args:
@@ -82,27 +91,21 @@ class StreamMultiplexHandler:
         """
         self._streams.pop(stream_id, None)
 
-    def handle_frame(self, frame: Http2Frame) -> None:
+    def handle_frame(self, frame: UserActionFrames) -> None:
         """
         Handle the HTTP/2 frame.
         Args:
             frame: The HTTP/2 frame.
         """
-        if stream := self._streams.get(frame.stream_id):
-            # Handle the frame in the executor.
-            self._handle_frame_in_executor(stream, frame)
+        stream = self._streams.get(frame.stream_id)
+        if stream:
+            # It must be ensured that the event loop is not blocked,
+            # and if there is a blocking operation, the executor must be used.
+            stream.receive_frame(frame)
         else:
-            logger.warning(
+            _LOGGER.warning(
                 f"Stream {frame.stream_id} not found. Ignoring frame {frame}"
             )
-
-    def _handle_frame_in_executor(self, stream: Http2Stream, frame: Http2Frame) -> None:
-        """
-        Handle the HTTP/2 frame in the executor.
-        Args:
-            frame: The HTTP/2 frame.
-        """
-        self._loop.run_in_executor(self._executor, stream.receive_frame, frame)
 
     def destroy(self) -> None:
         """
@@ -118,24 +121,27 @@ class StreamClientMultiplexHandler(StreamMultiplexHandler):
     The StreamClientMultiplexHandler class is responsible for managing the HTTP/2 streams on the client side.
     """
 
-    def create(self, listener: StreamListener) -> Http2Stream:
+    def create(self, listener: Http2Stream.Listener) -> DefaultHttp2Stream:
         """
         Create a new stream.
-        Returns:
-            The created stream.
+        :param listener: The stream listener.
+        :type listener: Http2Stream.Listener
+        :return: The stream.
+        :rtype: DefaultHttp2Stream
         """
         future = futures.Future()
         self._protocol.get_next_stream_id(future)
         try:
             # block until the stream_id is created
             stream_id = future.result()
-            self._streams[stream_id] = Http2Stream(
-                stream_id, listener, self._loop, self._protocol
+            new_stream = DefaultHttp2Stream(
+                stream_id, listener, self._loop, self._protocol, self._executor
             )
+            self.put_stream(stream_id, new_stream)
         except Exception as e:
-            raise ProtocolException("Failed to create stream.") from e
+            raise ProtocolError("Failed to create stream.") from e
 
-        return self._streams[stream_id]
+        return new_stream
 
 
 class StreamServerMultiplexHandler(StreamMultiplexHandler):
@@ -143,23 +149,35 @@ class StreamServerMultiplexHandler(StreamMultiplexHandler):
     The StreamServerMultiplexHandler class is responsible for managing the HTTP/2 streams on the server side.
     """
 
-    def register(self, stream_id: int) -> Http2Stream:
+    __slots__ = ["_listener_factory"]
+
+    def __init__(
+        self,
+        listener_factory: Callable[[], Http2Stream.Listener],
+        executor: Optional[futures.ThreadPoolExecutor] = None,
+    ):
+        super().__init__(executor)
+        self._listener_factory = listener_factory
+
+    def register(self, stream_id: int) -> DefaultHttp2Stream:
         """
         Register the stream.
-        Args:
-            stream_id: The stream identifier.
-        Returns:
-            The created stream.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :return: The stream.
+        :rtype: DefaultHttp2Stream
         """
-        stream = Http2Stream(stream_id, StreamListener(), self._loop, self._protocol)
-        self._streams[stream_id] = stream
-        return stream
+        stream_listener = self._listener_factory()
+        new_stream = DefaultHttp2Stream(
+            stream_id, stream_listener, self._loop, self._protocol, self._executor
+        )
+        self.put_stream(stream_id, new_stream)
+        return new_stream
 
-    def handle_frame(self, frame: Http2Frame) -> None:
+    def handle_frame(self, frame: UserActionFrames) -> None:
         """
         Handle the HTTP/2 frame.
-        Args:
-            frame: The HTTP/2 frame.
+        :param frame: The HTTP/2 frame.
         """
         # Register the stream if the frame is a HEADERS frame.
         if frame.frame_type == Http2FrameType.HEADERS:

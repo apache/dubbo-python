@@ -13,266 +13,260 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+import abc
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
-from dubbo.remoting.aio.exceptions import StreamException
+from dubbo.remoting.aio.exceptions import StreamError
 from dubbo.remoting.aio.http2.frames import (
     DataFrame,
     HeadersFrame,
-    Http2Frame,
     ResetStreamFrame,
+    UserActionFrames,
 )
 from dubbo.remoting.aio.http2.headers import Http2Headers
-from dubbo.remoting.aio.http2.registries import Http2ErrorCode, Http2FrameType
+from dubbo.remoting.aio.http2.registries import Http2ErrorCode
+
+__all__ = ["Http2Stream", "DefaultHttp2Stream"]
 
 
-class Http2Stream:
+class Http2Stream(abc.ABC):
     """
     A "stream" is an independent, bidirectional sequence of frames exchanged between the client and server within an HTTP/2 connection.
     see: https://datatracker.ietf.org/doc/html/rfc7540#section-5
-    Args:
-        stream_id: The stream identifier.
-        listener: The stream listener.
-        loop: The asyncio event loop.
-        protocol: The HTTP/2 protocol.
     """
 
-    def __init__(
-        self,
-        stream_id: int,
-        listener: "StreamListener",
-        loop: asyncio.AbstractEventLoop,
-        protocol,
-    ):
-        from dubbo.remoting.aio.http2.controllers import FrameOrderController
-        from dubbo.remoting.aio.http2.protocol import Http2Protocol
+    __slots__ = ["_id", "_listener", "_local_closed", "_remote_closed"]
 
-        self._loop: asyncio.AbstractEventLoop = loop
-        self._protocol: Http2Protocol = protocol
-
-        # The stream identifier.
+    def __init__(self, stream_id: int, listener: "Http2Stream.Listener"):
         self._id = stream_id
 
         self._listener = listener
+        self._listener.bind(self)
 
-        # The frame order controller.
-        self._frame_order_controller: FrameOrderController = FrameOrderController(
-            self, self._loop, self._protocol
-        )
-        self._frame_order_controller.start()
-
-        # Whether the headers have been sent.
-        self._headers_sent = False
-        # Whether the headers have been received.
-        self._headers_received = False
-
-        # Indicates whether the frame identified with end_stream was written (and may not have been sent yet).
-        self._end_stream = False
-
-        # Whether the stream is closed locally or remotely.
+        # Whether the stream is closed locally. -> it means the stream can't send any more frames.
         self._local_closed = False
+        # Whether the stream is closed remotely. -> it means the stream can't receive any more frames.
         self._remote_closed = False
 
     @property
     def id(self) -> int:
+        """
+        Get the stream identifier.
+        """
         return self._id
 
-    def is_headers_sent(self) -> bool:
-        return self._headers_sent
+    @property
+    def listener(self) -> "Http2Stream.Listener":
+        """
+        Get the listener.
+        """
+        return self._listener
 
-    def is_local_closed(self) -> bool:
+    @property
+    def local_closed(self) -> bool:
         """
         Check if the stream is closed locally.
         """
         return self._local_closed
 
-    def close_local(self) -> None:
-        """
-        Close the stream locally.
-        """
-        self._local_closed = True
-        self._frame_order_controller.stop()
-
-    def is_remote_closed(self) -> bool:
+    @property
+    def remote_closed(self) -> bool:
         """
         Check if the stream is closed remotely.
         """
         return self._remote_closed
 
+    def close_local(self) -> None:
+        """
+        Close the stream locally.
+        """
+        if self._local_closed:
+            return
+        self._local_closed = True
+
     def close_remote(self) -> None:
         """
         Close the stream remotely.
         """
+        if self._remote_closed:
+            return
         self._remote_closed = True
 
-    def _send_available(self):
-        """
-        Check if the stream is available for sending frames.
-        """
-        return not self.is_local_closed() and not self._end_stream
-
+    @abc.abstractmethod
     def send_headers(self, headers: Http2Headers, end_stream: bool = False) -> None:
         """
-        Send the headers.(thread-unsafe)
-        Args:
-            headers: The HTTP/2 headers.
-            end_stream: Whether to close the stream after sending the data.
+        Send the headers.
+        :param headers: The HTTP/2 headers.
+                        The second send of headers will be treated as trailers (end_stream must be True).
+        :type headers: Http2Headers
+        :param end_stream: Whether to close the stream after sending the data.
         """
-        if self.is_headers_sent():
-            raise StreamException("Headers have been sent.")
-        elif not self._send_available():
-            raise StreamException(
-                "The stream cannot send a frame because it has been closed."
-            )
+        raise NotImplementedError()
 
-        headers_frame = HeadersFrame(self.id, headers, end_stream=end_stream)
-        self._end_stream = end_stream
-        self._frame_order_controller.write_headers(headers_frame)
+    @abc.abstractmethod
+    def send_data(self, data: bytes, end_stream: bool = False) -> None:
+        """
+        Send the data.
+        :param data: The data to send.
+        :type data: bytes
+        :param end_stream: Whether to close the stream after sending the data.
+        """
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def cancel_by_local(self, error_code: Http2ErrorCode) -> None:
+        """
+        Cancel the stream locally. -> send RST_STREAM frame.
+        :param error_code: The error code.
+        :type error_code: Http2ErrorCode
+        """
+        raise NotImplementedError()
+
+    class Listener(abc.ABC):
+        """
+        Http2StreamListener is a base class for handling events in an HTTP/2 stream.
+
+        This class provides a set of callback methods that are called when specific
+        events occur on the stream, such as receiving headers, receiving data, or
+        resetting the stream. To use this class, create a subclass and implement the
+        callback methods for the events you want to handle.
+        """
+
+        __slots__ = ["_stream"]
+
+        def __init__(self):
+            self._stream: Optional["Http2Stream"] = None
+
+        def bind(self, stream: "Http2Stream") -> None:
+            """
+            Bind the stream to the listener.
+            :param stream: The stream to bind.
+            :type stream: Http2Stream
+            """
+            self._stream = stream
+
+        @property
+        def stream(self) -> "Http2Stream":
+            """
+            Get the stream.
+            """
+            return self._stream
+
+        @abc.abstractmethod
+        def on_headers(self, headers: Http2Headers, end_stream: bool) -> None:
+            """
+            Called when the headers are received.
+            :param headers: The HTTP/2 headers.
+            :type headers: Http2Headers
+            :param end_stream: Whether the stream is closed after receiving the headers.
+            :type end_stream: bool
+            """
+            raise NotImplementedError()
+
+        @abc.abstractmethod
+        def on_data(self, data: bytes, end_stream: bool) -> None:
+            """
+            Called when the data is received.
+            :param data: The data.
+            :type data: bytes
+            :param end_stream: Whether the stream is closed after receiving the data.
+            """
+            raise NotImplementedError()
+
+        @abc.abstractmethod
+        def cancel_by_remote(self, error_code: Http2ErrorCode) -> None:
+            """
+            Cancel the stream remotely.
+            :param error_code: The error code.
+            :type error_code: Http2ErrorCode
+            """
+            raise NotImplementedError()
+
+
+class DefaultHttp2Stream(Http2Stream):
+    """
+    Default implementation of the Http2Stream.
+    """
+
+    __slots__ = [
+        "_loop",
+        "_protocol",
+        "_inbound_controller",
+        "_outbound_controller",
+        "_headers_sent",
+    ]
+
+    def __init__(
+        self,
+        stream_id: int,
+        listener: "Http2Stream.Listener",
+        loop: asyncio.AbstractEventLoop,
+        protocol,
+        executor: Optional[ThreadPoolExecutor] = None,
+    ):
+        # Avoid circular import
+        from dubbo.remoting.aio.http2.controllers import (
+            FrameInboundController,
+            FrameOutboundController,
+        )
+
+        super().__init__(stream_id, listener)
+        self._loop = loop
+        self._protocol = protocol
+
+        # steam inbound controller
+        self._inbound_controller: FrameInboundController = FrameInboundController(
+            self, self._loop, self._protocol, executor
+        )
+        # steam outbound controller
+        self._outbound_controller: FrameOutboundController = FrameOutboundController(
+            self, self._loop, self._protocol
+        )
+
+        # The flag to indicate whether the headers have been sent.
+        self._headers_sent = False
+
+    def close_local(self) -> None:
+        super().close_local()
+        self._outbound_controller.close()
+
+    def close_remote(self) -> None:
+        super().close_remote()
+        self._inbound_controller.close()
+
+    def send_headers(self, headers: Http2Headers, end_stream: bool = False) -> None:
+        if self.local_closed:
+            raise StreamError("The stream has been closed locally.")
+        elif self._headers_sent and not end_stream:
+            raise StreamError(
+                "Trailers must be the last frame of the stream(end_stream must be True)."
+            )
 
         self._headers_sent = True
+        headers_frame = HeadersFrame(self.id, headers, end_stream=end_stream)
+        self._outbound_controller.write_headers(headers_frame)
 
-    def send_data(
-        self, data: bytes, end_stream: bool = False, last: bool = False
-    ) -> None:
-        """
-        Send the data.(thread-unsafe)
-        Args:
-            data: The data to send.
-            end_stream: Whether to close the stream after sending the data.
-            last: Is it the last data frame?
-        """
-        if not self.is_headers_sent():
-            raise StreamException("Headers have not been sent.")
-        elif not self._send_available():
-            raise StreamException(
-                "The stream cannot send a frame because it has been closed."
-            )
-
+    def send_data(self, data: bytes, end_stream: bool = False) -> None:
+        if self.local_closed:
+            raise StreamError("The stream has been closed locally.")
+        elif not self._headers_sent:
+            raise StreamError("Headers have not been sent.")
         data_frame = DataFrame(self.id, data, len(data), end_stream=end_stream)
-        self._end_stream = end_stream
-        self._frame_order_controller.write_data(data_frame, last)
+        self._outbound_controller.write_data(data_frame)
 
-    def send_trailers(self, headers: Http2Headers, send_data: bool) -> None:
-        """
-        Send trailers with the given headers. Optionally, indicate if data frames
-        need to be sent.
-
-        Args:
-            headers: The HTTP/2 headers to be sent as trailers.
-            send_data: A flag indicating whether data frames need to be sent.
-        """
-        if not self.is_headers_sent():
-            raise StreamException("Headers have not been sent.")
-        elif not self._send_available():
-            raise StreamException(
-                "The stream cannot send a frame because it has been closed."
-            )
-
-        trailers_frame = HeadersFrame(self.id, headers, end_stream=True)
-        self._end_stream = True
-        if send_data:
-            self._frame_order_controller.write_trailers_after_data(trailers_frame)
-        else:
-            self._frame_order_controller.write_trailers(trailers_frame)
-
-    def send_reset(self, error_code: Http2ErrorCode) -> None:
-        """
-        Send the reset frame.(thread-unsafe)
-        Args:
-            error_code: The error code.
-        """
-        if self.is_local_closed():
-            raise StreamException("The stream has been reset.")
-
+    def cancel_by_local(self, error_code: Http2ErrorCode) -> None:
+        if self.local_closed:
+            raise StreamError("The stream has been closed locally.")
         reset_frame = ResetStreamFrame(self.id, error_code)
-        # It's a special frame, no need to queue, just send it
-        self._protocol.write(reset_frame, self)
-        # close the stream locally and remotely
-        self.close_local()
-        self.close_remote()
+        self._outbound_controller.write_rst(reset_frame)
 
-    def receive_frame(self, frame: Http2Frame) -> None:
+    def receive_frame(self, frame: UserActionFrames) -> None:
         """
-        Receive a frame from the stream.
-        Args:
-            frame: The frame to be received.
+        Receive the frame.
+        :param frame: The frame to receive.
+        :type frame: UserActionFrames
         """
-        if self.is_remote_closed():
-            # The stream is closed remotely, ignore the frame
-            return
-
-        if frame.end_stream:
-            # received end_stream frame, close the stream remotely
-            self.close_remote()
-
-        frame_type = frame.frame_type
-        if frame_type == Http2FrameType.HEADERS:
-            if not self._headers_received:
-                # HEADERS frame
-                self._headers_received = True
-                self._listener.on_headers(frame.headers, frame.end_stream)
-            else:
-                # TRAILERS frame
-                self._listener.on_trailers(frame.headers)
-        elif frame_type == Http2FrameType.DATA:
-            self._listener.on_data(frame.data, frame.end_stream)
-        elif frame_type == Http2FrameType.RST_STREAM:
-            self._listener.on_reset(frame.error_code)
-            self.close_local()
-
-
-class StreamListener:
-    """
-    Http2StreamListener is a base class for handling events in an HTTP/2 stream.
-
-    This class provides a set of callback methods that are called when specific
-    events occur on the stream, such as receiving headers, receiving data, or
-    resetting the stream. To use this class, create a subclass and implement the
-    callback methods for the events you want to handle.
-    """
-
-    def __init__(self):
-        self._stream: Optional[Http2Stream] = None
-
-    def bind(self, stream: Http2Stream) -> None:
-        """
-        Bind the stream to the listener.
-        Args:
-            stream: The stream.
-        """
-        self._stream = stream
-
-    def on_headers(self, headers: Http2Headers, end_stream: bool) -> None:
-        """
-        Called when the headers are received.
-        Args:
-            headers: The HTTP/2 headers.
-            end_stream: Whether the stream is closed after receiving the headers.
-        """
-        raise NotImplementedError("on_headers() is not implemented.")
-
-    def on_data(self, data: bytes, end_stream: bool) -> None:
-        """
-        Called when the data is received.
-        Args:
-            data: The data.
-            end_stream: Whether the stream is closed after receiving the data.
-        """
-        raise NotImplementedError("on_data() is not implemented.")
-
-    def on_trailers(self, headers: Http2Headers) -> None:
-        """
-        Called when the trailers are received.
-        Args:
-            headers: The HTTP/2 headers.
-        """
-        raise NotImplementedError("on_trailers() is not implemented.")
-
-    def on_reset(self, error_code: Http2ErrorCode) -> None:
-        """
-        Called when the stream is reset.
-        Args:
-            error_code: The error code.
-        """
-        raise NotImplementedError("on_reset() is not implemented.")
+        self._inbound_controller.write_frame(frame)

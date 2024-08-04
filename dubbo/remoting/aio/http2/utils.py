@@ -13,19 +13,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Optional
+
+from typing import Union
 
 import h2.events as h2_event
 
 from dubbo.remoting.aio.http2.frames import (
     DataFrame,
     HeadersFrame,
-    Http2Frame,
     ResetStreamFrame,
     WindowUpdateFrame,
 )
 from dubbo.remoting.aio.http2.headers import Http2Headers
 from dubbo.remoting.aio.http2.registries import Http2ErrorCode
+
+__all__ = ["Http2EventUtils"]
 
 
 class Http2EventUtils:
@@ -34,7 +36,9 @@ class Http2EventUtils:
     """
 
     @staticmethod
-    def convert_to_frame(event: h2_event.Event) -> Optional[Http2Frame]:
+    def convert_to_frame(
+        event: h2_event.Event,
+    ) -> Union[HeadersFrame, DataFrame, ResetStreamFrame, WindowUpdateFrame, None]:
         """
         Convert a h2.events.Event to HTTP/2 Frame.
         Args:

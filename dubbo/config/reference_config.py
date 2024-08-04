@@ -13,13 +13,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import threading
 from typing import Optional, Union
 
+from dubbo.common import URL, create_url
 from dubbo.extension import extensionLoader
-from dubbo.protocol.invoker import Invoker
-from dubbo.protocol.protocol import Protocol
-from dubbo.url import URL
+from dubbo.protocol import Invoker, Protocol
 
 
 class ReferenceConfig:
@@ -36,7 +36,7 @@ class ReferenceConfig:
     def __init__(self, url: Union[str, URL], service_name: str):
         self._initialized = False
         self._global_lock = threading.Lock()
-        self._url: URL = url if isinstance(url, URL) else URL.value_of(url)
+        self._url: URL = url if isinstance(url, URL) else create_url(url)
         self._service_name = service_name
         self._protocol: Optional[Protocol] = None
         self._invoker: Optional[Invoker] = None

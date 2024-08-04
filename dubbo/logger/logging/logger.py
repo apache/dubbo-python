@@ -17,11 +17,14 @@
 import logging
 from typing import Dict
 
-from dubbo.constants.logger_constants import Level
 from dubbo.logger import Logger
 
+from ..constants import Level
+
+__all__ = ["LoggingLogger"]
+
 # The mapping from the logging level to the logging level.
-_level_map: Dict[Level, int] = {
+LEVEL_MAP: Dict[Level, int] = {
     Level.DEBUG: logging.DEBUG,
     Level.INFO: logging.INFO,
     Level.WARNING: logging.WARNING,
@@ -30,26 +33,38 @@ _level_map: Dict[Level, int] = {
     Level.FATAL: logging.FATAL,
 }
 
+STACKLEVEL_KEY = "stacklevel"
+STACKLEVEL_DEFAULT = 1
+STACKLEVEL_OFFSET = 2
+
+EXC_INFO_KEY = "exc_info"
+EXC_INFO_DEFAULT = True
+
 
 class LoggingLogger(Logger):
     """
     The logging logger implementation.
-    Attributes:
-        _logger (logging.Logger): The real working logger object
     """
 
-    _logger: logging.Logger
+    __slots__ = ["_logger"]
 
     def __init__(self, internal_logger: logging.Logger):
+        """
+        Initialize the logger.
+        :param internal_logger: The internal logger.
+        :type internal_logger: logging
+        """
         self._logger = internal_logger
 
     def _log(self, level: int, msg: str, *args, **kwargs) -> None:
         # Add the stacklevel to the keyword arguments.
-        kwargs["stacklevel"] = kwargs.get("stacklevel", 1) + 2
+        kwargs[STACKLEVEL_KEY] = (
+            kwargs.get(STACKLEVEL_KEY, STACKLEVEL_DEFAULT) + STACKLEVEL_OFFSET
+        )
         self._logger.log(level, msg, *args, **kwargs)
 
     def log(self, level: Level, msg: str, *args, **kwargs) -> None:
-        self._log(_level_map[level], msg, *args, **kwargs)
+        self._log(LEVEL_MAP[level], msg, *args, **kwargs)
 
     def debug(self, msg: str, *args, **kwargs) -> None:
         self._log(logging.DEBUG, msg, *args, **kwargs)
@@ -70,10 +85,10 @@ class LoggingLogger(Logger):
         self._log(logging.FATAL, msg, *args, **kwargs)
 
     def exception(self, msg: str, *args, **kwargs) -> None:
-        if kwargs.get("exc_info") is None:
-            kwargs["exc_info"] = True
+        if kwargs.get(EXC_INFO_KEY) is None:
+            kwargs[EXC_INFO_KEY] = EXC_INFO_DEFAULT
         self.error(msg, *args, **kwargs)
 
     def is_enabled_for(self, level: Level) -> bool:
-        logging_level = _level_map.get(level)
+        logging_level = LEVEL_MAP.get(level)
         return self._logger.isEnabledFor(logging_level) if logging_level else False

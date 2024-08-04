@@ -13,14 +13,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import asyncio
 import threading
 import uuid
 from typing import Optional
 
-from dubbo.logger.logger_factory import loggerFactory
+from dubbo.logger import loggerFactory
 
-logger = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger(__name__)
 
 
 def _try_use_uvloop() -> None:
@@ -33,7 +34,7 @@ def _try_use_uvloop() -> None:
     # Check if the operating system.
     if os.name == "nt":
         # Windows is not supported.
-        logger.warning(
+        _LOGGER.warning(
             "Unable to use uvloop, because it is not supported on your operating system."
         )
         return
@@ -43,7 +44,7 @@ def _try_use_uvloop() -> None:
         import uvloop
     except ImportError:
         # uvloop is not available.
-        logger.warning(
+        _LOGGER.warning(
             "Unable to use uvloop, because it is not installed. "
             "You can install it by running `pip install uvloop`."
         )

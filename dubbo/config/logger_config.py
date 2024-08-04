@@ -13,15 +13,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-from dubbo.constants import logger_constants as logger_constants
-from dubbo.constants.logger_constants import FileRotateType, Level
+from dubbo.common.url import URL
 from dubbo.extension import extensionLoader
 from dubbo.logger import LoggerAdapter
-from dubbo.logger.logger_factory import loggerFactory
-from dubbo.url import URL
+from dubbo.logger import constants as logger_constants
+from dubbo.logger import loggerFactory
+from dubbo.logger.constants import Level
 
 
 @dataclass
@@ -39,7 +40,7 @@ class FileLoggerConfig:
 
     """
 
-    rotate: FileRotateType = FileRotateType.NONE
+    rotate: logger_constants.FileRotateType = logger_constants.FileRotateType.NONE
     file_formatter: Optional[str] = None
     file_dir: str = logger_constants.DEFAULT_FILE_DIR_VALUE
     file_name: str = logger_constants.DEFAULT_FILE_NAME_VALUE
@@ -48,9 +49,9 @@ class FileLoggerConfig:
     interval: int = logger_constants.DEFAULT_FILE_INTERVAL_VALUE
 
     def check(self) -> None:
-        if self.rotate == FileRotateType.SIZE and self.max_bytes < 0:
+        if self.rotate == logger_constants.FileRotateType.SIZE and self.max_bytes < 0:
             raise ValueError("Max bytes can't be less than 0")
-        elif self.rotate == FileRotateType.TIME and self.interval < 1:
+        elif self.rotate == logger_constants.FileRotateType.TIME and self.interval < 1:
             raise ValueError("Interval can't be less than 1")
 
     def dict(self) -> Dict[str, str]:

@@ -13,77 +13,82 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import importlib
-import threading
 from typing import Any
 
-from dubbo.extension import registry
-from dubbo.logger.logger_factory import loggerFactory
-
-logger = loggerFactory.get_logger(__name__)
+from dubbo.common import SingletonBase
+from dubbo.extension import registries as registries_module
 
 
-class ExtensionLoader:
+class ExtensionError(Exception):
+    """
+    Extension error.
+    """
 
-    _instance = None
-    _ins_lock = threading.Lock()
+    def __init__(self, message: str):
+        """
+        Initialize the extension error.
+        :param message: The error message.
+        :type message: str
+        """
+        super().__init__(message)
 
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            with cls._ins_lock:
-                if cls._instance is None:
-                    cls._instance = super().__new__(cls)
-        return cls._instance
+
+class ExtensionLoader(SingletonBase):
+    """
+    Singleton class for loading extension implementations.
+    """
 
     def __init__(self):
-        self._registries = registry.get_all_extended_registry()
+        """
+        Initialize the extension loader.
 
-    def get_extension(self, superclass: Any, name: str) -> Any:
-        # Get the registry for the extension
-        extension_impls = self._registries.get(superclass)
-        err_msg = None
-        if not extension_impls:
-            err_msg = f"Extension {superclass} is not registered."
-            logger.error(err_msg)
-            raise ValueError(err_msg)
+        Load all the registries from the registries module.
+        """
+        if not hasattr(self, "_initialized"):  # Ensure __init__ runs only once
+            self._registries = {}
+            for name in registries_module.__all__:
+                registry = getattr(registries_module, name)
+                self._registries[registry.interface] = registry.impls
+            self._initialized = True
 
-        # Get the full name of the class -> module.class
-        full_name = extension_impls.get(name)
+    def get_extension(self, interface: Any, impl_name: str) -> Any:
+        """
+        Get the extension implementation for the interface.
+
+        :param interface: Interface class.
+        :type interface: Any
+        :param impl_name: Implementation name.
+        :type impl_name: str
+        :return: Extension implementation class.
+        :rtype: Any
+        :raises ExtensionError: If the interface or implementation is not found.
+        """
+        # Get the registry for the interface
+        impls = self._registries.get(interface)
+        if not impls:
+            raise ExtensionError(f"Interface '{interface.__name__}' is not supported.")
+
+        # Get the full name of the implementation
+        full_name = impls.get(impl_name)
         if not full_name:
-            err_msg = f"Extension {superclass} with name {name} is not registered."
-            logger.error(err_msg)
-            raise ValueError(err_msg)
+            raise ExtensionError(
+                f"Implementation '{impl_name}' for interface '{interface.__name__}' is not exist."
+            )
 
-        module_name = class_name = None
         try:
             # Split the full name into module and class
             module_name, class_name = full_name.rsplit(".", 1)
-            # Load the module
-            module = importlib.import_module(module_name)
-            # Get the class from the module
-            subclass = getattr(module, class_name)
-            if subclass:
-                # Check if the class is a subclass of the extension
-                if issubclass(subclass, superclass) and subclass is not superclass:
-                    # Return the class
-                    return subclass
-                else:
-                    err_msg = f"Class {class_name} does not inherit from {superclass}."
-            else:
-                err_msg = f"Class {class_name} not found in module {module_name}"
 
-            if err_msg:
-                # If there is an error message, raise an exception
-                raise Exception(err_msg)
-        except ImportError as e:
-            logger.exception(f"Module {module_name} could not be imported.")
-            raise e
-        except AttributeError as e:
-            logger.exception(f"Class {class_name} not found in {module_name}.")
-            raise e
+            # Load the module and get the class
+            module = importlib.import_module(module_name)
+            subclass = getattr(module, class_name)
+
+            # Return the subclass
+            return subclass
         except Exception as e:
-            if err_msg:
-                logger.error(err_msg)
-            else:
-                logger.exception(f"An error occurred while loading {full_name}.")
-            raise e
+            raise ExtensionError(
+                f"Failed to load extension '{impl_name}' for interface '{interface.__name__}'. \n"
+                f"Detail: {e}"
+            )
