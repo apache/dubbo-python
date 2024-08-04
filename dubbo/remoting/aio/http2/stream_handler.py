@@ -56,9 +56,10 @@ class StreamMultiplexHandler:
     def do_init(self, loop: asyncio.AbstractEventLoop, protocol) -> None:
         """
         Initialize the StreamMultiplexHandler.\
-        Args:
-            loop: The asyncio event loop.
-            protocol: The HTTP/2 protocol.
+        :param loop: The event loop.
+        :type loop: asyncio.AbstractEventLoop
+        :param protocol: The HTTP/2 protocol.
+        :type protocol: Http2Protocol
         """
         self._loop = loop
         self._protocol = protocol
@@ -67,35 +68,35 @@ class StreamMultiplexHandler:
     def put_stream(self, stream_id: int, stream: DefaultHttp2Stream) -> None:
         """
         Put the stream into the stream map.
-        Args:
-            stream_id: The stream identifier.
-            stream: The stream.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :param stream: The stream.
+        :type stream: DefaultHttp2Stream
         """
         self._streams[stream_id] = stream
 
     def get_stream(self, stream_id: int) -> Optional[DefaultHttp2Stream]:
         """
         Get the stream by stream identifier.
-        Args:
-            stream_id: The stream identifier.
-        Returns:
-            The stream.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :return: The stream.
         """
         return self._streams.get(stream_id)
 
     def remove_stream(self, stream_id: int) -> None:
         """
         Remove the stream by stream identifier.
-        Args:
-            stream_id: The stream identifier.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
         """
         self._streams.pop(stream_id, None)
 
     def handle_frame(self, frame: UserActionFrames) -> None:
         """
         Handle the HTTP/2 frame.
-        Args:
-            frame: The HTTP/2 frame.
+        :param frame: The HTTP/2 frame.
+        :type frame: UserActionFrames
         """
         stream = self._streams.get(frame.stream_id)
         if stream:

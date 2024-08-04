@@ -93,8 +93,7 @@ class Http2Protocol(asyncio.Protocol):
     def get_next_stream_id(self, future) -> None:
         """
         Create a new stream.(thread-safe)
-        Args:
-            future: The future to set the stream identifier.
+        :param future: The future to set the stream identifier.
         """
 
         def _inner_operation(_future):
@@ -108,13 +107,15 @@ class Http2Protocol(asyncio.Protocol):
         frame: UserActionFrames,
         stream: Http2Stream,
         event: Optional[asyncio.Event] = None,
-    ):
+    ) -> None:
         """
         Send the HTTP/2 frame.(thread-unsafe)
-        Args:
-            frame: The HTTP/2 frame.
-            stream: The HTTP/2 stream.
-            event: The event to be set after sending the frame.
+        :param frame: The frame to send.
+        :type frame: UserActionFrames
+        :param stream: The stream.
+        :type stream: Http2Stream
+        :param event: The event to be set after sending the frame.
+        :type event: Optional[asyncio.Event]
         """
         frame_type = frame.frame_type
         if frame_type == Http2FrameType.HEADERS:
@@ -134,14 +135,16 @@ class Http2Protocol(asyncio.Protocol):
         headers: List[Tuple[str, str]],
         end_stream: bool,
         event: Optional[asyncio.Event] = None,
-    ):
+    ) -> None:
         """
         Send the HTTP/2 headers frame.(thread-unsafe)
-        Args:
-            stream_id: The stream identifier.
-            headers: The headers to send.
-            end_stream: Whether the stream is ended.
-            event: The event to be set after sending the frame.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :param headers: The headers.
+        :type headers: List[Tuple[str, str]]
+        :param end_stream: Whether the stream is ended.
+        :type end_stream: bool
+        :param event: The event to be set after sending the frame.
         """
         self._h2_connection.send_headers(stream_id, headers, end_stream=end_stream)
         self._transport.write(self._h2_connection.data_to_send())
@@ -149,19 +152,26 @@ class Http2Protocol(asyncio.Protocol):
 
     def _send_reset_frame(
         self, stream_id: int, error_code: int, event: Optional[asyncio.Event] = None
-    ):
+    ) -> None:
         """
         Send the HTTP/2 reset frame.(thread-unsafe)
-        Args:
-            stream_id: The stream identifier.
-            error_code: The error code.
-            event: The event to be set after sending the frame
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :param error_code: The error code.
+        :type error_code: int
+        :param event: The event to be set after sending the frame.
+        :type event: Optional[asyncio.Event]
         """
         self._h2_connection.reset_stream(stream_id, error_code)
         self._transport.write(self._h2_connection.data_to_send())
         EventHelper.set(event)
 
     def data_received(self, data):
+        """
+        Called when some data is received from the transport.
+        :param data: The data received.
+        :type data: bytes
+        """
         events = self._h2_connection.receive_data(data)
         # Process the event
         try:
@@ -185,15 +195,16 @@ class Http2Protocol(asyncio.Protocol):
         except Exception as e:
             raise ProtocolError("Failed to process the Http/2 event.") from e
 
-    def ack_received_data(self, stream_id: int, padding: int):
+    def ack_received_data(self, stream_id: int, ack_length: int) -> None:
         """
         Acknowledge the received data.
-        Args:
-            stream_id: The stream identifier.
-            padding: The amount of data received that counts against the flow control window.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :param ack_length: The length of the data to acknowledge.
+        :type ack_length: int
         """
 
-        self._h2_connection.acknowledge_received_data(padding, stream_id)
+        self._h2_connection.acknowledge_received_data(ack_length, stream_id)
         self._transport.write(self._h2_connection.data_to_send())
 
     def close(self):

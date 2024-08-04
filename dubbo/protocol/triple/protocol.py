@@ -89,8 +89,8 @@ class TripleProtocol(Protocol):
     def refer(self, url: URL) -> Invoker:
         """
         Refer a remote service.
-        Args:
-            url (URL): The URL of the remote service.
+        :param url: The URL.
+        :type url: URL
         """
         executor = ThreadPoolExecutor(thread_name_prefix="dubbo-tri-")
         # Create a stream handler

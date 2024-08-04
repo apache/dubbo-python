@@ -33,8 +33,6 @@ _LOGGER = loggerFactory.get_logger(__name__)
 class AioClient(Client):
     """
     Asyncio client.
-    Args:
-        url(URL): The configuration of the client.
     """
 
     __slots__ = [
@@ -47,6 +45,11 @@ class AioClient(Client):
     ]
 
     def __init__(self, url: URL):
+        """
+        Initialize the client.
+        :param url: The URL.
+        :type url: URL
+        """
         super().__init__(url)
 
         # Set the side of the transporter to client.

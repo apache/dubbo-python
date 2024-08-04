@@ -32,9 +32,6 @@ __all__ = [
 class Http2Frame:
     """
     HTTP/2 frame class. It is used to represent an HTTP/2 frame.
-    Args:
-        stream_id: The stream identifier.
-        frame_type: The frame type.
     """
 
     __slots__ = ["stream_id", "frame_type", "end_stream", "timestamp"]
@@ -45,6 +42,15 @@ class Http2Frame:
         frame_type: Http2FrameType,
         end_stream: bool = False,
     ):
+        """
+        Initialize the HTTP/2 frame.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :param frame_type: The frame type.
+        :type frame_type: Http2FrameType
+        :param end_stream: Whether the stream is ended.
+        :type end_stream: bool
+        """
         self.stream_id = stream_id
         self.frame_type = frame_type
         self.end_stream = end_stream
@@ -56,10 +62,6 @@ class Http2Frame:
 class HeadersFrame(Http2Frame):
     """
     HTTP/2 headers frame.
-    Args:
-        stream_id: The stream identifier.
-        headers: The HTTP/2 headers.
-        end_stream: Whether the stream is ended.
     """
 
     __slots__ = ["headers"]
@@ -70,6 +72,15 @@ class HeadersFrame(Http2Frame):
         headers: Http2Headers,
         end_stream: bool = False,
     ):
+        """
+        Initialize the HTTP/2 headers frame.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :param headers: The headers to send.
+        :type headers: Http2Headers
+        :param end_stream: Whether the stream is ended.
+        :type end_stream: bool
+        """
         super().__init__(stream_id, Http2FrameType.HEADERS, end_stream)
         self.headers = headers
 
@@ -80,11 +91,6 @@ class HeadersFrame(Http2Frame):
 class DataFrame(Http2Frame):
     """
     HTTP/2 data frame.
-    Args:
-        stream_id: The stream identifier.
-        data: The data to send.
-        length: The amount of data received that counts against the flow control window.
-        end_stream: Whether the stream
     """
 
     __slots__ = ["data", "padding"]
@@ -96,6 +102,16 @@ class DataFrame(Http2Frame):
         length: int,
         end_stream: bool = False,
     ):
+        """
+        Initialize the HTTP/2 data frame.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :param data: The data to send.
+        :type data: bytes
+        :param length: The length of the data.
+        :type length: int
+        :param end_stream: Whether the stream is ended.
+        """
         super().__init__(stream_id, Http2FrameType.DATA, end_stream)
         self.data = data
         self.padding = length
@@ -107,9 +123,6 @@ class DataFrame(Http2Frame):
 class WindowUpdateFrame(Http2Frame):
     """
     HTTP/2 window update frame.
-    Args:
-        stream_id: The stream identifier.
-        delta: The number of bytes by which to increase the flow control window.
     """
 
     __slots__ = ["delta"]
@@ -119,6 +132,13 @@ class WindowUpdateFrame(Http2Frame):
         stream_id: int,
         delta: int,
     ):
+        """
+        Initialize the HTTP/2 window update frame.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :param delta: The delta value.
+        :type delta: int
+        """
         super().__init__(stream_id, Http2FrameType.WINDOW_UPDATE, False)
         self.delta = delta
 
@@ -129,9 +149,6 @@ class WindowUpdateFrame(Http2Frame):
 class ResetStreamFrame(Http2Frame):
     """
     HTTP/2 reset stream frame.
-    Args:
-        stream_id: The stream identifier.
-        error_code: The error code that indicates the reason for closing the stream.
     """
 
     __slots__ = ["error_code"]
@@ -141,6 +158,13 @@ class ResetStreamFrame(Http2Frame):
         stream_id: int,
         error_code: Http2ErrorCode,
     ):
+        """
+        Initialize the HTTP/2 reset stream frame.
+        :param stream_id: The stream identifier.
+        :type stream_id: int
+        :param error_code: The error code.
+        :type error_code: Http2ErrorCode
+        """
         super().__init__(stream_id, Http2FrameType.RST_STREAM, True)
         self.error_code = error_code
 
@@ -148,4 +172,5 @@ class ResetStreamFrame(Http2Frame):
         return f"<ResetStreamFrame stream_id={self.stream_id} error_code={self.error_code}>"
 
 
+# User action frames.
 UserActionFrames = Union[HeadersFrame, DataFrame, ResetStreamFrame]

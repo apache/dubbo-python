@@ -22,12 +22,6 @@ from ._interfaces import Invocation
 class RpcInvocation(Invocation):
     """
     The RpcInvocation class is an implementation of the Invocation interface.
-    Args:
-        service_name (str): The name of the service.
-        method_name (str): The name of the method.
-        argument (Any): The method argument.
-        attachments (Optional[Dict[str, str]]): Passed to the remote server during RPC call
-        attributes (Optional[Dict[str, Any]]): Only used on the caller side, will not appear on the wire.
     """
 
     __slots__ = [
@@ -46,6 +40,19 @@ class RpcInvocation(Invocation):
         attachments: Optional[Dict[str, str]] = None,
         attributes: Optional[Dict[str, Any]] = None,
     ):
+        """
+        Initialize a new RpcInvocation instance.
+        :param service_name: The service name.
+        :type service_name: str
+        :param method_name: The method name.
+        :type method_name: str
+        :param argument: The argument.
+        :type argument: Any
+        :param attachments: The attachments.
+        :type attachments: Optional[Dict[str, str]]
+        :param attributes: The attributes.
+        :type attributes: Optional[Dict[str, Any]]
+        """
         self._service_name = service_name
         self._method_name = method_name
         self._argument = argument

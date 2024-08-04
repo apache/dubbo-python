@@ -157,10 +157,10 @@ class Http2Headers:
     def from_list(cls, headers: List[Tuple[str, str]]) -> "Http2Headers":
         """
         Create an Http2Headers object from a list.
-        Args:
-            headers: The headers list.
-        Returns:
-            The Http2Headers object.
+        :param headers: The headers list.
+        :type headers: List[Tuple[str, str]]
+        :return: The Http2Headers object.
+        :rtype: Http2Headers
         """
         http2_headers = cls()
         http2_headers._headers = dict(headers)

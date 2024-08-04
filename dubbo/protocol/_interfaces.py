@@ -56,8 +56,8 @@ class Result(abc.ABC):
     def set_value(self, value: Any) -> None:
         """
         Set the value of the result
-        Args:
-            value: Value to set
+        :param value: The value to set
+        :type value: Any
         """
         raise NotImplementedError()
 
@@ -72,8 +72,8 @@ class Result(abc.ABC):
     def set_exception(self, exception: Exception) -> None:
         """
         Set the exception to the result
-        Args:
-            exception: Exception to set
+        :param exception: The exception to set
+        :type exception: Exception
         """
         raise NotImplementedError()
 
@@ -94,8 +94,10 @@ class Invoker(Node, abc.ABC):
     def invoke(self, invocation: Invocation) -> Result:
         """
         Invoke the service.
-        Returns:
-            Result: The result of the invocation.
+        :param invocation: The invocation.
+        :type invocation: Invocation
+        :return: The result.
+        :rtype: Result
         """
         raise NotImplementedError()
 
@@ -106,6 +108,8 @@ class Protocol(abc.ABC):
     def export(self, url: URL):
         """
         Export a remote service.
+        :param url: The URL.
+        :type url: URL
         """
         raise NotImplementedError()
 
@@ -113,9 +117,9 @@ class Protocol(abc.ABC):
     def refer(self, url: URL) -> Invoker:
         """
         Refer a remote service.
-        Args:
-            url (URL): The URL of the remote service.
-        Returns:
-            Invoker: The invoker of the remote service.
+        :param url: The URL.
+        :type url: URL
+        :return: The invoker.
+        :rtype: Invoker
         """
         raise NotImplementedError()

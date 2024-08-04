@@ -29,15 +29,20 @@ from dubbo.logger.constants import Level
 class FileLoggerConfig:
     """
     File logger configuration.
-    Attributes:
-        rotate(FileRotateType): File rotate type. Optional: NONE,SIZE,TIME. Default: NONE.
-        file_formatter(Optional[str]): file format, if null, use global format.
-        file_dir(str): file directory. Default: user home dir
-        file_name(str): file name. Default: dubbo.log
-        backup_count(int): backup count. Default: 10 (when rotate is not NONE, backup_count is required)
-        max_bytes(int): maximum file size. Default: 1024.(when rotate is SIZE, max_bytes is required)
-        interval(int): interval time in seconds. Default: 1.(when rotate is TIME, interval is required, unit is day)
-
+    :param rotate: File rotate type.
+    :type rotate: logger_constants.FileRotateType
+    :param file_formatter: File formatter.
+    :type file_formatter: Optional[str]
+    :param file_dir: File directory.
+    :type file_dir: str
+    :param file_name: File name.
+    :type file_name: str
+    :param backup_count: Backup count.
+    :type backup_count: int
+    :param max_bytes: Max bytes.
+    :type max_bytes: int
+    :param interval: Interval.
+    :type interval: int
     """
 
     rotate: logger_constants.FileRotateType = logger_constants.FileRotateType.NONE
@@ -68,23 +73,7 @@ class FileLoggerConfig:
 class LoggerConfig:
     """
     Logger configuration.
-
-    Attributes:
-        _driver(str): logger driver type.
-        _level(Level): logger level.
-        _console_enabled(bool): logger console enabled.
-        _file_enabled(bool): logger file enabled.
-        _file_config(FileLoggerConfig): logger file config.
     """
-
-    # global
-    _driver: str
-    _level: Level
-    # console
-    _console_enabled: bool
-    # file
-    _file_enabled: bool
-    _file_config: FileLoggerConfig
 
     __slots__ = [
         "_driver",
@@ -98,11 +87,24 @@ class LoggerConfig:
     def __init__(
         self,
         driver,
-        level,
+        level: Level,
         console_enabled: bool,
         file_enabled: bool,
         file_config: FileLoggerConfig,
     ):
+        """
+        Initialize the logger configuration.
+        :param driver: The logger driver.
+        :type driver: str
+        :param level: The logger level.
+        :type level: Level
+        :param console_enabled: Whether to enable console logger.
+        :type console_enabled: bool
+        :param file_enabled: Whether to enable file logger.
+        :type file_enabled: bool
+        :param file_config: The file logger configuration.
+        :type file_config: FileLogger
+        """
         # set global config
         self._driver = driver
         self._level = level

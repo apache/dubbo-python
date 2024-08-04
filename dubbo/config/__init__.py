@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .application_config import ApplicationConfig
 from .logger_config import FileLoggerConfig, LoggerConfig
 from .protocol_config import ProtocolConfig
 from .reference_config import ReferenceConfig

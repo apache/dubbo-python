@@ -78,8 +78,10 @@ class GRpcCode(enum.Enum):
     def from_code(cls, code: int) -> "GRpcCode":
         """
         Get the RPC status code from the given code.
-        Args:
-            code: The RPC status code.
+        :param code: The RPC status code.
+        :type code: int
+        :return: The RPC status code.
+        :rtype: GRpcCode
         """
         for rpc_code in cls:
             if rpc_code.value == code:

@@ -80,8 +80,8 @@ class EventLoop:
     def loop(self):
         """
         Get the event loop.
-        Returns:
-            The event loop.
+        :return: The event loop.
+        :rtype: asyncio.AbstractEventLoop
         """
         return self._loop
 
@@ -89,26 +89,28 @@ class EventLoop:
     def thread(self) -> Optional[threading.Thread]:
         """
         Get the thread of the event loop.
-        Returns:
-            The thread of the event loop. If not yet started, this is None.
+        :return: The thread of the event loop. If not yet started, this is None.
+        :rtype: Optional[threading.Thread]
         """
         return self._thread
 
     def check_thread(self) -> bool:
         """
         Check if the current thread is the event loop thread.
-        Returns:
-            If the current thread is the event loop thread, return True. Otherwise, return False.
+        :return: True if the current thread is the event loop thread, otherwise False.
+        :rtype: bool
         """
         return threading.current_thread().ident == self._thread.ident
 
     def is_started(self) -> bool:
         """
         Check if the event loop is started.
+        :return: True if the event loop is started, otherwise False.
+        :rtype: bool
         """
         return self._started
 
-    def start(self):
+    def start(self) -> None:
         """
         Start the asyncio event loop.
         """

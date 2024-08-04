@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import enum
-from typing import Optional
+from typing import Optional, Union
 
 __all__ = ["Http2FrameType", "Http2ErrorCode", "Http2Settings", "HttpStatus"]
 
@@ -110,10 +110,8 @@ class Http2ErrorCode(enum.Enum):
     def get(cls, code: int):
         """
         Get the error code by code.
-        Args:
-            code: The error code.
-        Returns:
-            The error code.
+        :param code: The error code.
+        :type code: int
         """
         for error_code in cls:
             if error_code.value == code:
@@ -237,56 +235,61 @@ class HttpStatus(enum.Enum):
                 return status
 
     @staticmethod
-    def is_1xx(status):
+    def is_1xx(status: Union["HttpStatus", int]) -> bool:
         """
         Check if the given status is an informational (1xx) status code.
-        Args:
-            status: HttpStatus to check
-        Returns:
-            True if the status code is in the 1xx range, False otherwise
+        :param status: HttpStatus to check
+        :type status: Union[HttpStatus, int]
+        :return: True if the status code is in the 1xx range, False otherwise
+        :rtype: bool
         """
-        return 100 <= status.value < 200
+        value = status if isinstance(status, int) else status.value
+        return 100 <= value < 200
 
     @staticmethod
-    def is_2xx(status):
+    def is_2xx(status: Union["HttpStatus", int]) -> bool:
         """
         Check if the given status is a successful (2xx) status code.
-        Args:
-            status: HttpStatus to check
-        Returns:
-            True if the status code is in the 2xx range, False otherwise
+        :param status: HttpStatus to check
+        :type status: Union[HttpStatus, int]
+        :return: True if the status code is in the 2xx range, False otherwise
+        :rtype: bool
         """
-        return 200 <= status.value < 300
+        value = status if isinstance(status, int) else status.value
+        return 200 <= value < 300
 
     @staticmethod
-    def is_3xx(status):
+    def is_3xx(status: Union["HttpStatus", int]) -> bool:
         """
         Check if the given status is a redirection (3xx) status code.
-        Args:
-            status: HttpStatus to check
-        Returns:
-            True if the status code is in the 3xx range, False otherwise
+        :param status: HttpStatus to check
+        :type status: Union[HttpStatus, int]
+        :return: True if the status code is in the 3xx range, False otherwise
+        :rtype: bool
         """
-        return 300 <= status.value < 400
+        value = status if isinstance(status, int) else status.value
+        return 300 <= value < 400
 
     @staticmethod
-    def is_4xx(status):
+    def is_4xx(status: Union["HttpStatus", int]) -> bool:
         """
         Check if the given status is a client error (4xx) status code.
-        Args:
-            status: HttpStatus to check
-        Returns:
-            True if the status code is in the 4xx range, False otherwise
+        :param status: HttpStatus to check
+        :type status: Union[HttpStatus, int]
+        :return: True if the status code is in the 4xx range, False otherwise
+        :rtype: bool
         """
-        return 400 <= status.value < 500
+        value = status if isinstance(status, int) else status.value
+        return 400 <= value < 500
 
     @staticmethod
-    def is_5xx(status):
+    def is_5xx(status: Union["HttpStatus", int]) -> bool:
         """
         Check if the given status is a server error (5xx) status code.
-        Args:
-            status: HttpStatus to check
-        Returns:
-            True if the status code is in the 5xx range, False otherwise
+        :param status: HttpStatus to check
+        :type status: Union[HttpStatus, int]
+        :return: True if the status code is in the 5xx range, False otherwise
+        :rtype: bool
         """
-        return 500 <= status.value < 600
+        value = status if isinstance(status, int) else status.value
+        return 500 <= value < 600

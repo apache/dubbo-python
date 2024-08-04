@@ -41,10 +41,10 @@ class Http2EventUtils:
     ) -> Union[HeadersFrame, DataFrame, ResetStreamFrame, WindowUpdateFrame, None]:
         """
         Convert a h2.events.Event to HTTP/2 Frame.
-        Args:
-            event: The H2 event to convert.
-        Returns:
-            The converted HTTP/2 Frame. If the event is not supported, return None.
+        :param event: The H2 event.
+        :type event: h2.events.Event
+        :return: The HTTP/2 frame.
+        :rtype: Union[HeadersFrame, DataFrame, ResetStreamFrame, WindowUpdateFrame, None]
         """
         if isinstance(
             event,
