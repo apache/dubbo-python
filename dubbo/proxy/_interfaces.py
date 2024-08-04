@@ -20,10 +20,7 @@ from dubbo.common import URL
 from dubbo.protocol import Invoker
 from dubbo.proxy.handlers import RpcServiceHandler
 
-__all__ = [
-    "RpcCallable",
-    "RpcCallableFactory",
-]
+__all__ = ["RpcCallable"]
 
 
 class RpcCallable(abc.ABC):
@@ -32,30 +29,5 @@ class RpcCallable(abc.ABC):
     def __call__(self, *args, **kwargs):
         """
         call the rpc service
-        """
-        raise NotImplementedError()
-
-
-class RpcCallableFactory(abc.ABC):
-
-    @abc.abstractmethod
-    def get_callable(self, invoker: Invoker, url: URL) -> RpcCallable:
-        """
-        get the rpc proxy
-        :param invoker: the invoker.
-        :type invoker: Invoker
-        :param url: the url.
-        :type url: URL
-        """
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def get_invoker(self, service_handler: RpcServiceHandler, url: URL) -> Invoker:
-        """
-        get the rpc invoker
-        :param service_handler: the service handler.
-        :type service_handler: RpcServiceHandler
-        :param url: the url.
-        :type url: URL
         """
         raise NotImplementedError()

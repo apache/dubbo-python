@@ -20,7 +20,7 @@ from dubbo.common import constants as common_constants
 from dubbo.common.url import URL
 from dubbo.protocol import Invoker
 from dubbo.protocol.invocation import RpcInvocation
-from dubbo.proxy import RpcCallable, RpcCallableFactory
+from dubbo.proxy import RpcCallable
 
 __all__ = ["MultipleRpcCallable"]
 
@@ -60,15 +60,3 @@ class MultipleRpcCallable(RpcCallable):
         # Do invoke.
         result = self._invoker.invoke(invocation)
         return result.value()
-
-
-class DefaultRpcCallableFactory(RpcCallableFactory):
-    """
-    The RpcCallableFactory class.
-    """
-
-    def get_callable(self, invoker: Invoker, url: URL) -> RpcCallable:
-        return MultipleRpcCallable(invoker, url)
-
-    def get_invoker(self, service_handler: RpcServiceHandler, url: URL) -> Invoker:
-        pass
