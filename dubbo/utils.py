@@ -14,7 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ["EventHelper", "FutureHelper"]
+import socket
+
+__all__ = ["EventHelper", "FutureHelper", "NetworkUtils"]
 
 
 class EventHelper:
@@ -127,3 +129,29 @@ class FutureHelper:
 
         if hasattr(future, "set_exception"):
             future.set_exception(exception)
+
+
+class NetworkUtils:
+    """
+    Helper class for network operations.
+    """
+
+    @staticmethod
+    def get_host_name():
+        """
+        Get the host name of the host machine.
+
+        :return: The host name of the host machine.
+        :rtype: str
+        """
+        return socket.gethostname()
+
+    @staticmethod
+    def get_host_ip():
+        """
+        Get the IP address of the host machine.
+
+        :return: The IP address of the host machine.
+        :rtype: str
+        """
+        return socket.gethostbyname(NetworkUtils.get_host_name())

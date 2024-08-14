@@ -15,22 +15,24 @@
 # limitations under the License.
 
 import asyncio
+import uuid
 from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, Optional
 
-from dubbo.logger import loggerFactory
+from dubbo.loggers import loggerFactory
 from dubbo.remoting.aio.exceptions import ProtocolError
 from dubbo.remoting.aio.http2.frames import UserActionFrames
 from dubbo.remoting.aio.http2.registries import Http2FrameType
 from dubbo.remoting.aio.http2.stream import DefaultHttp2Stream, Http2Stream
-
-_LOGGER = loggerFactory.get_logger(__name__)
 
 _all__ = [
     "StreamMultiplexHandler",
     "StreamClientMultiplexHandler",
     "StreamServerMultiplexHandler",
 ]
+
+_LOGGER = loggerFactory.get_logger()
 
 
 class StreamMultiplexHandler:
@@ -40,7 +42,7 @@ class StreamMultiplexHandler:
 
     __slots__ = ["_loop", "_protocol", "_streams", "_executor"]
 
-    def __init__(self, executor: Optional[futures.ThreadPoolExecutor] = None):
+    def __init__(self):
         # Import the Http2Protocol class here to avoid circular imports.
         from dubbo.remoting.aio.http2.protocol import Http2Protocol
 
@@ -51,7 +53,9 @@ class StreamMultiplexHandler:
         self._streams: Optional[Dict[int, DefaultHttp2Stream]] = None
 
         # The executor for handling received frames.
-        self._executor = executor
+        self._executor = ThreadPoolExecutor(
+            thread_name_prefix=f"dubbo_tri_stream_{str(uuid.uuid4())}"
+        )
 
     def do_init(self, loop: asyncio.AbstractEventLoop, protocol) -> None:
         """
@@ -155,9 +159,8 @@ class StreamServerMultiplexHandler(StreamMultiplexHandler):
     def __init__(
         self,
         listener_factory: Callable[[], Http2Stream.Listener],
-        executor: Optional[futures.ThreadPoolExecutor] = None,
     ):
-        super().__init__(executor)
+        super().__init__()
         self._listener_factory = listener_factory
 
     def register(self, stream_id: int) -> DefaultHttp2Stream:

@@ -17,7 +17,7 @@
 from typing import Any, Dict, Optional
 
 from dubbo.compression import Compressor, Identity
-from dubbo.logger import loggerFactory
+from dubbo.loggers import loggerFactory
 from dubbo.protocol.triple.call import ClientCall
 from dubbo.protocol.triple.constants import GRpcCode
 from dubbo.protocol.triple.metadata import RequestMetadata
@@ -30,7 +30,7 @@ from dubbo.serialization import Deserializer, SerializationError, Serializer
 
 __all__ = ["TripleClientCall", "DefaultClientCallListener"]
 
-_LOGGER = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger()
 
 
 class TripleClientCall(ClientCall, ClientStream.Listener):

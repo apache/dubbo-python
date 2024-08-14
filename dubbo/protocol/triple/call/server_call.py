@@ -16,10 +16,9 @@
 
 import abc
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
-from dubbo.common import constants as common_constants
-from dubbo.common.deliverers import (
+from dubbo.deliverers import (
     MessageDeliverer,
     MultiMessageDeliverer,
     SingleMessageDeliverer,
@@ -45,13 +44,18 @@ from dubbo.serialization import (
 
 class TripleServerCall(ServerCall, ServerStream.Listener):
 
-    def __init__(self, stream: ServerStream, method_handler: RpcMethodHandler):
+    def __init__(
+        self,
+        stream: ServerStream,
+        method_handler: RpcMethodHandler,
+        executor: ThreadPoolExecutor,
+    ):
         self._stream = stream
         self._method_runner: MethodRunner = MethodRunnerFactory.create(
             method_handler, self
         )
 
-        self._executor: Optional[ThreadPoolExecutor] = None
+        self._executor = executor
 
         # get serializer
         serializing_function = method_handler.response_serializer
@@ -94,9 +98,6 @@ class TripleServerCall(ServerCall, ServerStream.Listener):
 
     def on_headers(self, headers: Dict[str, Any]) -> None:
         # start a new thread to run the method
-        self._executor = ThreadPoolExecutor(
-            max_workers=1, thread_name_prefix="dubbo-tri-method-"
-        )
         self._executor.submit(self._method_runner.run)
 
     def on_message(self, data: bytes) -> None:
@@ -243,26 +244,12 @@ class MethodRunnerFactory:
         :return: method runner
         :rtype: MethodRunner
         """
-        client_stream = (
-            True
-            if method_handler.call_type
-            in [
-                common_constants.CLIENT_STREAM_CALL_VALUE,
-                common_constants.BI_STREAM_CALL_VALUE,
-            ]
-            else False
-        )
 
-        server_stream = (
-            True
-            if method_handler.call_type
-            in [
-                common_constants.SERVER_STREAM_CALL_VALUE,
-                common_constants.BI_STREAM_CALL_VALUE,
-            ]
-            else False
-        )
+        call_type = method_handler.call_type
 
         return DefaultMethodRunner(
-            method_handler.behavior, server_call, client_stream, server_stream
+            method_handler.behavior,
+            server_call,
+            call_type.client_stream,
+            call_type.server_stream,
         )

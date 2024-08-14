@@ -15,7 +15,7 @@
 # limitations under the License.
 import unittest
 
-from dubbo.common.url import URL, create_url
+from dubbo.url import URL, create_url
 
 
 class TestUrl(unittest.TestCase):

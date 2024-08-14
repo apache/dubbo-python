@@ -16,7 +16,7 @@
 
 from typing import Any
 
-from dubbo.common import SingletonBase
+from dubbo.classes import SingletonBase
 from dubbo.serialization import Deserializer, Serializer, ensure_bytes
 
 __all__ = ["DirectSerializer", "DirectDeserializer"]

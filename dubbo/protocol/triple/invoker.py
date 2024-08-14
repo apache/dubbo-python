@@ -14,11 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dubbo.common import constants as common_constants
-from dubbo.common.url import URL
 from dubbo.compression import Compressor, Identity
+from dubbo.constants import common_constants
 from dubbo.extension import ExtensionError, extensionLoader
-from dubbo.logger import loggerFactory
+from dubbo.loggers import loggerFactory
 from dubbo.protocol import Invoker, Result
 from dubbo.protocol.invocation import Invocation, RpcInvocation
 from dubbo.protocol.triple.call import TripleClientCall
@@ -34,10 +33,12 @@ from dubbo.serialization import (
     DirectDeserializer,
     DirectSerializer,
 )
+from dubbo.types import CallType
+from dubbo.url import URL
 
 __all__ = ["TripleInvoker"]
 
-_LOGGER = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger()
 
 
 class TripleInvoker(Invoker):
@@ -57,7 +58,7 @@ class TripleInvoker(Invoker):
         self._destroyed = False
 
     def invoke(self, invocation: RpcInvocation) -> Result:
-        call_type = invocation.get_attribute(common_constants.CALL_KEY)
+        call_type: CallType = invocation.get_attribute(common_constants.CALL_KEY)
         result = TriResult(call_type)
 
         if not self._client.is_connected():
@@ -95,15 +96,9 @@ class TripleInvoker(Invoker):
             return result
 
         # invoke
-        if call_type in (
-            common_constants.UNARY_CALL_VALUE,
-            common_constants.SERVER_STREAM_CALL_VALUE,
-        ):
+        if not call_type.client_stream:
             self._invoke_unary(tri_client_call, invocation)
-        elif call_type in (
-            common_constants.CLIENT_STREAM_CALL_VALUE,
-            common_constants.BI_STREAM_CALL_VALUE,
-        ):
+        else:
             self._invoke_stream(tri_client_call, invocation)
 
         return result

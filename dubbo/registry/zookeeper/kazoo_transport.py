@@ -21,8 +21,8 @@ from typing import Dict, List, Union
 from kazoo.client import KazooClient
 from kazoo.protocol.states import EventType, KazooState, WatchedEvent, ZnodeStat
 
-from dubbo.common import URL
-from dubbo.logger import loggerFactory
+from dubbo.loggers import loggerFactory
+from dubbo.url import URL
 
 from ._interfaces import (
     ChildrenListener,
@@ -34,7 +34,7 @@ from ._interfaces import (
 
 __all__ = ["KazooZookeeperClient", "KazooZookeeperTransport"]
 
-_LOGGER = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger()
 
 LISTENER_TYPE = Union[StateListener, DataListener, ChildrenListener]
 
@@ -44,61 +44,59 @@ class AbstractListenerAdapter(abc.ABC):
     Abstract listener adapter.
 
     This abstract class defines a template for listener adapters, providing thread-safe methods to
-    reset and remove listeners. Concrete implementations should provide specific behavior for these methods.
+    manage listeners. Concrete implementations should provide specific behavior for these methods.
     """
 
-    __slots__ = ["_lock", "_listener"]
+    __slots__ = ["_lock", "_listeners"]
 
     def __init__(self, listener: LISTENER_TYPE):
         """
-        Initialize the adapter with a reentrant lock to ensure thread safety.
-        :param listener: The listener.
+        Initialize the adapter with a reentrant lock to ensure thread safety and store the initial listener.
+
+        :param listener: The listener to manage.
         :type listener: StateListener or DataListener or ChildrenListener
         """
         self._lock = threading.Lock()
-        self._listener = listener
+        self._listeners = {listener}
 
-    def get_listener(self) -> LISTENER_TYPE:
+    def add(self, listener: LISTENER_TYPE) -> None:
         """
-        Get the listener.
-        :return: The listener.
-        :rtype:  StateListener or DataListener or ChildrenListener
-        """
-        return self._listener
+        Add a listener to the adapter.
 
-    def reset(self, listener: LISTENER_TYPE) -> None:
-        """
-        Reset with a new listener.
+        This method adds a listener to the adapter's set of listeners in a thread-safe manner.
 
-        :param listener: The new listener to set.
+        :param listener: The listener to add.
         :type listener: StateListener or DataListener or ChildrenListener
         """
         with self._lock:
-            self._listener = listener
+            self._listeners.add(listener)
 
-    def remove(self) -> None:
+    def remove(self, listener: LISTENER_TYPE) -> None:
         """
-        Remove the current listener.
+        Remove a listener from the adapter.
 
+        This method removes a listener from the adapter's set of listeners in a thread-safe manner.
+
+        :param listener: The listener to remove.
+        :type listener: StateListener or DataListener or ChildrenListener
         """
         with self._lock:
-            self._listener = None
+            self._listeners.remove(listener)
 
 
 class AbstractListenerAdapterFactory(abc.ABC):
     """
     Abstract factory for creating and managing listener adapters.
 
-    This abstract factory class provides methods to create and remove listener adapters in a
-    thread-safe manner. It maintains dictionaries to track active and inactive adapters.
+    This abstract factory class provides methods to create and manage listener adapters
+    in a thread-safe manner. It maintains a dictionary to track active adapters.
     """
 
     __slots__ = [
         "_client",
         "_lock",
+        "_adapters",
         "_listener_to_path",
-        "_active_adapters",
-        "_inactive_adapters",
     ]
 
     def __init__(self, client: KazooClient):
@@ -110,60 +108,48 @@ class AbstractListenerAdapterFactory(abc.ABC):
         """
         self._client = client
         self._lock = threading.Lock()
-
-        self._listener_to_path = {}
-        self._active_adapters: Dict[str, AbstractListenerAdapter] = {}
-        self._inactive_adapters: Dict[str, AbstractListenerAdapter] = {}
+        self._adapters: Dict[str, AbstractListenerAdapter] = {}
+        self._listener_to_path: Dict[LISTENER_TYPE, str] = {}
 
     def create(self, path: str, listener) -> None:
         """
-        Create a new adapter or re-enable an inactive one.
+        Create a new adapter or add a listener to an existing adapter.
 
-        This method checks if the listener already has an active or inactive adapter. If the adapter is
-        inactive, it re-enables it. Otherwise, it creates a new adapter using the abstract `do_create` method.
+        This method checks if the specified path already has an adapter. If so, it adds the listener
+        to the existing adapter. Otherwise, it creates a new adapter using the abstract `do_create` method.
 
         :param path: The Znode path to watch.
         :type path: str
-        :param listener: The listener for which to create or re-enable an adapter.
+        :param listener: The listener for which to create or add to an adapter.
         :type listener: Any
         """
         with self._lock:
-            adapter = self._active_adapters.pop(path, None)
-            if adapter is not None:
-                if adapter.get_listener() == listener:
-                    return
-                else:
-                    # replace the listener
-                    adapter.reset(listener)
-            elif path in self._inactive_adapters:
-                # Re-enabling inactive adapter
-                adapter = self._inactive_adapters.pop(path)
-                adapter.reset(listener)
-            else:
+            adapter = self._adapters.get(path)
+            if not adapter:
                 # Creating a new adapter
                 adapter = self.do_create(path, listener)
-
-            self._listener_to_path[listener] = path
-            self._active_adapters[path] = adapter
+                self._adapters[path] = adapter
+            else:
+                # Add the listener to the adapter
+                adapter.add(listener)
 
     def remove(self, listener) -> None:
         """
-        Remove the current listener and move its adapter to the inactive dictionary.
+        Remove a listener and its associated adapter if no listeners remain.
 
-        This method removes the adapter associated with the listener from the active dictionary,
-        calls its `remove` method, and then stores it in the inactive dictionary.
+        This method removes the listener's adapter from the active adapters dictionary and
+        removes the listener from the adapter. If no listeners remain, the adapter is discarded.
 
-        :param listener: The listener whose adapter is to be removed.
+        :param listener: The listener to remove.
         :type listener: Any
         """
         with self._lock:
             path = self._listener_to_path.pop(listener, None)
             if path is None:
                 return
-            adapter = self._active_adapters.pop(path)
+            adapter = self._adapters.get(path)
             if adapter is not None:
-                adapter.remove()
-                self._inactive_adapters[path] = adapter
+                adapter.remove(listener)
 
     @abc.abstractmethod
     def do_create(self, path: str, listener) -> AbstractListenerAdapter:
@@ -186,25 +172,27 @@ class AbstractListenerAdapterFactory(abc.ABC):
 
 class StateListenerAdapter(AbstractListenerAdapter):
     """
-     State listener adapter.
+    State listener adapter.
 
-    This adapter inherits from :class:`AbstractListenerAdapter`, but it does not need to use the `reset`
-    and `remove` methods. The :class:`KazooClient` provides the `add_listener` and `remove_listener`
-    methods, which can effectively replace these methods.
-
-    Note:
-        The `add_listener` and `remove_listener` methods of :class:`KazooClient` offer a more efficient
-        and straightforward way to manage state listeners, making the `reset` and `remove` methods redundant.
+    This adapter inherits from `AbstractListenerAdapter` and is designed to handle state changes
+    in a `KazooClient`. It converts Zookeeper states to internal states and notifies listeners.
     """
 
     def __init__(self, listener: StateListener):
+        """
+        Initialize the StateListenerAdapter with a given listener.
+
+        :param listener: The listener to manage.
+        :type listener: StateListener
+        """
         super().__init__(listener)
 
     def __call__(self, state: KazooState):
         """
         Handle state changes and notify the listener.
 
-        This method is called with the current state of the KazooClient.
+        This method is called with the current state of the KazooClient, converts it to an internal
+        state representation, and notifies all registered listeners.
 
         :param state: The current state of the KazooClient.
         :type state: KazooState
@@ -216,23 +204,23 @@ class StateListenerAdapter(AbstractListenerAdapter):
         elif state == KazooState.SUSPENDED:
             state = StateListener.State.SUSPENDED
 
-        self._listener.state_changed(state)
+        # Notify all listeners
+        for listener in self._listeners:
+            listener.state_changed(state)
 
 
 class DataListenerAdapter(AbstractListenerAdapter):
     """
     Data listener adapter.
 
-    This adapter handles data change events from a specified Znode path and notifies a `DataListener`.
-    It should be used in conjunction with `AbstractListenerAdapterFactory` to manage listener creation
-    and removal.
+    This adapter handles data change events for a specified Znode path and notifies a `DataListener`.
     """
 
     __slots__ = ["_path"]
 
     def __init__(self, path: str, listener: DataListener):
         """
-        Initialize the KazooDataListenerAdapter with a given path and listener.
+        Initialize the DataListenerAdapter with a given path and listener.
 
         :param path: The Znode path to watch.
         :type path: str
@@ -246,7 +234,8 @@ class DataListenerAdapter(AbstractListenerAdapter):
         """
         Handle data changes and notify the listener.
 
-        This method is called with the current data, stat, and event of the watched Znode.
+        This method is called with the current data, stat, and event of the watched Znode,
+        processes the event type, and notifies all registered listeners.
 
         :param data: The current data of the Znode.
         :type data: bytes
@@ -256,10 +245,7 @@ class DataListenerAdapter(AbstractListenerAdapter):
         :type event: WatchedEvent
         """
         with self._lock:
-            if event is None or self._listener is None:
-                # This callback is called once immediately after being added, and at this point, event is None.
-                # Since a non-existent node also returns None, to avoid handling unknown None exceptions,
-                # we directly filter out all cases of None.
+            if event is None or len(self._listeners) == 0:
                 return
 
             event_type = None
@@ -274,16 +260,19 @@ class DataListenerAdapter(AbstractListenerAdapter):
             elif event.type == EventType.CHILD:
                 event_type = DataListener.EventType.CHILD
 
-            self._listener.data_changed(self._path, data, event_type)
+            # Notify all listeners
+            for listener in self._listeners:
+                listener.data_changed(self._path, data, event_type)
 
 
 class ChildrenListenerAdapter(AbstractListenerAdapter):
     """
     Children listener adapter.
 
-    This adapter handles children change events from a specified Znode path and notifies a `ChildrenListener`.
-    It should be used in conjunction with `AbstractListenerAdapterFactory` to manage listener creation and removal.
+    This adapter handles children change events for a specified Znode path and notifies a `ChildrenListener`.
     """
+
+    __slots__ = ["_path"]
 
     def __init__(self, path: str, listener: ChildrenListener):
         """
@@ -301,14 +290,16 @@ class ChildrenListenerAdapter(AbstractListenerAdapter):
         """
         Handle children changes and notify the listener.
 
-        This method is called with the current list of children of the watched Znode.
+        This method is called with the current list of children of the watched Znode
+        and notifies all registered listeners.
 
         :param children: The current list of children of the Znode.
         :type children: List[str]
         """
         with self._lock:
-            if self._listener is not None:
-                self._listener.children_changed(self._path, children)
+            # Notify all listeners
+            for listener in self._listeners:
+                listener.children_changed(self._path, children)
 
 
 class DataListenerAdapterFactory(AbstractListenerAdapterFactory):
@@ -336,7 +327,7 @@ class KazooZookeeperClient(ZookeeperClient):
 
     def __init__(self, url: URL):
         super().__init__(url)
-        self._client: KazooClient = KazooClient(hosts=url.location)
+        self._client: KazooClient = KazooClient(hosts=url.location, logger=_LOGGER)
         # TODO: Add more attributes from url
 
         # state listener dict
@@ -358,14 +349,14 @@ class KazooZookeeperClient(ZookeeperClient):
     def is_connected(self) -> bool:
         return self._client.connected
 
-    def create(self, path: str, ephemeral=False) -> None:
-        self._client.create(path, ephemeral=ephemeral)
+    def create(self, path: str, data: bytes = b"", ephemeral=False) -> None:
+        self._client.create(path, data, ephemeral=ephemeral, makepath=True)
 
     def create_or_update(self, path: str, data: bytes, ephemeral=False) -> None:
         if self.check_exist(path):
             self._client.set(path, data)
         else:
-            self._client.create(path, data, ephemeral=ephemeral)
+            self.create(path, data, ephemeral=ephemeral)
 
     def check_exist(self, path: str) -> bool:
         return self._client.exists(path)

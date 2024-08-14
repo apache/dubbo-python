@@ -19,7 +19,7 @@ from typing import Any, Dict, Optional
 from urllib import parse
 from urllib.parse import urlencode, urlunparse
 
-from dubbo.common.constants import PROTOCOL_SEPARATOR
+from dubbo.constants import common_constants
 
 __all__ = ["URL", "create_url"]
 
@@ -43,7 +43,7 @@ def create_url(url: str, encoded: bool = False) -> "URL":
     if encoded:
         url = parse.unquote(url)
 
-    if PROTOCOL_SEPARATOR not in url:
+    if common_constants.PROTOCOL_SEPARATOR not in url:
         raise ValueError("Invalid URL format: missing protocol")
 
     parsed_url = parse.urlparse(url)
@@ -247,32 +247,54 @@ class URL:
         """
         return self._attributes
 
-    def to_str(self, encode: bool = False) -> str:
+    def to_str(
+        self,
+        contain_ip: bool = True,
+        contain_user: bool = True,
+        contain_path: bool = True,
+        contain_parameters: bool = True,
+        encode: bool = False,
+    ) -> str:
         """
         Converts the URL to a string.
-
+        :param contain_ip: Determines if the URL should contain the IP address. Defaults to True.
+        :type contain_ip: bool
+        :param contain_user: Determines if the URL should contain the username. Defaults to True.
+        :type contain_user: bool
+        :param contain_path: Determines if the URL should contain the path. Defaults to True.
+        :type contain_path: bool
+        :param contain_parameters: Determines if the URL should contain the parameters. Defaults to True.
         :param encode: Determines if the URL should be encoded. Defaults to False.
         :type encode: bool
         :return: The URL string.
         :rtype: str
         """
-        # Construct the netloc part
-        if self.username and self.password:
-            netloc = f"{self.username}:{self.password}@{self.host}"
-        else:
-            netloc = self.host
 
-        if self.port:
-            netloc = f"{netloc}:{self.port}"
+        # Construct the scheme part
+        scheme = ""
+        netloc = ""
+        if contain_ip:
+            scheme = self.scheme
 
-        # Convert parameters dictionary to query string
-        query = urlencode(self.parameters)
+            # Construct the netloc part
+            if contain_user and self.username and self.password:
+                netloc = f"{self.username}:{self.password}@{self.location}"
+            else:
+                netloc = self.location
+
+        # Construct the path part
+        path = self.path if contain_path else ""
+
+        # Construct the query part
+        query = urlencode(self.parameters) if contain_parameters else ""
 
         # Construct the URL
-        url = urlunparse((self.scheme or "", netloc, self.path or "/", "", query, ""))
+        url = ""
+        if scheme or netloc or path or query:
+            url = urlunparse((scheme, netloc, path, "", query, ""))
 
-        if encode:
-            url = parse.quote(url)
+            if encode:
+                url = parse.quote(url, safe="")
 
         return url
 

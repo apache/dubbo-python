@@ -17,8 +17,8 @@
 import abc
 from typing import List, Optional
 
-from dubbo.common import URL
 from dubbo.protocol import Invocation, Invoker
+from dubbo.url import URL
 
 
 class LoadBalance(abc.ABC):

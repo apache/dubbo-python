@@ -19,9 +19,9 @@ import threading
 import uuid
 from typing import Optional
 
-from dubbo.logger import loggerFactory
+from dubbo.loggers import loggerFactory
 
-_LOGGER = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger()
 
 
 def _try_use_uvloop() -> None:

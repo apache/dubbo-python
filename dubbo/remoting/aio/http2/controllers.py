@@ -23,8 +23,7 @@ from typing import Dict, Optional, Set
 
 from h2.connection import H2Connection
 
-from dubbo.common.utils import EventHelper
-from dubbo.logger import loggerFactory
+from dubbo.loggers import loggerFactory
 from dubbo.remoting.aio.http2.frames import (
     DataFrame,
     HeadersFrame,
@@ -33,10 +32,11 @@ from dubbo.remoting.aio.http2.frames import (
 )
 from dubbo.remoting.aio.http2.registries import Http2FrameType
 from dubbo.remoting.aio.http2.stream import DefaultHttp2Stream, Http2Stream
+from dubbo.utils import EventHelper
 
 __all__ = ["RemoteFlowController", "FrameInboundController", "FrameOutboundController"]
 
-_LOGGER = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger()
 
 
 class Controller(abc.ABC):

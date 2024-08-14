@@ -13,7 +13,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from collections import namedtuple
+from typing import Any, Callable
 
-from .logger_config import FileLoggerConfig, LoggerConfig
-from .protocol_config import ProtocolConfig
-from .reference_config import ReferenceConfig
+__all__ = [
+    "SerializingFunction",
+    "DeserializingFunction",
+    "CallType",
+    "UnaryCallType",
+    "ClientStreamCallType",
+    "ServerStreamCallType",
+    "BiStreamCallType",
+]
+
+SerializingFunction = Callable[[Any], bytes]
+DeserializingFunction = Callable[[bytes], Any]
+
+
+# CallType
+CallType = namedtuple("CallType", ["name", "client_stream", "server_stream"])
+UnaryCallType = CallType("UnaryCall", False, False)
+ClientStreamCallType = CallType("ClientStreamCall", True, False)
+ServerStreamCallType = CallType("ServerStream", False, True)
+BiStreamCallType = CallType("BiStreamCall", True, True)

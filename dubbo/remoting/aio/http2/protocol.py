@@ -20,10 +20,8 @@ from typing import List, Optional, Tuple
 from h2.config import H2Configuration
 from h2.connection import H2Connection
 
-from dubbo.common import constants as common_constants
-from dubbo.common.url import URL
-from dubbo.common.utils import EventHelper, FutureHelper
-from dubbo.logger import loggerFactory
+from dubbo.constants import common_constants
+from dubbo.loggers import loggerFactory
 from dubbo.remoting.aio import constants as h2_constants
 from dubbo.remoting.aio.exceptions import ProtocolError
 from dubbo.remoting.aio.http2.controllers import RemoteFlowController
@@ -31,10 +29,12 @@ from dubbo.remoting.aio.http2.frames import UserActionFrames
 from dubbo.remoting.aio.http2.registries import Http2FrameType
 from dubbo.remoting.aio.http2.stream import Http2Stream
 from dubbo.remoting.aio.http2.utils import Http2EventUtils
-
-_LOGGER = loggerFactory.get_logger(__name__)
+from dubbo.url import URL
+from dubbo.utils import EventHelper, FutureHelper
 
 __all__ = ["Http2Protocol"]
+
+_LOGGER = loggerFactory.get_logger()
 
 
 class Http2Protocol(asyncio.Protocol):
@@ -80,7 +80,7 @@ class Http2Protocol(asyncio.Protocol):
         """
         self._transport = transport
         self._h2_connection.initiate_connection()
-        self._transport.write(self._h2_connection.data_to_send())
+        self._flush()
 
         # Create and start the follow controller
         self._flow_controller = RemoteFlowController(
@@ -147,8 +147,16 @@ class Http2Protocol(asyncio.Protocol):
         :param event: The event to be set after sending the frame.
         """
         self._h2_connection.send_headers(stream_id, headers, end_stream=end_stream)
-        self._transport.write(self._h2_connection.data_to_send())
+        self._flush()
         EventHelper.set(event)
+
+    def _flush(self) -> None:
+        """
+        Flush the data to the transport.
+        """
+        outbound_data = self._h2_connection.data_to_send()
+        if outbound_data != b"":
+            self._transport.write(outbound_data)
 
     def _send_reset_frame(
         self, stream_id: int, error_code: int, event: Optional[asyncio.Event] = None
@@ -163,7 +171,7 @@ class Http2Protocol(asyncio.Protocol):
         :type event: Optional[asyncio.Event]
         """
         self._h2_connection.reset_stream(stream_id, error_code)
-        self._transport.write(self._h2_connection.data_to_send())
+        self._flush()
         EventHelper.set(event)
 
     def data_received(self, data):
@@ -188,9 +196,7 @@ class Http2Protocol(asyncio.Protocol):
                 # 1. Events that are handled automatically by the H2 library (e.g. RemoteSettingsChanged, PingReceived).
                 #    -> We just need to send it.
                 # 2. Events that are not implemented or do not require attention. -> We'll ignore it for now.
-                outbound_data = self._h2_connection.data_to_send()
-                if outbound_data:
-                    self._transport.write(outbound_data)
+                self._flush()
 
         except Exception as e:
             raise ProtocolError("Failed to process the Http/2 event.") from e
@@ -205,15 +211,14 @@ class Http2Protocol(asyncio.Protocol):
         """
 
         self._h2_connection.acknowledge_received_data(ack_length, stream_id)
-        self._transport.write(self._h2_connection.data_to_send())
+        self._flush()
 
     def close(self):
         """
         Close the connection.
         """
         self._h2_connection.close_connection()
-        self._transport.write(self._h2_connection.data_to_send())
-
+        self._flush()
         self._transport.close()
 
     def connection_lost(self, exc):

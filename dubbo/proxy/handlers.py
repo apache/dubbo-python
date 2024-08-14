@@ -16,8 +16,15 @@
 
 from typing import Callable, Dict, Optional
 
-from dubbo.common import constants as common_constants
-from dubbo.common.types import DeserializingFunction, SerializingFunction
+from dubbo.types import (
+    BiStreamCallType,
+    CallType,
+    ClientStreamCallType,
+    DeserializingFunction,
+    SerializingFunction,
+    ServerStreamCallType,
+    UnaryCallType,
+)
 
 __all__ = ["RpcMethodHandler", "RpcServiceHandler"]
 
@@ -29,7 +36,7 @@ class RpcMethodHandler:
 
     def __init__(
         self,
-        call_type: str,
+        call_type: CallType,
         behavior: Callable,
         request_serializer: Optional[SerializingFunction] = None,
         response_serializer: Optional[DeserializingFunction] = None,
@@ -37,7 +44,7 @@ class RpcMethodHandler:
         """
         Initialize the RpcMethodHandler
         :param call_type: the call type.
-        :type call_type: str
+        :type call_type: CallType
         :param behavior: the behavior of the method.
         :type behavior: Callable
         :param request_serializer: the request serializer.
@@ -61,7 +68,7 @@ class RpcMethodHandler:
         Create a unary method handler
         """
         return cls(
-            common_constants.UNARY_CALL_VALUE,
+            UnaryCallType,
             behavior,
             request_serializer,
             response_serializer,
@@ -78,7 +85,7 @@ class RpcMethodHandler:
         Create a client stream method handler
         """
         return cls(
-            common_constants.CLIENT_STREAM_CALL_VALUE,
+            ClientStreamCallType,
             behavior,
             request_serializer,
             response_serializer,
@@ -95,7 +102,7 @@ class RpcMethodHandler:
         Create a server stream method handler
         """
         return cls(
-            common_constants.SERVER_STREAM_CALL_VALUE,
+            ServerStreamCallType,
             behavior,
             request_serializer,
             response_serializer,
@@ -112,7 +119,7 @@ class RpcMethodHandler:
         Create a bidi stream method handler
         """
         return cls(
-            common_constants.BI_STREAM_CALL_VALUE,
+            BiStreamCallType,
             behavior,
             request_serializer,
             response_serializer,

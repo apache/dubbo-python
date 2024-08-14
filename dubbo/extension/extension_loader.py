@@ -17,7 +17,7 @@
 import importlib
 from typing import Any
 
-from dubbo.common import SingletonBase
+from dubbo.classes import SingletonBase
 from dubbo.extension import registries as registries_module
 
 

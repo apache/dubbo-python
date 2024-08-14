@@ -14,6 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .logger_adapter import LoggerAdapter
+ENVIRONMENT = "environment"
+TEST_ENVIRONMENT = "test"
+DEVELOPMENT_ENVIRONMENT = "develop"
+PRODUCTION_ENVIRONMENT = "product"
 
-__all__ = ["LoggerAdapter"]
+VERSION = "version"
+GROUP = "group"
+
+TRANSPORT = "transport"
+AIO_TRANSPORT = "aio"

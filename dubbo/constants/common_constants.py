@@ -14,6 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+DUBBO_VALUE = "dubbo"
+
+REFER_KEY = "refer"
+EXPORT_KEY = "export"
+
 PROTOCOL_KEY = "protocol"
 TRIPLE = "triple"
 TRIPLE_SHORT = "tri"
@@ -52,11 +57,8 @@ TRUE_VALUE = "true"
 FALSE_VALUE = "false"
 
 CALL_KEY = "call"
-UNARY_CALL_VALUE = "unary"
-CLIENT_STREAM_CALL_VALUE = "client-stream"
-SERVER_STREAM_CALL_VALUE = "server-stream"
-BI_STREAM_CALL_VALUE = "bi-stream"
 
 PATH_SEPARATOR = "/"
 PROTOCOL_SEPARATOR = "://"
-DYNAMIC_KEY = "dynamic"
+ANY_VALUE = "*"
+COMMA_SEPARATOR = ","

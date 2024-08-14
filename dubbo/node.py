@@ -16,7 +16,7 @@
 
 import abc
 
-from dubbo.common.url import URL
+from dubbo.url import URL
 
 __all__ = ["Node"]
 

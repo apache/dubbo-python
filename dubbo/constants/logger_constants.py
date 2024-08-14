@@ -18,10 +18,8 @@ import enum
 import os
 
 __all__ = [
-    "Level",
     "FileRotateType",
     "LEVEL_KEY",
-    "DRIVER_KEY",
     "CONSOLE_ENABLED_KEY",
     "FILE_ENABLED_KEY",
     "FILE_DIR_KEY",
@@ -30,7 +28,6 @@ __all__ = [
     "FILE_MAX_BYTES_KEY",
     "FILE_INTERVAL_KEY",
     "FILE_BACKUP_COUNT_KEY",
-    "DEFAULT_DRIVER_VALUE",
     "DEFAULT_LEVEL_VALUE",
     "DEFAULT_CONSOLE_ENABLED_VALUE",
     "DEFAULT_FILE_ENABLED_VALUE",
@@ -40,45 +37,6 @@ __all__ = [
     "DEFAULT_FILE_INTERVAL_VALUE",
     "DEFAULT_FILE_BACKUP_COUNT_VALUE",
 ]
-
-
-@enum.unique
-class Level(enum.Enum):
-    """
-    The logging level enum.
-
-    :cvar DEBUG: Debug level.
-    :cvar INFO: Info level.
-    :cvar WARNING: Warning level.
-    :cvar ERROR: Error level.
-    :cvar CRITICAL: Critical level.
-    :cvar FATAL: Fatal level.
-    :cvar UNKNOWN: Unknown level.
-    """
-
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERROR"
-    CRITICAL = "CRITICAL"
-    FATAL = "FATAL"
-    UNKNOWN = "UNKNOWN"
-
-    @classmethod
-    def get_level(cls, level_value: str) -> "Level":
-        """
-        Get the level from the level value.
-
-        :param level_value: The level value.
-        :type level_value: str
-        :return: The level. If the level value is invalid, return UNKNOWN.
-        :rtype: Level
-        """
-        level_value = level_value.upper()
-        for level in cls:
-            if level_value == level.value:
-                return level
-        return cls.UNKNOWN
 
 
 @enum.unique
@@ -99,7 +57,6 @@ class FileRotateType(enum.Enum):
 """logger config keys"""
 # global config
 LEVEL_KEY = "logger.level"
-DRIVER_KEY = "logger.driver"
 
 # console config
 CONSOLE_ENABLED_KEY = "logger.console.enable"
@@ -114,8 +71,7 @@ FILE_INTERVAL_KEY = "logger.file.interval"
 FILE_BACKUP_COUNT_KEY = "logger.file.backupcount"
 
 """some logger default value"""
-DEFAULT_DRIVER_VALUE = "logging"
-DEFAULT_LEVEL_VALUE = Level.DEBUG
+DEFAULT_LEVEL_VALUE = "INFO"
 # console
 DEFAULT_CONSOLE_ENABLED_VALUE = True
 # file

@@ -16,7 +16,7 @@
 
 import abc
 
-from dubbo.common import URL
+from dubbo.url import URL
 
 __all__ = ["Client", "Server", "Transporter"]
 

@@ -16,13 +16,13 @@
 
 from typing import Any
 
-from dubbo.common.types import DeserializingFunction, SerializingFunction
 from dubbo.serialization import (
     Deserializer,
     SerializationError,
     Serializer,
     ensure_bytes,
 )
+from dubbo.types import DeserializingFunction, SerializingFunction
 
 __all__ = ["CustomSerializer", "CustomDeserializer"]
 

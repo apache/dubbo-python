@@ -14,9 +14,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable
+REGISTRY_KEY = "registry"
+DYNAMIC_KEY = "dynamic"
+CATEGORY_KEY = "category"
+PROVIDERS_CATEGORY = "providers"
+CONSUMERS_CATEGORY = "consumers"
 
-__all__ = ["SerializingFunction", "DeserializingFunction"]
 
-SerializingFunction = Callable[[Any], bytes]
-DeserializingFunction = Callable[[bytes], Any]
+LOAD_BALANCE_KEY = "loadbalance"

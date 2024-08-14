@@ -13,11 +13,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from ._interfaces import Logger, LoggerAdapter
-from .logger_factory import LoggerFactory as _LoggerFactory
-
-# The logger factory instance.
-loggerFactory = _LoggerFactory()
-
-__all__ = ["Logger", "LoggerAdapter", "loggerFactory"]

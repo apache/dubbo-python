@@ -16,14 +16,11 @@
 
 import abc
 
-from dubbo.common import URL
 from dubbo.protocol import Invoker
 from dubbo.proxy.handlers import RpcServiceHandler
+from dubbo.url import URL
 
-__all__ = [
-    "RpcCallable",
-    "RpcCallableFactory",
-]
+__all__ = ["RpcCallable", "RpcCallableFactory"]
 
 
 class RpcCallable(abc.ABC):

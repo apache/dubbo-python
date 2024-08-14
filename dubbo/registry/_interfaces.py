@@ -15,10 +15,27 @@
 # limitations under the License.
 
 import abc
+from typing import List
 
-from dubbo.common import URL, Node
+from dubbo.node import Node
+from dubbo.url import URL
 
 __all__ = ["Registry", "RegistryFactory"]
+
+
+class NotifyListener(abc.ABC):
+    """
+    The notify listener.
+    """
+
+    @abc.abstractmethod
+    def notify(self, urls: List[URL]) -> None:
+        """
+        Notify the listener.
+
+        :param urls: The list of registered information , is always not empty.
+        """
+        raise NotImplementedError()
 
 
 class Registry(Node, abc.ABC):

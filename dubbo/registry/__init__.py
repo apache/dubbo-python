@@ -15,3 +15,5 @@
 # limitations under the License.
 
 from ._interfaces import Registry, RegistryFactory
+
+__all__ = ["Registry", "RegistryFactory"]
