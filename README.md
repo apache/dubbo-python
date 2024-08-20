@@ -4,11 +4,6 @@
 
 ---
 
-> #### 🚧 Early-Stage Project 🚧
-> **Disclaimer:** This project is in the early stages of development. Features are subject to change, and some
-> components may not be fully stable. Contributions and feedback are welcome as the project evolves.
-
-
 Apache Dubbo is an easy-to-use, high-performance WEB and RPC framework with builtin service discovery, traffic
 management, observability, security features, tools and best practices for building enterprise-level microservices.
 
@@ -19,6 +14,10 @@ HTTP) and various features designed by Dubbo for constructing microservice archi
 
 Visit [the official website](https://dubbo.apache.org/) for more information.
 
+
+### 🚧 Early-Stage Project 🚧
+> **Disclaimer:** This project is in the early stages of development. Features are subject to change, and some
+> components may not be fully stable. Contributions and feedback are welcome as the project evolves.
 
 
 
