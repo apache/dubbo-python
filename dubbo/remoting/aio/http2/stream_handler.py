@@ -44,10 +44,10 @@ class StreamMultiplexHandler:
 
     def __init__(self):
         # Import the Http2Protocol class here to avoid circular imports.
-        from dubbo.remoting.aio.http2.protocol import Http2Protocol
+        from dubbo.remoting.aio.http2.protocol import AbstractHttp2Protocol
 
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-        self._protocol: Optional[Http2Protocol] = None
+        self._protocol: Optional[AbstractHttp2Protocol] = None
 
         # The map of stream_id to stream.
         self._streams: Optional[Dict[int, DefaultHttp2Stream]] = None

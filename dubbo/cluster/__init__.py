@@ -14,4 +14,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._interfaces import AbstractLoadBalance, LoadBalance
+from ._interfaces import Cluster, Directory, LoadBalance

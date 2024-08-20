@@ -25,6 +25,7 @@ __all__ = [
     "DataFrame",
     "WindowUpdateFrame",
     "ResetStreamFrame",
+    "PingFrame",
     "UserActionFrames",
 ]
 
@@ -44,7 +45,7 @@ class Http2Frame:
     ):
         """
         Initialize the HTTP/2 frame.
-        :param stream_id: The stream identifier.
+        :param stream_id: The stream identifier. 0 for connection-level frames.
         :type stream_id: int
         :param frame_type: The frame type.
         :type frame_type: Http2FrameType
@@ -170,6 +171,26 @@ class ResetStreamFrame(Http2Frame):
 
     def __repr__(self) -> str:
         return f"<ResetStreamFrame stream_id={self.stream_id} error_code={self.error_code}>"
+
+
+class PingFrame(Http2Frame):
+    """
+    HTTP/2 ping frame.
+    """
+
+    __slots__ = ["data"]
+
+    def __init__(self, data: bytes):
+        """
+        Initialize the HTTP/2 ping frame.
+        :param data: The data.
+        :type data: bytes
+        """
+        super().__init__(0, Http2FrameType.PING, False)
+        self.data = data
+
+    def __repr__(self) -> str:
+        return f"<PingFrame data={self.data}>"
 
 
 # User action frames.

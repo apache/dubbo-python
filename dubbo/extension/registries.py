@@ -17,6 +17,7 @@
 from dataclasses import dataclass
 from typing import Any, Dict
 
+from dubbo.cluster import LoadBalance
 from dubbo.compression import Compressor, Decompressor
 from dubbo.protocol import Protocol
 from dubbo.registry import RegistryFactory
@@ -39,8 +40,9 @@ class ExtendedRegistry:
 
 
 # All Extension Registries
-__all__ = [
+registries = [
     "registryFactoryRegistry",
+    "loadBalanceRegistry",
     "protocolRegistry",
     "compressorRegistry",
     "decompressorRegistry",
@@ -55,6 +57,13 @@ registryFactoryRegistry = ExtendedRegistry(
     },
 )
 
+# LoadBalance registry
+loadBalanceRegistry = ExtendedRegistry(
+    interface=LoadBalance,
+    impls={
+        "random": "dubbo.cluster.loadbalances.RandomLoadBalance",
+    },
+)
 
 # Protocol registry
 protocolRegistry = ExtendedRegistry(

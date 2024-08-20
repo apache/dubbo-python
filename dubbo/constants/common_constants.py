@@ -58,6 +58,8 @@ FALSE_VALUE = "false"
 
 CALL_KEY = "call"
 
+LOADBALANCE_KEY = "loadbalance"
+
 PATH_SEPARATOR = "/"
 PROTOCOL_SEPARATOR = "://"
 ANY_VALUE = "*"

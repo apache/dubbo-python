@@ -316,6 +316,21 @@ class URL:
         """
         return copy.deepcopy(self)
 
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, URL):
+            return False
+
+        return (
+            self.scheme == other.scheme
+            and self.host == other.host
+            and self.port == other.port
+            and self.username == other.username
+            and self.password == other.password
+            and self.path == other.path
+            and self.parameters == other.parameters
+            and self.attributes == other.attributes
+        )
+
     def __copy__(self) -> "URL":
         return URL(
             self.scheme,

@@ -13,34 +13,46 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import abc
 import asyncio
+import struct
+import time
 from typing import List, Optional, Tuple
 
 from h2.config import H2Configuration
 from h2.connection import H2Connection
 
-from dubbo.constants import common_constants
 from dubbo.loggers import loggerFactory
+from dubbo.remoting.aio import ConnectionStateListener, EmptyConnectionStateListener
 from dubbo.remoting.aio import constants as h2_constants
 from dubbo.remoting.aio.exceptions import ProtocolError
 from dubbo.remoting.aio.http2.controllers import RemoteFlowController
-from dubbo.remoting.aio.http2.frames import UserActionFrames
+from dubbo.remoting.aio.http2.frames import (
+    DataFrame,
+    HeadersFrame,
+    Http2Frame,
+    PingFrame,
+    ResetStreamFrame,
+    UserActionFrames,
+    WindowUpdateFrame,
+)
 from dubbo.remoting.aio.http2.registries import Http2FrameType
 from dubbo.remoting.aio.http2.stream import Http2Stream
 from dubbo.remoting.aio.http2.utils import Http2EventUtils
 from dubbo.url import URL
 from dubbo.utils import EventHelper, FutureHelper
 
-__all__ = ["Http2Protocol"]
+__all__ = ["AbstractHttp2Protocol", "Http2ClientProtocol", "Http2ServerProtocol"]
 
 _LOGGER = loggerFactory.get_logger()
 
 
-class Http2Protocol(asyncio.Protocol):
+class AbstractHttp2Protocol(asyncio.Protocol, abc.ABC):
     """
     HTTP/2 protocol implementation.
     """
+
+    DEFAULT_PING_DATA = struct.pack(">Q", 0)  # 8 bytes of 0
 
     __slots__ = [
         "_url",
@@ -49,19 +61,16 @@ class Http2Protocol(asyncio.Protocol):
         "_transport",
         "_flow_controller",
         "_stream_handler",
+        "_last_read",
+        "_last_write",
     ]
 
-    def __init__(self, url: URL):
+    def __init__(self, url: URL, h2_config: H2Configuration):
         self._url = url
         self._loop = asyncio.get_running_loop()
 
         # Create the H2 state machine
-        side_client = (
-            self._url.parameters.get(common_constants.SIDE_KEY)
-            == common_constants.CLIENT_VALUE
-        )
-        h2_config = H2Configuration(client_side=side_client, header_encoding="utf-8")
-        self._h2_connection: H2Connection = H2Connection(config=h2_config)
+        self._h2_connection = H2Connection(h2_config)
 
         # The transport instance
         self._transport: Optional[asyncio.Transport] = None
@@ -69,6 +78,37 @@ class Http2Protocol(asyncio.Protocol):
         self._flow_controller: Optional[RemoteFlowController] = None
 
         self._stream_handler = self._url.attributes[h2_constants.STREAM_HANDLER_KEY]
+
+        # last time of receiving data
+        self._last_read = time.time()
+        # last time of sending data
+        self._last_write = time.time()
+
+    @property
+    def last_read(self) -> float:
+        """
+        Get the last time of receiving data.
+        """
+        return self._last_read
+
+    def _update_last_read(self) -> None:
+        """
+        Update the last time of receiving data.
+        """
+        self._last_read = time.time()
+
+    @property
+    def last_write(self) -> float:
+        """
+        Get the last time of sending data.
+        """
+        return self._last_write
+
+    def _update_last_write(self) -> None:
+        """
+        Update the last time of sending data.
+        """
+        self._last_write = time.time()
 
     def connection_made(self, transport: asyncio.Transport):
         """
@@ -150,14 +190,6 @@ class Http2Protocol(asyncio.Protocol):
         self._flush()
         EventHelper.set(event)
 
-    def _flush(self) -> None:
-        """
-        Flush the data to the transport.
-        """
-        outbound_data = self._h2_connection.data_to_send()
-        if outbound_data != b"":
-            self._transport.write(outbound_data)
-
     def _send_reset_frame(
         self, stream_id: int, error_code: int, event: Optional[asyncio.Event] = None
     ) -> None:
@@ -174,32 +206,68 @@ class Http2Protocol(asyncio.Protocol):
         self._flush()
         EventHelper.set(event)
 
+    def _send_ping_frame(self, data: bytes = DEFAULT_PING_DATA) -> None:
+        """
+        Send the HTTP/2 ping frame.(thread-unsafe)
+        :param data: The data to send. The length of the data must be 8 bytes.
+        :type data: bytes
+        """
+        self._h2_connection.ping(data)
+        self._flush()
+
+    def _flush(self) -> None:
+        """
+        Flush the data to the transport.
+        """
+        outbound_data = self._h2_connection.data_to_send()
+        if outbound_data != b"":
+            self._transport.write(outbound_data)
+            # Update the last write time
+            self._update_last_write()
+
     def data_received(self, data):
         """
         Called when some data is received from the transport.
         :param data: The data received.
         :type data: bytes
         """
-        events = self._h2_connection.receive_data(data)
+        # Update the last read time
+        self._update_last_read()
+
         # Process the event
+        events = self._h2_connection.receive_data(data)
         try:
             for event in events:
                 frame = Http2EventUtils.convert_to_frame(event)
-                if frame is not None:
-                    if frame.frame_type == Http2FrameType.WINDOW_UPDATE:
-                        # Because flow control may be at the connection level, it is handled here
-                        self._flow_controller.release_flow_control(frame)
-                    else:
-                        self._stream_handler.handle_frame(frame)
 
                 # If frame is None, there are two possible cases:
                 # 1. Events that are handled automatically by the H2 library (e.g. RemoteSettingsChanged, PingReceived).
                 #    -> We just need to send it.
                 # 2. Events that are not implemented or do not require attention. -> We'll ignore it for now.
+                if frame is not None:
+                    if isinstance(frame, WindowUpdateFrame):
+                        # Because flow control may be at the connection level, it is handled here
+                        self._flow_controller.release_flow_control(frame)
+                    elif isinstance(frame, (HeadersFrame, DataFrame, ResetStreamFrame)):
+                        # Handle the frame by the stream handler
+                        self._stream_handler.handle_frame(frame)
+                    else:
+                        # Try handling other frames
+                        self._do_other_frame(frame)
+
+                # Flush the data
                 self._flush()
 
         except Exception as e:
             raise ProtocolError("Failed to process the Http/2 event.") from e
+
+    def _do_other_frame(self, frame: Http2Frame):
+        """
+        This is a scalable approach to handle other frames. Subclasses can override this method to handle other frames.
+        :param frame: The frame to handle.
+        :type frame: Http2Frame
+        """
+        pass
 
     def ack_received_data(self, stream_id: int, ack_length: int) -> None:
         """
@@ -226,10 +294,83 @@ class Http2Protocol(asyncio.Protocol):
         Called when the connection is lost.
         """
         self._flow_controller.close()
+
+
+class Http2ClientProtocol(AbstractHttp2Protocol):
+    """
+    HTTP/2 client protocol implementation.
+    """
+
+    def __init__(
+        self,
+        url: URL,
+        connection_listener: ConnectionStateListener = None,
+    ):
+        super().__init__(
+            url, H2Configuration(client_side=True, header_encoding="utf-8")
+        )
+        self._connection_listener = (
+            connection_listener or EmptyConnectionStateListener()
+        )
+
+        # get heartbeat interval -> default 60s
+        self._heartbeat_interval = url.parameters.get(
+            h2_constants.HEARTBEAT_KEY, h2_constants.DEFAULT_HEARTBEAT
+        )
+        self._ping_ack_future: Optional[asyncio.Future] = None
+        self._heartbeat_task: Optional[asyncio.Task] = None
+
+    def connection_made(self, transport: asyncio.Transport):
+        super().connection_made(transport)
+
+        # Start the heartbeat task
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+
         # Notify the connection is established
-        future = self._url.attributes.get(h2_constants.CLOSE_FUTURE_KEY)
-        if future:
-            if exc:
-                FutureHelper.set_exception(future, exc)
-            else:
-                FutureHelper.set_result(future, None)
+        asyncio.create_task(self._connection_listener.connection_made())
+
+    def _do_other_frame(self, frame: Http2Frame):
+        # Handle the ping frame
+        if isinstance(frame, PingFrame):
+            FutureHelper.set_result(self._ping_ack_future, None)
+
+    async def _heartbeat_loop(self):
+        """
+        Heartbeat loop. It is used to check the connection status.
+        """
+        while True:
+            await asyncio.sleep(self._heartbeat_interval)
+
+            # check last read time
+            now = time.time()
+            if now - self.last_read < self._heartbeat_interval:
+                # the connection is normal
+                continue
+
+            # try to send ping frame to check the connection
+            self._ping_ack_future = asyncio.Future()
+            self._send_ping_frame()
+            try:
+                # wait for the ping ack
+                await asyncio.wait_for(self._ping_ack_future, timeout=5)
+            except asyncio.TimeoutError:
+                # close the connection
+                self.close()
+                break
+
+    def connection_lost(self, exc):
+        super().connection_lost(exc)
+
+        # Notify the connection is lost
+        asyncio.create_task(self._connection_listener.connection_lost(exc))
+
+
+class Http2ServerProtocol(AbstractHttp2Protocol):
+    """
+    HTTP/2 server protocol implementation.
+    """
+
+    def __init__(self, url: URL):
+        super().__init__(
+            url, H2Configuration(client_side=False, header_encoding="utf-8")
+        )

@@ -34,7 +34,6 @@ __all__ = [
 
 from dubbo.proxy.handlers import RpcServiceHandler
 from dubbo.url import URL, create_url
-from dubbo.utils import NetworkUtils
 
 
 class AbstractConfig(abc.ABC):
@@ -241,12 +240,12 @@ class ReferenceConfig(AbstractConfig):
     Configuration for the dubbo reference.
     """
 
-    __slots__ = ["_protocol", "_server", "_host", "_port"]
+    __slots__ = ["_protocol", "_service", "_host", "_port"]
 
     def __init__(
         self,
         protocol: str,
-        server: str,
+        service: str,
         host: Optional[str] = None,
         port: Optional[int] = None,
     ):
@@ -254,8 +253,8 @@ class ReferenceConfig(AbstractConfig):
         Initialize the reference configuration.
         :param protocol: The protocol of the server.
         :type protocol: str
-        :param server: The name of the server.
-        :type server: str
+        :param service: The name of the server.
+        :type service: str
         :param host: The host of the server.
         :type host: Optional[str]
         :param port: The port of the server.
@@ -263,7 +262,7 @@ class ReferenceConfig(AbstractConfig):
         """
         super().__init__()
         self._protocol = protocol
-        self._server = server
+        self._service = service
         self._host = host
         self._port = port
 
@@ -286,22 +285,22 @@ class ReferenceConfig(AbstractConfig):
         self._protocol = protocol
 
     @property
-    def server(self) -> str:
+    def service(self) -> str:
         """
-        Get the name of the server.
-        :return: The name of the server.
+        Get the name of the service.
+        :return: The name of the service.
         :rtype: str
         """
-        return self._server
+        return self._service
 
-    @server.setter
-    def server(self, server: str) -> None:
+    @service.setter
+    def service(self, service: str) -> None:
         """
-        Set the name of the server.
-        :param server: The name of the server.
-        :type server: str
+        Set the name of the service.
+        :param service: The name of the service.
+        :type service: str
         """
-        self._server = server
+        self._service = service
 
     @property
     def host(self) -> Optional[str]:
@@ -349,8 +348,8 @@ class ReferenceConfig(AbstractConfig):
             scheme=self.protocol,
             host=self.host,
             port=self.port,
-            path=self.server,
-            parameters={common_constants.SERVICE_KEY: self.server},
+            path=self.service,
+            parameters={common_constants.SERVICE_KEY: self.service},
         )
 
     @classmethod
@@ -366,7 +365,7 @@ class ReferenceConfig(AbstractConfig):
             url = create_url(url)
         return cls(
             protocol=url.scheme,
-            server=url.parameters.get(common_constants.SERVICE_KEY, url.path),
+            service=url.parameters.get(common_constants.SERVICE_KEY, url.path),
             host=url.host,
             port=url.port,
         )
@@ -451,7 +450,7 @@ class ServiceConfig(AbstractConfig):
         """
         return URL(
             scheme=self.protocol,
-            host=NetworkUtils.get_host_ip(),
+            host=common_constants.LOCAL_HOST_VALUE,
             port=self.port,
             parameters={
                 common_constants.SERVICE_KEY: self.service_handler.service_name

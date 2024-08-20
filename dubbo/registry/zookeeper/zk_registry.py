@@ -13,14 +13,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Dict, List
+from typing import List
 
 from dubbo.constants import common_constants, registry_constants
 from dubbo.loggers import loggerFactory
-from dubbo.registry import Registry, RegistryFactory
+from dubbo.registry import NotifyListener, Registry, RegistryFactory
 from dubbo.registry.zookeeper import ChildrenListener, StateListener, ZookeeperTransport
 from dubbo.registry.zookeeper.kazoo_transport import KazooZookeeperTransport
-from dubbo.url import URL
+from dubbo.url import URL, create_url
 
 __all__ = ["ZookeeperRegistryFactory", "ZookeeperRegistry"]
 
@@ -37,6 +37,19 @@ class _DefaultStateListener(StateListener):
             _LOGGER.info("Connection suspended")
 
 
+class _DefaultChildrenListener(ChildrenListener):
+
+    def __init__(self, listener: NotifyListener):
+        self._listener = listener
+
+    def children_changed(self, path: str, children: List[str]) -> None:
+        urls = []
+        for child in children:
+            url = create_url(child, encoded=True)
+            urls.append(url)
+        self._listener.notify(urls)
+
+
 class ZookeeperRegistry(Registry):
     """
     Zookeeper registry implementation.
@@ -48,7 +61,6 @@ class ZookeeperRegistry(Registry):
     def __init__(self, url: URL, zk_transport: ZookeeperTransport):
         self._url = url
         self._any_services = set()
-        self._zk_listeners: Dict[URL, Dict[object, ChildrenListener]] = {}
 
         # connect to the zookeeper server
         self._zk_client = zk_transport.connect(self._url)
@@ -82,7 +94,7 @@ class ZookeeperRegistry(Registry):
         return self.root_dir
 
     def register(self, url: URL) -> None:
-        self._zk_client.create(
+        self._zk_client.create_or_update(
             self.to_url_path(url),
             url.location.encode("utf-8"),
             ephemeral=bool(url.parameters.get(registry_constants.DYNAMIC_KEY, True)),
@@ -91,10 +103,13 @@ class ZookeeperRegistry(Registry):
     def unregister(self, url: URL) -> None:
         self._zk_client.delete(self.to_url_path(url))
 
-    def subscribe(self, url: URL, listener):
-        pass
+    def subscribe(self, url: URL, listener: NotifyListener) -> None:
+        for path in self.get_categories_path(url):
+            children_listener = _DefaultChildrenListener(listener)
+            self._zk_client.add_children_listener(path, children_listener)
 
-    def unsubscribe(self, url: URL, listener):
+    def unsubscribe(self, url: URL, listener: NotifyListener) -> None:
+        # TODO: implement the unsubscribe
         pass
 
     def lookup(self, url: URL):

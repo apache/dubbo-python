@@ -13,35 +13,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import abc
+import random
 from typing import List, Optional
 
+from dubbo.cluster import LoadBalance
 from dubbo.protocol import Invocation, Invoker
-from dubbo.url import URL
-
-
-class LoadBalance(abc.ABC):
-    """
-    The load balance interface.
-    """
-
-    @abc.abstractmethod
-    def select(
-        self, invokers: List[Invoker], url: URL, invocation: Invocation
-    ) -> Optional[Invoker]:
-        """
-        Select an invoker from the list.
-        :param invokers: The invokers.
-        :type invokers: List[Invoker]
-        :param url: The URL.
-        :type url: URL
-        :param invocation: The invocation.
-        :type invocation: Invocation
-        :return: The selected invoker. If no invoker is selected, return None.
-        :rtype: Optional[Invoker]
-        """
-        raise NotImplementedError()
 
 
 class AbstractLoadBalance(LoadBalance, abc.ABC):
@@ -50,7 +27,7 @@ class AbstractLoadBalance(LoadBalance, abc.ABC):
     """
 
     def select(
-        self, invokers: List[Invoker], url: URL, invocation: Invocation
+        self, invokers: List[Invoker], invocation: Invocation
     ) -> Optional[Invoker]:
         if not invokers:
             return None
@@ -58,21 +35,31 @@ class AbstractLoadBalance(LoadBalance, abc.ABC):
         if len(invokers) == 1:
             return invokers[0]
 
-        return self.do_select(invokers, url, invocation)
+        return self.do_select(invokers, invocation)
 
     @abc.abstractmethod
     def do_select(
-        self, invokers: List[Invoker], url: URL, invocation: Invocation
+        self, invokers: List[Invoker], invocation: Invocation
     ) -> Optional[Invoker]:
         """
         Do select an invoker from the list.
         :param invokers: The invokers.
         :type invokers: List[Invoker]
-        :param url: The URL.
-        :type url: URL
         :param invocation: The invocation.
         :type invocation: Invocation
         :return: The selected invoker. If no invoker is selected, return None.
         :rtype: Optional[Invoker]
         """
         raise NotImplementedError()
+
+
+class RandomLoadBalance(AbstractLoadBalance):
+    """
+    Random load balance.
+    """
+
+    def do_select(
+        self, invokers: List[Invoker], invocation: Invocation
+    ) -> Optional[Invoker]:
+        randint = random.randint(0, len(invokers) - 1)
+        return invokers[randint]

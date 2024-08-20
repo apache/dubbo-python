@@ -48,13 +48,6 @@ class Client(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def reconnect(self):
-        """
-        Reconnect to the server.
-        """
-        raise NotImplementedError()
-
-    @abc.abstractmethod
     def close(self):
         """
         Close the client.

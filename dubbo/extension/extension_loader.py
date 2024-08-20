@@ -48,7 +48,7 @@ class ExtensionLoader(SingletonBase):
         """
         if not hasattr(self, "_initialized"):  # Ensure __init__ runs only once
             self._registries = {}
-            for name in registries_module.__all__:
+            for name in registries_module.registries:
                 registry = getattr(registries_module, name)
                 self._registries[registry.interface] = registry.impls
             self._initialized = True

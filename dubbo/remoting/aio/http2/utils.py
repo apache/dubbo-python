@@ -21,6 +21,7 @@ import h2.events as h2_event
 from dubbo.remoting.aio.http2.frames import (
     DataFrame,
     HeadersFrame,
+    PingFrame,
     ResetStreamFrame,
     WindowUpdateFrame,
 )
@@ -38,13 +39,15 @@ class Http2EventUtils:
     @staticmethod
     def convert_to_frame(
         event: h2_event.Event,
-    ) -> Union[HeadersFrame, DataFrame, ResetStreamFrame, WindowUpdateFrame, None]:
+    ) -> Union[
+        HeadersFrame, DataFrame, ResetStreamFrame, WindowUpdateFrame, PingFrame, None
+    ]:
         """
         Convert a h2.events.Event to HTTP/2 Frame.
         :param event: The H2 event.
         :type event: h2.events.Event
         :return: The HTTP/2 frame.
-        :rtype: Union[HeadersFrame, DataFrame, ResetStreamFrame, WindowUpdateFrame, None]
+        :rtype: Union[HeadersFrame, DataFrame, ResetStreamFrame, WindowUpdateFrame, PingFrame, None]
         """
         if isinstance(
             event,
@@ -76,5 +79,8 @@ class Http2EventUtils:
         elif isinstance(event, h2_event.WindowUpdated):
             # WINDOW_UPDATE frame.
             return WindowUpdateFrame(event.stream_id, event.delta)
-        else:
-            return None
+        elif isinstance(event, h2_event.PingReceived):
+            # PING frame.
+            return PingFrame(event.ping_data)
+
+        return None

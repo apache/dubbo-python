@@ -26,6 +26,7 @@ from dubbo.protocol.triple.constants import TripleHeaderName, TripleHeaderValue
 from dubbo.protocol.triple.metadata import RequestMetadata
 from dubbo.protocol.triple.results import TriResult
 from dubbo.remoting import Client
+from dubbo.remoting.aio.exceptions import RemotingError
 from dubbo.remoting.aio.http2.stream_handler import StreamClientMultiplexHandler
 from dubbo.serialization import (
     CustomDeserializer,
@@ -62,8 +63,10 @@ class TripleInvoker(Invoker):
         result = TriResult(call_type)
 
         if not self._client.is_connected():
-            # Reconnect the client
-            self._client.reconnect()
+            result.set_exception(
+                RemotingError("The client is not connected to the server.")
+            )
+            return result
 
         # get serializer
         serializer = DirectSerializer()

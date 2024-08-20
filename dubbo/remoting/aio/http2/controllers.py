@@ -206,12 +206,12 @@ class FrameInboundController(Controller):
         :param executor: The thread pool executor for handling frames.
         :type executor: Optional[ThreadPoolExecutor]
         """
-        from dubbo.remoting.aio.http2.protocol import Http2Protocol
+        from dubbo.remoting.aio.http2.protocol import AbstractHttp2Protocol
 
         super().__init__(loop)
 
         self._stream = stream
-        self._protocol: Http2Protocol = protocol
+        self._protocol: AbstractHttp2Protocol = protocol
         self._executor = executor
 
         # The queue for receiving frames.
@@ -294,12 +294,12 @@ class FrameOutboundController(Controller):
     def __init__(
         self, stream: DefaultHttp2Stream, loop: asyncio.AbstractEventLoop, protocol
     ):
-        from dubbo.remoting.aio.http2.protocol import Http2Protocol
+        from dubbo.remoting.aio.http2.protocol import AbstractHttp2Protocol
 
         super().__init__(loop)
 
         self._stream = stream
-        self._protocol: Http2Protocol = protocol
+        self._protocol: AbstractHttp2Protocol = protocol
 
         self._headers_put_event: asyncio.Event = asyncio.Event()
         self._headers_sent_event: asyncio.Event = asyncio.Event()

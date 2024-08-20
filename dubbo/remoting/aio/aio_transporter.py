@@ -16,11 +16,13 @@
 
 import asyncio
 import concurrent
-from typing import Optional
+import threading
+from typing import Union
 
 from dubbo.constants import common_constants
 from dubbo.loggers import loggerFactory
 from dubbo.remoting._interfaces import Client, Server, Transporter
+from dubbo.remoting.aio import ConnectionStateListener
 from dubbo.remoting.aio import constants as aio_constants
 from dubbo.remoting.aio.event_loop import EventLoop
 from dubbo.remoting.aio.exceptions import RemotingError
@@ -30,17 +32,17 @@ from dubbo.utils import FutureHelper
 _LOGGER = loggerFactory.get_logger()
 
 
-class AioClient(Client):
+class AioClient(Client, ConnectionStateListener):
     """
     Asyncio client.
     """
 
     __slots__ = [
+        "_global_lock",
         "_protocol",
         "_connected",
-        "_close_future",
-        "_closing",
         "_closed",
+        "_active_close",
         "_event_loop",
     ]
 
@@ -52,21 +54,18 @@ class AioClient(Client):
         """
         super().__init__(url)
 
+        self._global_lock = threading.Lock()
+
         # Set the side of the transporter to client.
         self._protocol = None
 
-        # the event to indicate the connection status of the client
+        # the status of the client
         self._connected = False
-
-        # the event to indicate the close status of the client
-        self._close_future = concurrent.futures.Future()
-        self._closing = False
         self._closed = False
+        self._active_close = False
 
-        self._url.parameters[common_constants.SIDE_KEY] = common_constants.CLIENT_VALUE
-        self._url.attributes[aio_constants.CLOSE_FUTURE_KEY] = self._close_future
-
-        self._event_loop: Optional[EventLoop] = None
+        # event loop
+        self._event_loop: EventLoop = EventLoop()
 
         # connect to the server
         self.connect()
@@ -81,79 +80,109 @@ class AioClient(Client):
         """
         Check if the client is closed.
         """
-        return self._closed or self._closing
-
-    def reconnect(self) -> None:
-        """
-        Reconnect to the server.
-        """
-        self.close()
-        self._connected = False
-        self._close_future = concurrent.futures.Future()
-        self.connect()
+        return self._closed
 
     def connect(self) -> None:
         """
         Connect to the server.
         """
-        if self.is_connected():
-            return
-        elif self.is_closed():
-            raise RemotingError("The client is closed.")
+        with self._global_lock:
+            if self.is_connected():
+                return
+            elif self.is_closed():
+                raise RemotingError("The client is closed.")
 
-        async def _inner_operation():
-            running_loop = asyncio.get_running_loop()
-            # Create the connection.
-            _, protocol = await running_loop.create_connection(
-                lambda: self._url.attributes[common_constants.PROTOCOL_KEY](self._url),
-                self._url.host,
-                self._url.port,
+            # Run the connection logic in the event loop.
+            if self._event_loop.stopped:
+                raise RemotingError("The event loop is stopped.")
+            elif not self._event_loop.started:
+                self._event_loop.start()
+
+            future = concurrent.futures.Future()
+            asyncio.run_coroutine_threadsafe(
+                self._do_connect(future), self._event_loop.loop
             )
-            # Set the protocol.
-            return protocol
 
-        # Run the connection logic in the event loop.
-        if self._event_loop:
-            self._event_loop.stop()
-        self._event_loop = EventLoop()
-        self._event_loop.start()
+            try:
+                self._protocol = future.result()
+                _LOGGER.info(
+                    "Connected to the server. host: %s, port: %s",
+                    self._url.host,
+                    self._url.port,
+                )
 
-        future = asyncio.run_coroutine_threadsafe(
-            _inner_operation(), self._event_loop.loop
+            except ConnectionRefusedError as e:
+                raise RemotingError(f"Failed to connect to the server,{str(e)}")
+
+    async def _do_connect(
+        self, future: Union[concurrent.futures.Future, asyncio.Future]
+    ):
+        """
+        Connect to the server.
+        """
+        running_loop = asyncio.get_running_loop()
+        # Create the connection.
+        _, protocol = await running_loop.create_connection(
+            lambda: self._url.attributes[common_constants.PROTOCOL_KEY](
+                self._url, self
+            ),
+            self._url.host,
+            self._url.port,
         )
-        try:
-            self._protocol = future.result()
-            self._connected = True
-            _LOGGER.info(
-                "Connected to the server. host: %s, port: %s",
-                self._url.host,
-                self._url.port,
-            )
-        except ConnectionRefusedError as e:
-            raise RemotingError("Failed to connect to the server") from e
+        # Set the protocol.
+        FutureHelper.set_result(future, protocol)
 
     def close(self) -> None:
         """
         Close the client.
         """
-        if self.is_closed():
-            return
-        self._closing = True
+        with self._global_lock:
+            if self.is_closed():
+                return
 
-        def _on_close(_future: concurrent.futures.Future):
-            self._closed = True if _future.done() else False
-
-        self._close_future.add_done_callback(_on_close)
-
-        try:
+            self._active_close = True
             self._protocol.close()
-            exc = self._close_future.exception()
-            if exc:
-                raise RemotingError(f"Failed to close the client: {exc}")
-            _LOGGER.info("Closed the client.")
-        finally:
+
+    async def connection_made(self):
+        # Update the connection status.
+        self._connected = True
+
+    async def connection_lost(self, exc):
+        self._connected = False
+        self._closed = True
+        # Check if it is an active shutdown
+        if self._active_close:
             self._event_loop.stop()
-            self._closing = False
+        else:
+            # try reconnect
+            for _ in range(aio_constants.RECONNECT_TIMES):
+                try:
+                    future = asyncio.Future()
+                    await self._do_connect(future)
+
+                    # Update the protocol.
+                    self._protocol = future.result()
+
+                    # Update the connection status.
+                    self._connected = True
+                    self._closed = False
+                    self._active_close = False
+                    _LOGGER.info(
+                        "Reconnected to the server. host: %s, port: %s",
+                        self._url.host,
+                        self._url.port,
+                    )
+                    return
+                except Exception as e:
+                    exc = e
+                    _LOGGER.error("Failed to reconnect to the server. %s", exc)
+                    # wait for a while
+                    await asyncio.sleep(1)
+
+            # cannot reconnect
+            raise RemotingError(
+                f"Failed to reconnect to the server.{exc}",
+            )
 
 
 class AioServer(Server):

@@ -64,7 +64,9 @@ class Client:
                 return
 
             # get the protocol
-            protocol = extensionLoader.get_extension(Protocol, self._reference.protocol)
+            protocol = extensionLoader.get_extension(
+                Protocol, self._reference.protocol
+            )()
 
             registry_config = self._dubbo.registry_config
 
@@ -81,6 +83,9 @@ class Client:
                 self._url.path = reference_url.path
                 for k, v in reference_url.parameters.items():
                     self._url.parameters[k] = v
+            else:
+                self._url = reference_url
+
             # create invoker
             self._invoker = self._protocol.refer(self._url)
 

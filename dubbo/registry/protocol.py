@@ -13,13 +13,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Optional
 
+from dubbo.cluster import Directory
+from dubbo.cluster.directories import RegistryDirectory
+from dubbo.cluster.failfast_cluster import FailfastCluster
 from dubbo.configs import RegistryConfig
 from dubbo.constants import common_constants
 from dubbo.extension import extensionLoader
 from dubbo.protocol import Invoker, Protocol
-from dubbo.registry import Registry, RegistryFactory
+from dubbo.registry import RegistryFactory
 from dubbo.url import URL
 
 __all__ = ["RegistryProtocol"]
@@ -37,14 +39,21 @@ class RegistryProtocol(Protocol):
         self._factory: RegistryFactory = extensionLoader.get_extension(
             RegistryFactory, self._config.protocol
         )()
-        self._server_registry: Optional[Registry] = None
 
     def export(self, url: URL):
         # get the server registry
-        self._server_registry = self._factory.get_registry(url)
-        self._server_registry.register(url.attributes[common_constants.EXPORT_KEY])
+        registry = self._factory.get_registry(url)
+
+        ref_url = url.attributes[common_constants.EXPORT_KEY]
+        registry.register(ref_url)
         # continue the export process
-        self._protocol.export(url)
+        self._protocol.export(ref_url)
 
     def refer(self, url: URL) -> Invoker:
-        pass
+        registry = self._factory.get_registry(url)
+
+        # create the directory
+        directory: Directory = RegistryDirectory(registry, self._protocol, url)
+
+        # continue the refer process
+        return FailfastCluster().join(directory)

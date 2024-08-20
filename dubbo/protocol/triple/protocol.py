@@ -28,7 +28,7 @@ from dubbo.protocol.triple.stream.server_stream import ServerTransportListener
 from dubbo.proxy.handlers import RpcServiceHandler
 from dubbo.remoting import Server, Transporter
 from dubbo.remoting.aio import constants as aio_constants
-from dubbo.remoting.aio.http2.protocol import Http2Protocol
+from dubbo.remoting.aio.http2.protocol import Http2ClientProtocol, Http2ServerProtocol
 from dubbo.remoting.aio.http2.stream_handler import (
     StreamClientMultiplexHandler,
     StreamServerMultiplexHandler,
@@ -79,7 +79,7 @@ class TripleProtocol(Protocol):
         stream_multiplexer = StreamServerMultiplexHandler(listener_factory)
         # set stream handler and protocol
         url.attributes[aio_constants.STREAM_HANDLER_KEY] = stream_multiplexer
-        url.attributes[common_constants.PROTOCOL_KEY] = Http2Protocol
+        url.attributes[common_constants.PROTOCOL_KEY] = Http2ServerProtocol
 
         # Create a server
         self._server = self._transporter.bind(url)
@@ -94,7 +94,7 @@ class TripleProtocol(Protocol):
         stream_multiplexer = StreamClientMultiplexHandler()
         # set stream handler and protocol
         url.attributes[aio_constants.STREAM_HANDLER_KEY] = stream_multiplexer
-        url.attributes[common_constants.PROTOCOL_KEY] = Http2Protocol
+        url.attributes[common_constants.PROTOCOL_KEY] = Http2ClientProtocol
 
         # Create a client
         client = self._transporter.connect(url)
