@@ -34,10 +34,10 @@ class UnaryServiceStub:
 
 if __name__ == "__main__":
     registry_config = RegistryConfig.from_url("zookeeper://127.0.0.1:2181")
-    dubbo = dubbo.Dubbo(registry_config=registry_config)
+    bootstrap = dubbo.Dubbo(registry_config=registry_config)
 
     reference_config = ReferenceConfig(protocol="tri", service="org.apache.dubbo.samples.registry.zk")
-    dubbo_client = dubbo.create_client(reference_config)
+    dubbo_client = bootstrap.create_client(reference_config)
 
     unary_service_stub = UnaryServiceStub(dubbo_client)
 

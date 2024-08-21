@@ -39,11 +39,11 @@ if __name__ == "__main__":
     )
 
     registry_config = RegistryConfig.from_url("zookeeper://127.0.0.1:2181")
-    dubbo = dubbo.Dubbo(registry_config=registry_config)
+    bootstrap = dubbo.Dubbo(registry_config=registry_config)
 
     service_config = ServiceConfig(service_handler)
 
     # start the server
-    server = dubbo.create_server(service_config).start()
+    server = bootstrap.create_server(service_config).start()
 
     input("Press Enter to stop the server...\n")

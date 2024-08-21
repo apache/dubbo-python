@@ -5,7 +5,7 @@
 ---
 
 <p align="center">
-  <img src="https://cn.dubbo.apache.org/imgs/nav_logo2.png" alt="Logo" style="zoom:20%;" />
+  <img src="https://cn.dubbo.apache.org/imgs/nav_logo2.png" alt="Logo" width="40%" />
 </p>
 
 Apache Dubbo is an easy-to-use, high-performance WEB and RPC framework with builtin service discovery, traffic management, observability, security features, tools and best practices for building enterprise-level microservices.
@@ -17,6 +17,15 @@ Visit [the official website](https://dubbo.apache.org/) for more information.
 ### 🚧 Early-Stage Project 🚧
 
 > **Disclaimer:** This project is in the early stages of development. Features are subject to change, and some components may not be fully stable. Contributions and feedback are welcome as the project evolves.
+
+## Features
+
+- **Service Discovery**: Zookeeper
+- **Load Balance**: Random
+- **RPC Protocols**: Triple(gRPC compatible and HTTP-friendly)
+- **Transport**: asyncio(uvloop)
+- **Serialization**: Customizable(protobuf, json...)
+
 
 ## Getting started
 

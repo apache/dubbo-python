@@ -14,13 +14,13 @@ After that, simply start `Zookeeper` and insert the following code into your exi
 ```python
 # Configure the Zookeeper registry
 registry_config = RegistryConfig.from_url("zookeeper://127.0.0.1:2181")
-dubbo = Dubbo(registry_config=registry_config)
+bootstrap = Dubbo(registry_config=registry_config)
 
 # Create the client
-client = dubbo.create_client(reference_config)
+client = bootstrap.create_client(reference_config)
 
 # Create and start the server
-dubbo.create_server(service_config).start()
+bootstrap.create_server(service_config).start()
 ```
 
 This enables service registration and discovery within your Dubbo-python project.
