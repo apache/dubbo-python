@@ -17,7 +17,7 @@ jobs:
       run: |
         # fail if there are any flake8 errors
         pip install flake8
-        flake8 .
+        flake8 ./dubbo
 
   check-license:
     runs-on: ubuntu-latest

@@ -13,10 +13,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import dubbo
+from dubbo.configs import ReferenceConfig
 
-from .bootstrap import Dubbo
-from .client import Client
-from .server import Server
-from .__version__ import __version__
 
-__all__ = ["Dubbo", "Client", "Server"]
+class UnaryServiceStub:
+
+    def __init__(self, client: dubbo.Client):
+        self.unary = client.unary(method_name="unary")
+
+    def unary(self, request):
+        return self.unary(request)
+
+
+if __name__ == "__main__":
+    reference_config = ReferenceConfig.from_url(
+        "tri://127.0.0.1:50051/org.apache.dubbo.samples.HelloWorld"
+    )
+    dubbo_client = dubbo.Client(reference_config)
+
+    unary_service_stub = UnaryServiceStub(dubbo_client)
+
+    result = unary_service_stub.unary("hello".encode("utf-8"))
+    print(result.decode("utf-8"))

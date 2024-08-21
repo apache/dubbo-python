@@ -17,7 +17,6 @@ import enum
 import logging
 import re
 import threading
-from typing import Optional
 
 from dubbo.configs import LoggerConfig
 
@@ -65,15 +64,22 @@ class ColorFormatter(logging.Formatter):
         f"{Colors.CYAN.value}%(module)s:%(funcName)s:%(lineno)d{Colors.END.value}"
         " - "
         f"{Colors.PURPLE.value}[Dubbo]{Colors.END.value} "
+        f"%(suffix)s"
         f"%(msg_color)s%(message)s{Colors.END.value}"
     )
 
-    def __init__(self):
+    def __init__(self, suffix: str = ""):
         super().__init__(self.LOG_FORMAT, self.DATE_FORMAT)
+        self.suffix = (
+            f"{self.Colors.PURPLE.value}[{suffix}]{self.Colors.END.value} "
+            if suffix
+            else ""
+        )
 
     def format(self, record) -> str:
         levelname = record.levelname
         record.level_color = record.msg_color = self.COLOR_LEVEL_MAP.get(levelname)
+        record.suffix = self.suffix
         return super().format(record)
 
 
@@ -84,10 +90,15 @@ class NoColorFormatter(logging.Formatter):
     2024-06-24 16:39:57 | DEBUG | test_logger_factory:test_with_config:44 - [Dubbo] debug log
     """
 
-    def __init__(self):
+    def __init__(self, suffix: str = ""):
         color_re = re.compile(r"\033\[[0-9;]*\w|%\((msg_color|level_color)\)s")
         self.log_format = color_re.sub("", ColorFormatter.LOG_FORMAT)
+        self.suffix = f"[{suffix}] " if suffix else ""
         super().__init__(self.log_format, ColorFormatter.DATE_FORMAT)
+
+    def format(self, record) -> str:
+        record.message = self.suffix + record.getMessage()
+        return super().format(record)
 
 
 class _LoggerFactory:
@@ -95,9 +106,11 @@ class _LoggerFactory:
     The logger factory.
     """
 
+    DEFAULT_LOGGER_NAME = "dubbo"
+
     _logger_lock = threading.RLock()
     _config: LoggerConfig = LoggerConfig()
-    _logger: Optional[logging.Logger] = None
+    _loggers = {}
 
     @classmethod
     def set_config(cls, config):
@@ -115,37 +128,60 @@ class _LoggerFactory:
         """
         with cls._logger_lock:
             # create logger if not exists
-            if not cls._logger:
-                cls._logger = logging.getLogger("dubbo")
+            if not cls._loggers:
+                cls._loggers[cls.DEFAULT_LOGGER_NAME] = logging.getLogger(
+                    cls.DEFAULT_LOGGER_NAME
+                )
 
-            # clean up handlers
-            cls._logger.handlers.clear()
-
-            config = cls._config
-
-            # set logger level
-            cls._logger.setLevel(config.level)
-
-            # add console handler if enabled
-            if config.is_console_enabled():
-                cls._logger.addHandler(cls._get_console_handler())
-
-            # add file handler if enabled
-            if config.is_file_enabled():
-                cls._logger.addHandler(cls._get_file_handler())
+            # update all loggers
+            for name, logger in cls._loggers.items():
+                cls._update_logger(logger, name)
 
     @classmethod
-    def _get_console_handler(cls) -> logging.StreamHandler:
+    def _update_logger(cls, logger: logging.Logger, name: str) -> logging.Logger:
+        """
+        Update the logger with the current configuration.
+        :param logger: The logger to update.
+        :type logger: logging.Logger
+        :param name: The logger name.
+        :type name: str
+        :return: The updated logger.
+        :rtype: logging.Logger
+        """
+        # clean up handlers
+        logger.handlers.clear()
+
+        config = cls._config
+
+        # set logger level
+        logger.setLevel(config.level)
+
+        # add console handler if enabled
+        if config.is_console_enabled():
+            logger.addHandler(cls._get_console_handler(name))
+
+        # add file handler if enabled
+        if config.is_file_enabled():
+            logger.addHandler(cls._get_file_handler(name))
+
+        return logger
+
+    @classmethod
+    def _get_console_handler(cls, name: str) -> logging.StreamHandler:
         """
         Get the console handler
 
+        :param name: The logger name.
+        :type name: str
         :return: The console handler.
         :rtype: logging.StreamHandler
         """
         console_handler = logging.StreamHandler()
         if not cls._config.console_config.formatter or cls._config.global_formatter:
             # set default color formatter
-            console_handler.setFormatter(ColorFormatter())
+            console_handler.setFormatter(
+                ColorFormatter(name if name != cls.DEFAULT_LOGGER_NAME else "")
+            )
         else:
             console_handler.setFormatter(
                 logging.Formatter(
@@ -156,10 +192,12 @@ class _LoggerFactory:
         return console_handler
 
     @classmethod
-    def _get_file_handler(cls):
+    def _get_file_handler(cls, name: str) -> logging.FileHandler:
         """
         Get the file handler
 
+        :param name: The logger name.
+        :type name: str
         :return: The file handler.
         :rtype: logging.FileHandler
         """
@@ -170,7 +208,9 @@ class _LoggerFactory:
         )
         if not cls._config.file_config.file_formatter or cls._config.global_formatter:
             # set default no color formatter
-            file_handler.setFormatter(NoColorFormatter())
+            file_handler.setFormatter(
+                NoColorFormatter(name if name != cls.DEFAULT_LOGGER_NAME else "")
+            )
         else:
             file_handler.setFormatter(
                 logging.Formatter(
@@ -182,22 +222,27 @@ class _LoggerFactory:
         return file_handler
 
     @classmethod
-    def get_logger(cls) -> logging.Logger:
+    def get_logger(cls, name=DEFAULT_LOGGER_NAME) -> logging.Logger:
         """
         Get the logger. class method.
 
         :return: The logger.
         :rtype: logging.Logger
         """
+        logger = cls._loggers.get(name)
+        if logger is not None:
+            return logger
 
-        # if logger is not initialized, refresh the config
-        if not cls._logger:
-            with cls._logger_lock:
-                # double check
-                if not cls._logger:
-                    cls._refresh_config()
+        with cls._logger_lock:
+            logger = cls._loggers.get(name)
+            # double check
+            if logger is not None:
+                return logger
 
-        return cls._logger
+            logger = cls._update_logger(logging.getLogger(name), name)
+            cls._loggers[name] = logger
+
+        return logger
 
 
 # expose loggerFactory

@@ -13,10 +13,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import dubbo
+from dubbo.configs import ServiceConfig
+from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
 
-from .bootstrap import Dubbo
-from .client import Client
-from .server import Server
-from .__version__ import __version__
 
-__all__ = ["Dubbo", "Client", "Server"]
+def handle_unary(request):
+    s = request.decode("utf-8")
+    print(f"Received request: {s}")
+    return (s + " world").encode("utf-8")
+
+
+if __name__ == "__main__":
+    # build a method handler
+    method_handler = RpcMethodHandler.unary(handle_unary)
+    # build a service handler
+    service_handler = RpcServiceHandler(
+        service_name="org.apache.dubbo.samples.HelloWorld",
+        method_handlers={"unary": method_handler},
+    )
+
+    service_config = ServiceConfig(service_handler)
+
+    # start the server
+    server = dubbo.Server(service_config).start()
+
+    input("Press Enter to stop the server...\n")

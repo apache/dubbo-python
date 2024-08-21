@@ -66,7 +66,7 @@ class TripleServerCall(ServerCall, ServerStream.Listener):
         )
 
         # get deserializer
-        deserializing_function = method_handler.request_serializer
+        deserializing_function = method_handler.request_deserializer
         self._deserializer = (
             CustomDeserializer(deserializing_function)
             if deserializing_function

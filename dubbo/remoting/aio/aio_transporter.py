@@ -104,15 +104,16 @@ class AioClient(Client, ConnectionStateListener):
             )
 
             try:
-                self._protocol = future.result()
+                self._protocol = future.result(timeout=3)
                 _LOGGER.info(
                     "Connected to the server. host: %s, port: %s",
                     self._url.host,
                     self._url.port,
                 )
-
-            except ConnectionRefusedError as e:
-                raise RemotingError(f"Failed to connect to the server,{str(e)}")
+            except Exception:
+                raise RemotingError(
+                    f"Failed to connect to the server. host: {self._url.host}, port: {self._url.port}"
+                )
 
     async def _do_connect(
         self, future: Union[concurrent.futures.Future, asyncio.Future]

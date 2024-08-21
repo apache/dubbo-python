@@ -34,7 +34,7 @@ from ._interfaces import (
 
 __all__ = ["KazooZookeeperClient", "KazooZookeeperTransport"]
 
-_LOGGER = loggerFactory.get_logger()
+_LOGGER = loggerFactory.get_logger("zookeeper")
 
 LISTENER_TYPE = Union[StateListener, DataListener, ChildrenListener]
 
