@@ -55,6 +55,7 @@ header: # `header` section is configurations for source codes license header.
 
   paths-ignore: # `paths-ignore` are the path list that will be ignored by license-eye.
     - '**/*.md'
+    - '**/*.proto'
     - 'LICENSE'
     - 'NOTICE'
     - '.asf.yaml'
@@ -62,6 +63,7 @@ header: # `header` section is configurations for source codes license header.
     - '.github'
     - '.flake8'
     - 'requirements.txt'
+    - 'samples/**'
   comment: on-failure # on what condition license-eye will comment on the pull request, `on-failure`, `always`, `never`.
 
   # license-location-threshold specifies the index threshold where the license header can be located,
