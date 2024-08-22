@@ -15,10 +15,27 @@
 # limitations under the License.
 
 import abc
+from typing import List
 
-from dubbo.common import URL, Node
+from dubbo.node import Node
+from dubbo.url import URL
 
-__all__ = ["Registry", "RegistryFactory"]
+__all__ = ["Registry", "RegistryFactory", "NotifyListener"]
+
+
+class NotifyListener(abc.ABC):
+    """
+    The notify listener.
+    """
+
+    @abc.abstractmethod
+    def notify(self, urls: List[URL]) -> None:
+        """
+        Notify the listener.
+
+        :param urls: The list of registered information , is always not empty.
+        """
+        raise NotImplementedError()
 
 
 class Registry(Node, abc.ABC):
@@ -28,7 +45,8 @@ class Registry(Node, abc.ABC):
         """
         Register a service to registry.
 
-        :param URL url: The service URL.
+        :param url: The service URL.
+        :type url: URL
         :return: None
         """
         raise NotImplementedError()
@@ -38,33 +56,39 @@ class Registry(Node, abc.ABC):
         """
         Unregister a service from registry.
 
-        :param URL url: The service URL.
+        :param url: The service URL.
+        :type url: URL
         """
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def subscribe(self, url: URL, listener):
+    def subscribe(self, url: URL, listener: NotifyListener) -> None:
         """
         Subscribe a service from registry.
-        :param URL url: The service URL.
+        :param url: The service URL.
+        :type url: URL
         :param listener: The listener to notify when service changed.
+        :type listener: NotifyListener
         """
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def unsubscribe(self, url: URL, listener):
+    def unsubscribe(self, url: URL, listener: NotifyListener) -> None:
         """
         Unsubscribe a service from registry.
-        :param URL url: The service URL.
+        :param url: The service URL.
+        :type url: URL
         :param listener: The listener to notify when service changed.
+        :type listener: NotifyListener
         """
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def lookup(self, url: URL):
+    def lookup(self, url: URL) -> None:
         """
         Lookup a service from registry.
-        :param URL url: The service URL.
+        :param url: The service URL.
+        :type url: URL
         """
         raise NotImplementedError()
 
@@ -76,7 +100,9 @@ class RegistryFactory(abc.ABC):
         """
         Get a registry instance.
 
-        :param URL url: The registry URL.
+        :param url: The registry URL.
+        :type url: URL
         :return: The registry instance.
+        :rtype: Registry
         """
         raise NotImplementedError()

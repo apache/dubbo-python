@@ -15,26 +15,27 @@
 # limitations under the License.
 
 import functools
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Optional
 
-from dubbo.common import constants as common_constants
-from dubbo.common.url import URL
+from dubbo.constants import common_constants
 from dubbo.extension import extensionLoader
-from dubbo.logger import loggerFactory
+from dubbo.loggers import loggerFactory
 from dubbo.protocol import Invoker, Protocol
 from dubbo.protocol.triple.invoker import TripleInvoker
 from dubbo.protocol.triple.stream.server_stream import ServerTransportListener
 from dubbo.proxy.handlers import RpcServiceHandler
 from dubbo.remoting import Server, Transporter
 from dubbo.remoting.aio import constants as aio_constants
-from dubbo.remoting.aio.http2.protocol import Http2Protocol
+from dubbo.remoting.aio.http2.protocol import Http2ClientProtocol, Http2ServerProtocol
 from dubbo.remoting.aio.http2.stream_handler import (
     StreamClientMultiplexHandler,
     StreamServerMultiplexHandler,
 )
+from dubbo.url import URL
 
-_LOGGER = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger()
 
 
 class TripleProtocol(Protocol):
@@ -44,14 +45,9 @@ class TripleProtocol(Protocol):
 
     __slots__ = ["_url", "_transporter", "_invokers"]
 
-    def __init__(self, url: URL):
-        self._url = url
+    def __init__(self):
         self._transporter: Transporter = extensionLoader.get_extension(
-            Transporter,
-            self._url.parameters.get(
-                common_constants.TRANSPORTER_KEY,
-                common_constants.TRANSPORTER_DEFAULT_VALUE,
-            ),
+            Transporter, common_constants.TRANSPORTER_DEFAULT_VALUE
         )()
         self._invokers = []
         self._server: Optional[Server] = None
@@ -71,17 +67,19 @@ class TripleProtocol(Protocol):
 
         self._path_resolver[service_handler.service_name] = service_handler
 
-        def listener_factory(_path_resolver):
-            return ServerTransportListener(_path_resolver)
+        method_executor = ThreadPoolExecutor(
+            thread_name_prefix=f"dubbo_tri_method_{str(uuid.uuid4())}", max_workers=10
+        )
 
-        fn = functools.partial(listener_factory, self._path_resolver)
+        listener_factory = functools.partial(
+            ServerTransportListener, self._path_resolver, method_executor
+        )
 
         # Create a stream handler
-        executor = ThreadPoolExecutor(thread_name_prefix="dubbo-tri-")
-        stream_multiplexer = StreamServerMultiplexHandler(fn, executor)
+        stream_multiplexer = StreamServerMultiplexHandler(listener_factory)
         # set stream handler and protocol
         url.attributes[aio_constants.STREAM_HANDLER_KEY] = stream_multiplexer
-        url.attributes[common_constants.PROTOCOL_KEY] = Http2Protocol
+        url.attributes[common_constants.PROTOCOL_KEY] = Http2ServerProtocol
 
         # Create a server
         self._server = self._transporter.bind(url)
@@ -92,12 +90,11 @@ class TripleProtocol(Protocol):
         :param url: The URL.
         :type url: URL
         """
-        executor = ThreadPoolExecutor(thread_name_prefix="dubbo-tri-")
         # Create a stream handler
-        stream_multiplexer = StreamClientMultiplexHandler(executor)
+        stream_multiplexer = StreamClientMultiplexHandler()
         # set stream handler and protocol
         url.attributes[aio_constants.STREAM_HANDLER_KEY] = stream_multiplexer
-        url.attributes[common_constants.PROTOCOL_KEY] = Http2Protocol
+        url.attributes[common_constants.PROTOCOL_KEY] = Http2ClientProtocol
 
         # Create a client
         client = self._transporter.connect(url)

@@ -14,4 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._interfaces import Registry, RegistryFactory
+from ._interfaces import NotifyListener, Registry, RegistryFactory
+
+__all__ = ["Registry", "RegistryFactory", "NotifyListener"]

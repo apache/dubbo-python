@@ -19,9 +19,9 @@ import threading
 import uuid
 from typing import Optional
 
-from dubbo.logger import loggerFactory
+from dubbo.loggers import loggerFactory
 
-_LOGGER = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger()
 
 
 def _try_use_uvloop() -> None:
@@ -102,13 +102,23 @@ class EventLoop:
         """
         return threading.current_thread().ident == self._thread.ident
 
-    def is_started(self) -> bool:
+    @property
+    def started(self) -> bool:
         """
         Check if the event loop is started.
         :return: True if the event loop is started, otherwise False.
         :rtype: bool
         """
         return self._started
+
+    @property
+    def stopped(self) -> bool:
+        """
+        Check if the event loop is stopped.
+        :return: True if the event loop is stopped, otherwise False.
+        :rtype: bool
+        """
+        return self._stopped
 
     def start(self) -> None:
         """

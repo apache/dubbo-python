@@ -14,11 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dubbo.common import constants as common_constants
-from dubbo.common.url import URL
 from dubbo.compression import Compressor, Identity
+from dubbo.constants import common_constants
 from dubbo.extension import ExtensionError, extensionLoader
-from dubbo.logger import loggerFactory
+from dubbo.loggers import loggerFactory
 from dubbo.protocol import Invoker, Result
 from dubbo.protocol.invocation import Invocation, RpcInvocation
 from dubbo.protocol.triple.call import TripleClientCall
@@ -27,6 +26,7 @@ from dubbo.protocol.triple.constants import TripleHeaderName, TripleHeaderValue
 from dubbo.protocol.triple.metadata import RequestMetadata
 from dubbo.protocol.triple.results import TriResult
 from dubbo.remoting import Client
+from dubbo.remoting.aio.exceptions import RemotingError
 from dubbo.remoting.aio.http2.stream_handler import StreamClientMultiplexHandler
 from dubbo.serialization import (
     CustomDeserializer,
@@ -34,10 +34,12 @@ from dubbo.serialization import (
     DirectDeserializer,
     DirectSerializer,
 )
+from dubbo.types import CallType
+from dubbo.url import URL
 
 __all__ = ["TripleInvoker"]
 
-_LOGGER = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger()
 
 
 class TripleInvoker(Invoker):
@@ -57,12 +59,14 @@ class TripleInvoker(Invoker):
         self._destroyed = False
 
     def invoke(self, invocation: RpcInvocation) -> Result:
-        call_type = invocation.get_attribute(common_constants.CALL_KEY)
+        call_type: CallType = invocation.get_attribute(common_constants.CALL_KEY)
         result = TriResult(call_type)
 
         if not self._client.is_connected():
-            # Reconnect the client
-            self._client.reconnect()
+            result.set_exception(
+                RemotingError("The client is not connected to the server.")
+            )
+            return result
 
         # get serializer
         serializer = DirectSerializer()
@@ -95,15 +99,9 @@ class TripleInvoker(Invoker):
             return result
 
         # invoke
-        if call_type in (
-            common_constants.UNARY_CALL_VALUE,
-            common_constants.SERVER_STREAM_CALL_VALUE,
-        ):
+        if not call_type.client_stream:
             self._invoke_unary(tri_client_call, invocation)
-        elif call_type in (
-            common_constants.CLIENT_STREAM_CALL_VALUE,
-            common_constants.BI_STREAM_CALL_VALUE,
-        ):
+        else:
             self._invoke_stream(tri_client_call, invocation)
 
         return result

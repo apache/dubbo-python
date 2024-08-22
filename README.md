@@ -1,52 +1,107 @@
-## Python Client For Apache Dubbo
-## Achieve load balancing on the client side、auto discovery service function with Zookeeper
-### Python calls the Dubbo interface's jsonrpc protocol
-Please use dubbo-rpc-jsonrpc and configure protocol in Dubbo for jsonrpc protocol   
-*Reference* [https://github.com/apache/incubator-dubbo-rpc-jsonrpc](https://github.com/apache/incubator-dubbo-rpc-jsonrpc)
+# Apache Dubbo for python
 
-### Installation
+![License](https://img.shields.io/github/license/apache/dubbo-python)
 
-Download code  
-python setup.py install  
-pip install  
-pip install dubbo-client==1.0.0b5
-Git install  
-pip install git+[http://git.dev.qianmi.com/tda/dubbo-client-py.git@1.0.0b5](http://git.dev.qianmi.com/tda/dubbo-client-py.git@1.0.0b5)  
-or  
-pip install git+[https://github.com/qianmiopen/dubbo-client-py.git@1.0.0b5](https://github.com/qianmiopen/dubbo-client-py.git@1.0.0b5)
+---
 
-### Load balancing on the client side, service discovery
+<p align="center">
+  <img src="https://cn.dubbo.apache.org/imgs/nav_logo2.png" alt="Logo" width="40%" />
+</p>
 
-Get the registration information of the service through the zookeeper of the registry.  
-Dubbo-client-py supports configuring multiple zookeeper service addresses. 
-"host":"192.168.1.183:2181,192.168.1.184:2181,192.168.1.185:2181"  
-Then the load balancing algorithm is implemented by proxy, and the server is called.    
-Support Version and Group settings.
-### Example
-	    config = ApplicationConfig('test_rpclib')
-	    service_interface = 'com.ofpay.demo.api.UserProvider'
-	    #Contains a connection to zookeeper, which needs caching.
-	    registry = ZookeeperRegistry('192.168.59.103:2181', config)
-	    user_provider = DubboClient(service_interface, registry, version='1.0')
-	    for i in range(1000):
-        try:
-            print user_provider.getUser('A003')
-            print user_provider.queryUser(
-                {u'age': 18, u'time': 1428463514153, u'sex': u'MAN', u'id': u'A003', u'name': u'zhangsan'})
-            print user_provider.queryAll()
-            print user_provider.isLimit('MAN', 'Joe')
-            print user_provider('getUser', 'A005')
+Apache Dubbo is an easy-to-use, high-performance WEB and RPC framework with builtin service discovery, traffic management, observability, security features, tools and best practices for building enterprise-level microservices.
 
-        except DubboClientError, client_error:
-            print client_error
-        time.sleep(5)
-	
-### TODO
-Optimize performance, minimize the impact of service upper and lower lines.  
-Support Retry parameters  
-Support weight call  
-Unit test coverage   
-### Licenses
-Apache License
-### Thanks 
-Thank @jingpeicomp for being a Guinea pig. It has been running normally for several months in the production environment. Thank you!
+Dubbo-python is a Python implementation of the [triple protocol](https://dubbo.apache.org/zh-cn/overview/reference/protocols/triple-spec/) (a protocol fully compatible with gRPC and friendly to HTTP) and various features designed by Dubbo for constructing microservice architectures.
+
+Visit [the official website](https://dubbo.apache.org/) for more information.
+
+### 🚧 Early-Stage Project 🚧
+
+> **Disclaimer:** This project is in the early stages of development. Features are subject to change, and some components may not be fully stable. Contributions and feedback are welcome as the project evolves.
+
+## Features
+
+- **Service Discovery**: Zookeeper
+- **Load Balance**: Random
+- **RPC Protocols**: Triple(gRPC compatible and HTTP-friendly)
+- **Transport**: asyncio(uvloop)
+- **Serialization**: Customizable(protobuf, json...)
+
+
+## Getting started
+
+Before you begin, ensure that you have **`python 3.11+`**. Then, install Dubbo-Python in your project using the following steps:
+
+```shell
+git clone https://github.com/apache/dubbo-python.git
+cd dubbo-python && pip install .
+```
+
+Get started with Dubbo-Python in just 5 minutes by following our [Quick Start Guide](https://github.com/apache/dubbo-python/tree/main/samples).
+
+It's as simple as the following code snippet. With just a few lines of code, you can launch a fully functional point-to-point RPC service :
+
+1. Build and start the Server
+
+   ```python
+   import dubbo
+   from dubbo.configs import ServiceConfig
+   from dubbo.proxy.handlers import RpcServiceHandler, RpcMethodHandler
+   
+   
+   def handle_unary(request):
+       s = request.decode("utf-8")
+       print(f"Received request: {s}")
+       return (s + " world").encode("utf-8")
+   
+   
+   if __name__ == "__main__":
+       # build a method handler
+       method_handler = RpcMethodHandler.unary(handle_unary)
+       # build a service handler
+       service_handler = RpcServiceHandler(
+           service_name="org.apache.dubbo.samples.HelloWorld",
+           method_handlers={"unary": method_handler},
+       )
+   
+       service_config = ServiceConfig(service_handler)
+   
+       # start the server
+       server = dubbo.Server(service_config).start()
+   
+       input("Press Enter to stop the server...\n")
+   ```
+
+2. Build and start the Client
+
+   ```python
+   import dubbo
+   from dubbo.configs import ReferenceConfig
+   
+   
+   class UnaryServiceStub:
+   
+       def __init__(self, client: dubbo.Client):
+           self.unary = client.unary(method_name="unary")
+   
+       def unary(self, request):
+           return self.unary(request)
+   
+   
+   if __name__ == "__main__":
+       reference_config = ReferenceConfig.from_url(
+           "tri://127.0.0.1:50051/org.apache.dubbo.samples.HelloWorld"
+       )
+       dubbo_client = dubbo.Client(reference_config)
+   
+       unary_service_stub = UnaryServiceStub(dubbo_client)
+   
+       result = unary_service_stub.unary("hello".encode("utf-8"))
+       print(result.decode("utf-8"))
+   ```
+
+   
+
+## License
+
+Apache Dubbo-python software is licensed under the Apache License Version 2.0. See
+the [LICENSE](https://github.com/apache/dubbo-python/blob/main/LICENSE) file for details.

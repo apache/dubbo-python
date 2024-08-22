@@ -16,7 +16,7 @@
 
 import abc
 
-from dubbo.common import URL
+from dubbo.url import URL
 
 __all__ = ["Client", "Server", "Transporter"]
 
@@ -44,13 +44,6 @@ class Client(abc.ABC):
     def connect(self):
         """
         Connect to the server.
-        """
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def reconnect(self):
-        """
-        Reconnect to the server.
         """
         raise NotImplementedError()
 

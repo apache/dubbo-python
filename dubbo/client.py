@@ -13,22 +13,83 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import threading
 from typing import Optional
 
-from dubbo.common import constants as common_constants
-from dubbo.common.types import DeserializingFunction, SerializingFunction
-from dubbo.config import ReferenceConfig
+from dubbo.bootstrap import Dubbo
+from dubbo.configs import ReferenceConfig
+from dubbo.constants import common_constants
+from dubbo.extension import extensionLoader
+from dubbo.protocol import Invoker, Protocol
 from dubbo.proxy import RpcCallable
 from dubbo.proxy.callables import MultipleRpcCallable
+from dubbo.registry.protocol import RegistryProtocol
+from dubbo.types import (
+    BiStreamCallType,
+    CallType,
+    ClientStreamCallType,
+    DeserializingFunction,
+    SerializingFunction,
+    ServerStreamCallType,
+    UnaryCallType,
+)
+
+__all__ = ["Client"]
+
+from dubbo.url import URL
 
 
 class Client:
 
-    __slots__ = ["_reference"]
+    def __init__(self, reference: ReferenceConfig, dubbo: Optional[Dubbo] = None):
+        self._initialized = False
+        self._global_lock = threading.RLock()
 
-    def __init__(self, reference: ReferenceConfig):
+        self._dubbo = dubbo or Dubbo()
         self._reference = reference
+
+        self._url: Optional[URL] = None
+        self._protocol: Optional[Protocol] = None
+        self._invoker: Optional[Invoker] = None
+
+        # initialize the invoker
+        self._initialize()
+
+    def _initialize(self):
+        """
+        Initialize the invoker.
+        """
+        with self._global_lock:
+            if self._initialized:
+                return
+
+            # get the protocol
+            protocol = extensionLoader.get_extension(
+                Protocol, self._reference.protocol
+            )()
+
+            registry_config = self._dubbo.registry_config
+
+            self._protocol = (
+                RegistryProtocol(registry_config, protocol)
+                if self._dubbo.registry_config
+                else protocol
+            )
+
+            # build url
+            reference_url = self._reference.to_url()
+            if registry_config:
+                self._url = registry_config.to_url().copy()
+                self._url.path = reference_url.path
+                for k, v in reference_url.parameters.items():
+                    self._url.parameters[k] = v
+            else:
+                self._url = reference_url
+
+            # create invoker
+            self._invoker = self._protocol.refer(self._url)
+
+            self._initialized = True
 
     def unary(
         self,
@@ -37,7 +98,7 @@ class Client:
         response_deserializer: Optional[DeserializingFunction] = None,
     ) -> RpcCallable:
         return self._callable(
-            common_constants.UNARY_CALL_VALUE,
+            UnaryCallType,
             method_name,
             request_serializer,
             response_deserializer,
@@ -50,7 +111,7 @@ class Client:
         response_deserializer: Optional[DeserializingFunction] = None,
     ) -> RpcCallable:
         return self._callable(
-            common_constants.CLIENT_STREAM_CALL_VALUE,
+            ClientStreamCallType,
             method_name,
             request_serializer,
             response_deserializer,
@@ -63,7 +124,7 @@ class Client:
         response_deserializer: Optional[DeserializingFunction] = None,
     ) -> RpcCallable:
         return self._callable(
-            common_constants.SERVER_STREAM_CALL_VALUE,
+            ServerStreamCallType,
             method_name,
             request_serializer,
             response_deserializer,
@@ -76,7 +137,7 @@ class Client:
         response_deserializer: Optional[DeserializingFunction] = None,
     ) -> RpcCallable:
         return self._callable(
-            common_constants.BI_STREAM_CALL_VALUE,
+            BiStreamCallType,
             method_name,
             request_serializer,
             response_deserializer,
@@ -84,7 +145,7 @@ class Client:
 
     def _callable(
         self,
-        call_type: str,
+        call_type: CallType,
         method_name: str,
         request_serializer: Optional[SerializingFunction] = None,
         response_deserializer: Optional[DeserializingFunction] = None,
@@ -103,17 +164,17 @@ class Client:
         :rtype: RpcCallable
         """
         # get invoker
-        invoker = self._reference.get_invoker()
-        url = invoker.get_url()
+        url = self._invoker.get_url()
 
         # clone url
         url = url.copy()
         url.parameters[common_constants.METHOD_KEY] = method_name
-        url.parameters[common_constants.CALL_KEY] = call_type
+        # set call type
+        url.attributes[common_constants.CALL_KEY] = call_type
 
         # set serializer and deserializer
         url.attributes[common_constants.SERIALIZER_KEY] = request_serializer
         url.attributes[common_constants.DESERIALIZER_KEY] = response_deserializer
 
         # create proxy
-        return MultipleRpcCallable(invoker, url)
+        return MultipleRpcCallable(self._invoker, url)

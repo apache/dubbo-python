@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package example;
+
+// The StreamUnary service definition.
+service StreamUnaryService {
+  rpc StreamUnary (stream Request) returns (Response) {}
+}
+
+// The request message containing a name.
+message Request {
+  string name = 1;
+}
+
+// The response message containing a greeting
+message Response {
+  string message = 1;
+}

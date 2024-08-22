@@ -16,9 +16,9 @@
 
 from typing import Any
 
-from dubbo.common import constants as common_constants
-from dubbo.common.deliverers import MultiMessageDeliverer, SingleMessageDeliverer
+from dubbo.deliverers import MultiMessageDeliverer, SingleMessageDeliverer
 from dubbo.protocol import Result
+from dubbo.types import CallType
 
 
 class TriResult(Result):
@@ -26,16 +26,15 @@ class TriResult(Result):
     The triple result.
     """
 
-    def __init__(self, call_type: str):
-        self._streamed = True
-        if call_type in [
-            common_constants.UNARY_CALL_VALUE,
-            common_constants.CLIENT_STREAM_CALL_VALUE,
-        ]:
-            self._streamed = False
+    __slots__ = ["_call_type", "_deliverer", "_exception"]
+
+    def __init__(self, call_type: CallType):
+        self._call_type = call_type
 
         self._deliverer = (
-            MultiMessageDeliverer() if self._streamed else SingleMessageDeliverer()
+            MultiMessageDeliverer()
+            if self._call_type.server_stream
+            else SingleMessageDeliverer()
         )
 
         self._exception = None
@@ -56,7 +55,7 @@ class TriResult(Result):
         """
         Get the value.
         """
-        if self._streamed:
+        if self._call_type.server_stream:
             return self._deliverer
         else:
             return self._deliverer.get()

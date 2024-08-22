@@ -14,6 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ._interfaces import RpcCallable
+from ._interfaces import RpcCallable, RpcCallableFactory
 
-__all__ = ["RpcCallable"]
+__all__ = ["RpcCallable", "RpcCallableFactory"]

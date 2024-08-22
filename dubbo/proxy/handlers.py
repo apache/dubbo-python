@@ -16,8 +16,15 @@
 
 from typing import Callable, Dict, Optional
 
-from dubbo.common import constants as common_constants
-from dubbo.common.types import DeserializingFunction, SerializingFunction
+from dubbo.types import (
+    BiStreamCallType,
+    CallType,
+    ClientStreamCallType,
+    DeserializingFunction,
+    SerializingFunction,
+    ServerStreamCallType,
+    UnaryCallType,
+)
 
 __all__ = ["RpcMethodHandler", "RpcServiceHandler"]
 
@@ -29,41 +36,41 @@ class RpcMethodHandler:
 
     def __init__(
         self,
-        call_type: str,
+        call_type: CallType,
         behavior: Callable,
-        request_serializer: Optional[SerializingFunction] = None,
-        response_serializer: Optional[DeserializingFunction] = None,
+        request_deserializer: Optional[DeserializingFunction] = None,
+        response_serializer: Optional[SerializingFunction] = None,
     ):
         """
         Initialize the RpcMethodHandler
         :param call_type: the call type.
-        :type call_type: str
+        :type call_type: CallType
         :param behavior: the behavior of the method.
         :type behavior: Callable
-        :param request_serializer: the request serializer.
-        :type request_serializer: Optional[SerializingFunction]
+        :param request_deserializer: the request deserializer.
+        :type request_deserializer: Optional[DeserializingFunction]
         :param response_serializer: the response serializer.
-        :type response_serializer: Optional[DeserializingFunction]
+        :type response_serializer: Optional[SerializingFunction]
         """
         self.call_type = call_type
         self.behavior = behavior
-        self.request_serializer = request_serializer
+        self.request_deserializer = request_deserializer
         self.response_serializer = response_serializer
 
     @classmethod
     def unary(
         cls,
         behavior: Callable,
-        request_serializer: Optional[SerializingFunction] = None,
-        response_serializer: Optional[DeserializingFunction] = None,
+        request_deserializer: Optional[DeserializingFunction] = None,
+        response_serializer: Optional[SerializingFunction] = None,
     ):
         """
         Create a unary method handler
         """
         return cls(
-            common_constants.UNARY_CALL_VALUE,
+            UnaryCallType,
             behavior,
-            request_serializer,
+            request_deserializer,
             response_serializer,
         )
 
@@ -71,16 +78,16 @@ class RpcMethodHandler:
     def client_stream(
         cls,
         behavior: Callable,
-        request_serializer: SerializingFunction,
-        response_serializer: DeserializingFunction,
+        request_deserializer: Optional[DeserializingFunction] = None,
+        response_serializer: Optional[SerializingFunction] = None,
     ):
         """
         Create a client stream method handler
         """
         return cls(
-            common_constants.CLIENT_STREAM_CALL_VALUE,
+            ClientStreamCallType,
             behavior,
-            request_serializer,
+            request_deserializer,
             response_serializer,
         )
 
@@ -88,16 +95,16 @@ class RpcMethodHandler:
     def server_stream(
         cls,
         behavior: Callable,
-        request_serializer: SerializingFunction,
-        response_serializer: DeserializingFunction,
+        request_deserializer: Optional[DeserializingFunction] = None,
+        response_serializer: Optional[SerializingFunction] = None,
     ):
         """
         Create a server stream method handler
         """
         return cls(
-            common_constants.SERVER_STREAM_CALL_VALUE,
+            ServerStreamCallType,
             behavior,
-            request_serializer,
+            request_deserializer,
             response_serializer,
         )
 
@@ -105,16 +112,16 @@ class RpcMethodHandler:
     def bi_stream(
         cls,
         behavior: Callable,
-        request_serializer: SerializingFunction,
-        response_serializer: DeserializingFunction,
+        request_deserializer: Optional[DeserializingFunction] = None,
+        response_serializer: Optional[SerializingFunction] = None,
     ):
         """
         Create a bidi stream method handler
         """
         return cls(
-            common_constants.BI_STREAM_CALL_VALUE,
+            BiStreamCallType,
             behavior,
-            request_serializer,
+            request_deserializer,
             response_serializer,
         )
 

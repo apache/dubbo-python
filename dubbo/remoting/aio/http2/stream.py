@@ -259,7 +259,8 @@ class DefaultHttp2Stream(Http2Stream):
 
     def cancel_by_local(self, error_code: Http2ErrorCode) -> None:
         if self.local_closed:
-            raise StreamError("The stream has been closed locally.")
+            # The stream has been closed locally.
+            return
         reset_frame = ResetStreamFrame(self.id, error_code)
         self._outbound_controller.write_rst(reset_frame)
 

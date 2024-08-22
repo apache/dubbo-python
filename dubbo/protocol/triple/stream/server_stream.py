@@ -13,14 +13,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, Optional
 
 from dubbo.compression import Decompressor
 from dubbo.compression.identities import Identity
 from dubbo.extension import ExtensionError, extensionLoader
-from dubbo.logger import loggerFactory
-from dubbo.logger.constants import Level
+from dubbo.loggers import loggerFactory
 from dubbo.protocol.triple.call.server_call import TripleServerCall
 from dubbo.protocol.triple.coders import TriDecoder, TriEncoder
 from dubbo.protocol.triple.constants import (
@@ -37,7 +37,7 @@ from dubbo.remoting.aio.http2.stream import Http2Stream
 
 __all__ = ["ServerTransportListener", "TripleServerStream"]
 
-_LOGGER = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger()
 
 
 class TripleServerStream(ServerStream):
@@ -115,7 +115,7 @@ class TripleServerStream(ServerStream):
         self._stream.send_headers(trailers, end_stream=True)
 
     def cancel_by_local(self, status: TriRpcStatus) -> None:
-        if _LOGGER.is_enabled_for(Level.DEBUG):
+        if _LOGGER.isEnabledFor(logging.DEBUG):
             _LOGGER.debug(f"Cancel stream:{self._stream} by local: {status}")
 
         if not self._rst:
@@ -128,11 +128,16 @@ class ServerTransportListener(Http2Stream.Listener):
     ServerTransportListener is a callback interface that receives events on the stream.
     """
 
-    def __init__(self, service_handles: Dict[str, RpcServiceHandler]):
+    def __init__(
+        self,
+        service_handles: Dict[str, RpcServiceHandler],
+        method_executor: ThreadPoolExecutor,
+    ):
         super().__init__()
         self._listener: Optional[ServerStream.Listener] = None
         self._decoder: Optional[TriDecoder] = None
         self._service_handles = service_handles
+        self._executor: Optional[ThreadPoolExecutor] = method_executor
 
     def on_headers(self, headers: Http2Headers, end_stream: bool) -> None:
         # check http method
@@ -228,7 +233,9 @@ class ServerTransportListener(Http2Stream.Listener):
                 return
 
         # create a server call
-        self._listener = TripleServerCall(TripleServerStream(self._stream), handler)
+        self._listener = TripleServerCall(
+            TripleServerStream(self._stream), handler, self._executor
+        )
 
         # create a decoder
         self._decoder = TriDecoder(

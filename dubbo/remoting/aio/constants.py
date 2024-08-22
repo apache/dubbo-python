@@ -19,3 +19,8 @@ __all__ = ["STREAM_HANDLER_KEY"]
 STREAM_HANDLER_KEY = "stream-handler"
 
 CLOSE_FUTURE_KEY = "close-future"
+
+HEARTBEAT_KEY = "heartbeat"
+DEFAULT_HEARTBEAT = 6
+
+RECONNECT_TIMES = 3

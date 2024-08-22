@@ -23,8 +23,7 @@ from typing import Dict, Optional, Set
 
 from h2.connection import H2Connection
 
-from dubbo.common.utils import EventHelper
-from dubbo.logger import loggerFactory
+from dubbo.loggers import loggerFactory
 from dubbo.remoting.aio.http2.frames import (
     DataFrame,
     HeadersFrame,
@@ -33,10 +32,11 @@ from dubbo.remoting.aio.http2.frames import (
 )
 from dubbo.remoting.aio.http2.registries import Http2FrameType
 from dubbo.remoting.aio.http2.stream import DefaultHttp2Stream, Http2Stream
+from dubbo.utils import EventHelper
 
 __all__ = ["RemoteFlowController", "FrameInboundController", "FrameOutboundController"]
 
-_LOGGER = loggerFactory.get_logger(__name__)
+_LOGGER = loggerFactory.get_logger()
 
 
 class Controller(abc.ABC):
@@ -206,12 +206,12 @@ class FrameInboundController(Controller):
         :param executor: The thread pool executor for handling frames.
         :type executor: Optional[ThreadPoolExecutor]
         """
-        from dubbo.remoting.aio.http2.protocol import Http2Protocol
+        from dubbo.remoting.aio.http2.protocol import AbstractHttp2Protocol
 
         super().__init__(loop)
 
         self._stream = stream
-        self._protocol: Http2Protocol = protocol
+        self._protocol: AbstractHttp2Protocol = protocol
         self._executor = executor
 
         # The queue for receiving frames.
@@ -294,12 +294,12 @@ class FrameOutboundController(Controller):
     def __init__(
         self, stream: DefaultHttp2Stream, loop: asyncio.AbstractEventLoop, protocol
     ):
-        from dubbo.remoting.aio.http2.protocol import Http2Protocol
+        from dubbo.remoting.aio.http2.protocol import AbstractHttp2Protocol
 
         super().__init__(loop)
 
         self._stream = stream
-        self._protocol: Http2Protocol = protocol
+        self._protocol: AbstractHttp2Protocol = protocol
 
         self._headers_put_event: asyncio.Event = asyncio.Event()
         self._headers_sent_event: asyncio.Event = asyncio.Event()

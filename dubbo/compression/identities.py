@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dubbo.common import SingletonBase
+from dubbo.classes import SingletonBase
 from dubbo.compression import Compressor, Decompressor
 
 __all__ = ["Identity"]

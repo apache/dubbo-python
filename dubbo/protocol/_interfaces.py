@@ -17,8 +17,8 @@
 import abc
 from typing import Any
 
-from dubbo.common.node import Node
-from dubbo.common.url import URL
+from dubbo.node import Node
+from dubbo.url import URL
 
 __all__ = ["Invocation", "Result", "Invoker", "Protocol"]
 

@@ -15,7 +15,7 @@
 # limitations under the License.
 import unittest
 
-from dubbo.common.url import URL, create_url
+from dubbo.url import URL, create_url
 
 
 class TestUrl(unittest.TestCase):
@@ -79,4 +79,4 @@ class TestUrl(unittest.TestCase):
         self.assertEqual("tri://127.0.0.1:12/path?type=a", url_1.to_str())
 
         url_2 = URL(scheme="tri", host="127.0.0.1", port=12, parameters={"type": "a"})
-        self.assertEqual("tri://127.0.0.1:12/?type=a", url_2.to_str())
+        self.assertEqual("tri://127.0.0.1:12?type=a", url_2.to_str())

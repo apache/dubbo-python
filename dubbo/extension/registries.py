@@ -17,9 +17,10 @@
 from dataclasses import dataclass
 from typing import Any, Dict
 
+from dubbo.cluster import LoadBalance
 from dubbo.compression import Compressor, Decompressor
-from dubbo.logger import LoggerAdapter
 from dubbo.protocol import Protocol
+from dubbo.registry import RegistryFactory
 from dubbo.remoting import Transporter
 
 
@@ -39,14 +40,30 @@ class ExtendedRegistry:
 
 
 # All Extension Registries
-__all__ = [
+registries = [
+    "registryFactoryRegistry",
+    "loadBalanceRegistry",
     "protocolRegistry",
     "compressorRegistry",
     "decompressorRegistry",
     "transporterRegistry",
-    "loggerAdapterRegistry",
 ]
 
+# RegistryFactory registry
+registryFactoryRegistry = ExtendedRegistry(
+    interface=RegistryFactory,
+    impls={
+        "zookeeper": "dubbo.registry.zookeeper.zk_registry.ZookeeperRegistryFactory",
+    },
+)
+
+# LoadBalance registry
+loadBalanceRegistry = ExtendedRegistry(
+    interface=LoadBalance,
+    impls={
+        "random": "dubbo.cluster.loadbalances.RandomLoadBalance",
+    },
+)
 
 # Protocol registry
 protocolRegistry = ExtendedRegistry(
@@ -83,14 +100,5 @@ transporterRegistry = ExtendedRegistry(
     interface=Transporter,
     impls={
         "aio": "dubbo.remoting.aio.aio_transporter.AioTransporter",
-    },
-)
-
-
-# Logger Adapter registry
-loggerAdapterRegistry = ExtendedRegistry(
-    interface=LoggerAdapter,
-    impls={
-        "logging": "dubbo.logger.logging.logger_adapter.LoggingLoggerAdapter",
     },
 )

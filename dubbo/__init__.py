@@ -13,3 +13,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from .bootstrap import Dubbo
+from .client import Client
+from .server import Server
+from .__version__ import __version__
+
+__all__ = ["Dubbo", "Client", "Server"]

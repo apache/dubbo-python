@@ -17,7 +17,7 @@
 import abc
 import enum
 
-from dubbo.common import URL
+from dubbo.url import URL
 
 __all__ = [
     "StateListener",
@@ -43,7 +43,8 @@ class StateListener(abc.ABC):
         """
         Notify when connection state changed.
 
-        :param StateListener.State state: The new connection state.
+        :param state: The new connection state.
+        :type state: StateListener.State
         """
         raise NotImplementedError()
 
@@ -67,9 +68,12 @@ class DataListener(abc.ABC):
         """
         Notify when data changed.
 
-        :param str path: The node path.
-        :param bytes data: The new data.
-        :param DataListener.EventType event_type: The event type.
+        :param path: The node path.
+        :type path: str
+        :param data: The new data.
+        :type data: bytes
+        :param event_type: The event type.
+        :type event_type: DataListener.EventType
         """
         raise NotImplementedError()
 
@@ -80,8 +84,10 @@ class ChildrenListener(abc.ABC):
         """
         Notify when children changed.
 
-        :param str path: The node path.
-        :param list children: The new children.
+        :param path: The node path.
+        :type path: str
+        :param children: The new children.
+        :type children: list
         """
         raise NotImplementedError()
 
@@ -97,7 +103,8 @@ class ZookeeperClient(abc.ABC):
         """
         Initialize the zookeeper client.
 
-        :param URL url: The zookeeper URL.
+        :param url: The zookeeper URL.
+        :type url: URL
         """
         self._url = url
 
@@ -125,12 +132,16 @@ class ZookeeperClient(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def create(self, path: str, ephemeral=False) -> None:
+    def create(self, path: str, data: bytes = b"", ephemeral=False) -> None:
         """
         Create a node in zookeeper.
 
-        :param str path: The node path.
-        :param bool ephemeral: Whether the node is ephemeral. False: persistent, True: ephemeral.
+        :param path: The node path.
+        :type path: str
+        :param data: The node data.
+        :type data: bytes
+        :param  ephemeral: Whether the node is ephemeral. False: persistent, True: ephemeral.
+        :type  ephemeral: bool
         """
         raise NotImplementedError()
 
@@ -139,9 +150,12 @@ class ZookeeperClient(abc.ABC):
         """
         Create or update a node in zookeeper.
 
-        :param str path: The node path.
-        :param bytes data: The node data.
-        :param bool ephemeral: Whether the node is ephemeral. False: persistent, True: ephemeral.
+        :param path: The node path.
+        :type path: str
+        :param data: The node data.
+        :type data: bytes
+        :param ephemeral: Whether the node is ephemeral. False: persistent, True: ephemeral.
+        :type ephemeral: bool
         """
         raise NotImplementedError()
 
@@ -150,7 +164,8 @@ class ZookeeperClient(abc.ABC):
         """
         Check if a node exists in zookeeper.
 
-        :param str path: The node path.
+        :param path: The node path.
+        :type path: str
         :return: True if the node exists, False otherwise.
         """
         raise NotImplementedError()
@@ -160,7 +175,8 @@ class ZookeeperClient(abc.ABC):
         """
         Get data of a node in zookeeper.
 
-        :param str path: The node path.
+        :param path: The node path.
+        :type path: str
         :return: The node data.
         """
         raise NotImplementedError()
@@ -170,7 +186,8 @@ class ZookeeperClient(abc.ABC):
         """
         Get children of a node in zookeeper.
 
-        :param str path: The node path.
+        :param path: The node path.
+        :type path: str
         :return: The children of the node.
         """
         raise NotImplementedError()
@@ -180,7 +197,8 @@ class ZookeeperClient(abc.ABC):
         """
         Delete a node in zookeeper.
 
-        :param str path: The node path.
+        :param path: The node path.
+        :type path: str
         """
         raise NotImplementedError()
 
@@ -189,7 +207,8 @@ class ZookeeperClient(abc.ABC):
         """
         Add a state listener to zookeeper.
 
-        :param StateListener listener: The listener to notify when connection state changed.
+        :param listener: The listener to notify when connection state changed.
+        :type listener: StateListener
         """
         raise NotImplementedError()
 
@@ -198,7 +217,8 @@ class ZookeeperClient(abc.ABC):
         """
         Remove a state listener from zookeeper.
 
-        :param StateListener listener: The listener to remove.
+        :param listener: The listener to remove.
+        :type listener: StateListener
         """
         raise NotImplementedError()
 
@@ -207,8 +227,10 @@ class ZookeeperClient(abc.ABC):
         """
         Add a data listener to a node in zookeeper.
 
-        :param str path: The node path.
-        :param DataListener listener: The listener to notify when data changed.
+        :param path: The node path.
+        :type path: str
+        :param listener: The listener to notify when data changed.
+        :type listener: DataListener
         """
         raise NotImplementedError()
 
@@ -217,7 +239,8 @@ class ZookeeperClient(abc.ABC):
         """
         Remove a data listener from a node in zookeeper.
 
-        :param DataListener listener: The listener to remove.
+        :param listener: The listener to remove.
+        :type listener: DataListener
         """
         raise NotImplementedError()
 
@@ -226,8 +249,10 @@ class ZookeeperClient(abc.ABC):
         """
         Add a children listener to a node in zookeeper.
 
-        :param str path: The node path.
-        :param ChildrenListener listener: The listener to notify when children changed.
+        :param path: The node path.
+        :type path: str
+        :param listener: The listener to notify when children changed.
+        :type listener: ChildrenListener
         """
         raise NotImplementedError()
 
@@ -236,7 +261,8 @@ class ZookeeperClient(abc.ABC):
         """
         Remove a children listener from a node in zookeeper.
 
-        :param ChildrenListener listener: The listener to remove.
+        :param listener: The listener to remove.
+        :type listener: ChildrenListener
         """
         raise NotImplementedError()
 
