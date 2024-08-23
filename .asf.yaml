@@ -7,6 +7,7 @@ notifications:
 
 github:
   homepage: https://dubbo.apache.org/
+  description: "The python Implementation For Apache Dubbo."
   features:
     # Enable wiki for documentation
     wiki: false
@@ -23,5 +24,11 @@ github:
     merge: false
     # disable rebase button:
     rebase: false
-
-
+  labels:
+    - dubbo
+    - python
+    - rpc
+    - framework
+    - http2
+    - h2
+    - grpc
