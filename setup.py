@@ -56,6 +56,10 @@ setup(
     packages=find_packages(include=("dubbo", "dubbo.*")),
     test_suite="tests",
     python_requires=">=3.11",
-    install_requires=["h2>=4.1.0", "uvloop>=0.19.0; platform_system!='Windows'"],
+    install_requires=[
+        "h2>=4.1.0",
+        "uvloop>=0.19.0; platform_system!='Windows'",
+        "psutil>=6.0.0",
+    ],
     extras_require={"zookeeper": ["kazoo>=2.10.0"]},
 )

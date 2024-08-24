@@ -18,6 +18,10 @@ import socket
 
 __all__ = ["EventHelper", "FutureHelper", "NetworkUtils"]
 
+from typing import List, Tuple
+
+import psutil
+
 
 class EventHelper:
     """
@@ -155,3 +159,71 @@ class NetworkUtils:
         :rtype: str
         """
         return socket.gethostbyname(NetworkUtils.get_host_name())
+
+
+class CpuUtils:
+    """
+    Helper class for CPU operations.
+    """
+
+    @staticmethod
+    def get_cpu_count(logical=True) -> int:
+        """
+        Get the number of CPUs in the system.
+
+        :return: The number of CPUs in the system.
+        :rtype: int
+        """
+        return psutil.cpu_count(logical=logical)
+
+    @staticmethod
+    def get_total_cpu_usage(interval=1) -> float:
+        """
+        Get the total CPU usage of the system.
+
+        :param interval: The interval in seconds.
+        :type interval: int
+        :return: The total CPU usage of the system.
+        :rtype: float
+        """
+        return psutil.cpu_percent(interval=interval)
+
+    @staticmethod
+    def get_per_cpu_usage(interval=1) -> List[float]:
+        """
+        Get the per CPU usage of the system.
+
+        :param interval: The interval in seconds.
+        :type interval: int
+        :return: The per CPU usage of the system.
+        :rtype: list
+        """
+        return psutil.cpu_percent(interval=interval, percpu=True)
+
+    @staticmethod
+    def get_load_avg() -> Tuple[float, float, float]:
+        """
+        Get the load average over the last 1, 5, and 15 minutes
+
+        :return: The load average of the system.
+        :rtype: list
+        """
+        return psutil.getloadavg()
+
+    @staticmethod
+    def get_cpu_stats():
+        """
+        Get the CPU stats of the system.
+
+        :return: The CPU stats of the system.
+        """
+        return psutil.cpu_stats()
+
+    @staticmethod
+    def get_cpu_freq():
+        """
+        Get the current CPU frequency.
+
+        :return: The current CPU frequency.
+        """
+        return psutil.cpu_freq()

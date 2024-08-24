@@ -24,7 +24,7 @@ __all__ = [
     "HeadersFrame",
     "DataFrame",
     "WindowUpdateFrame",
-    "ResetStreamFrame",
+    "RstStreamFrame",
     "PingFrame",
     "UserActionFrames",
 ]
@@ -147,7 +147,7 @@ class WindowUpdateFrame(Http2Frame):
         return f"<WindowUpdateFrame stream_id={self.stream_id} delta={self.delta}>"
 
 
-class ResetStreamFrame(Http2Frame):
+class RstStreamFrame(Http2Frame):
     """
     HTTP/2 reset stream frame.
     """
@@ -170,7 +170,9 @@ class ResetStreamFrame(Http2Frame):
         self.error_code = error_code
 
     def __repr__(self) -> str:
-        return f"<ResetStreamFrame stream_id={self.stream_id} error_code={self.error_code}>"
+        return (
+            f"<RstStreamFrame stream_id={self.stream_id} error_code={self.error_code}>"
+        )
 
 
 class PingFrame(Http2Frame):
@@ -178,9 +180,9 @@ class PingFrame(Http2Frame):
     HTTP/2 ping frame.
     """
 
-    __slots__ = ["data"]
+    __slots__ = ["data", "ack"]
 
-    def __init__(self, data: bytes):
+    def __init__(self, data: bytes, ack: bool = False):
         """
         Initialize the HTTP/2 ping frame.
         :param data: The data.
@@ -188,10 +190,11 @@ class PingFrame(Http2Frame):
         """
         super().__init__(0, Http2FrameType.PING, False)
         self.data = data
+        self.ack = ack
 
     def __repr__(self) -> str:
         return f"<PingFrame data={self.data}>"
 
 
 # User action frames.
-UserActionFrames = Union[HeadersFrame, DataFrame, ResetStreamFrame]
+UserActionFrames = Union[HeadersFrame, DataFrame, RstStreamFrame]

@@ -16,12 +16,10 @@
 
 import asyncio
 import uuid
-from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, Optional
 
 from dubbo.loggers import loggerFactory
-from dubbo.remoting.aio.exceptions import ProtocolError
 from dubbo.remoting.aio.http2.frames import UserActionFrames
 from dubbo.remoting.aio.http2.registries import Http2FrameType
 from dubbo.remoting.aio.http2.stream import DefaultHttp2Stream, Http2Stream
@@ -107,6 +105,9 @@ class StreamMultiplexHandler:
             # It must be ensured that the event loop is not blocked,
             # and if there is a blocking operation, the executor must be used.
             stream.receive_frame(frame)
+
+            if frame.end_stream and stream.local_closed:
+                self.remove_stream(frame.stream_id)
         else:
             _LOGGER.warning(
                 f"Stream {frame.stream_id} not found. Ignoring frame {frame}"
@@ -134,19 +135,9 @@ class StreamClientMultiplexHandler(StreamMultiplexHandler):
         :return: The stream.
         :rtype: DefaultHttp2Stream
         """
-        future = futures.Future()
-        self._protocol.get_next_stream_id(future)
-        try:
-            # block until the stream_id is created
-            stream_id = future.result()
-            new_stream = DefaultHttp2Stream(
-                stream_id, listener, self._loop, self._protocol, self._executor
-            )
-            self.put_stream(stream_id, new_stream)
-        except Exception as e:
-            raise ProtocolError("Failed to create stream.") from e
-
-        return new_stream
+        return DefaultHttp2Stream(
+            -1, listener, self._loop, self._protocol, self._executor
+        )
 
 
 class StreamServerMultiplexHandler(StreamMultiplexHandler):

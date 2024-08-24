@@ -46,4 +46,8 @@ if __name__ == "__main__":
     # start the server
     server = bootstrap.create_server(service_config).start()
 
+    server1 = bootstrap.create_server(
+        ServiceConfig(service_handler, port=50052)
+    ).start()
+
     input("Press Enter to stop the server...\n")

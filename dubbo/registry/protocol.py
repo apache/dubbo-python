@@ -14,9 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dubbo.cluster import Directory
 from dubbo.cluster.directories import RegistryDirectory
 from dubbo.cluster.failfast_cluster import FailfastCluster
+from dubbo.cluster.monitor.cpu import CpuMonitor, CpuInnerRpcHandler
 from dubbo.configs import RegistryConfig
 from dubbo.constants import common_constants
 from dubbo.extension import extensionLoader
@@ -44,8 +44,15 @@ class RegistryProtocol(Protocol):
         # get the server registry
         registry = self._factory.get_registry(url)
 
-        ref_url = url.attributes[common_constants.EXPORT_KEY]
+        ref_url: URL = url.attributes[common_constants.EXPORT_KEY]
         registry.register(ref_url)
+
+        # add cpu handler
+        ref_url.attributes[common_constants.SERVICE_HANDLER_KEY] = [
+            ref_url.attributes[common_constants.SERVICE_HANDLER_KEY],
+            CpuInnerRpcHandler.get_service_handler(),
+        ]
+
         # continue the export process
         self._protocol.export(ref_url)
 
@@ -53,7 +60,10 @@ class RegistryProtocol(Protocol):
         registry = self._factory.get_registry(url)
 
         # create the directory
-        directory: Directory = RegistryDirectory(registry, self._protocol, url)
+        if url.parameters.get(common_constants.LOADBALANCE_KEY) == "cpu":
+            directory = CpuMonitor(registry, self._protocol, url)
+        else:
+            directory = RegistryDirectory(registry, self._protocol, url)
 
         # continue the refer process
         return FailfastCluster().join(directory)

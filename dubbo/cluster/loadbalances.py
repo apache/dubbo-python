@@ -18,6 +18,7 @@ import random
 from typing import List, Optional
 
 from dubbo.cluster import LoadBalance
+from dubbo.cluster.monitor.cpu import CpuMonitor
 from dubbo.protocol import Invocation, Invoker
 
 
@@ -63,3 +64,46 @@ class RandomLoadBalance(AbstractLoadBalance):
     ) -> Optional[Invoker]:
         randint = random.randint(0, len(invokers) - 1)
         return invokers[randint]
+
+
+class CpuLoadBalance(AbstractLoadBalance):
+    """
+    CPU load balance.
+    """
+
+    def __init__(self):
+        self._monitor: Optional[CpuMonitor] = None
+
+    def set_monitor(self, monitor: CpuMonitor) -> None:
+        """
+        Set the CPU monitor.
+        :param monitor: The CPU monitor.
+        :type monitor: CpuMonitor
+        """
+        self._monitor = monitor
+
+    def do_select(
+        self, invokers: List[Invoker], invocation: Invocation
+    ) -> Optional[Invoker]:
+        # get the CPU usage
+        cpu_usages = self._monitor.get_cpu_usage(invokers)
+        # Select the caller with the lowest CPU usage, 0 means CPU usage is unknown.
+        available_invokers = []
+        unknown_invokers = []
+
+        for invoker, cpu_usage in cpu_usages.items():
+            if cpu_usage == 0:
+                unknown_invokers.append((cpu_usage, invoker))
+            else:
+                available_invokers.append((cpu_usage, invoker))
+
+        if available_invokers:
+            # sort and select the invoker with the lowest CPU usage
+            available_invokers.sort(key=lambda x: x[0])
+            return available_invokers[0][1]
+        elif unknown_invokers:
+            # get the invoker with unknown CPU usage randomly
+            randint = random.randint(0, len(unknown_invokers) - 1)
+            return unknown_invokers[randint][1]
+        else:
+            return None
