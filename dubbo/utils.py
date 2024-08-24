@@ -16,7 +16,7 @@
 
 import socket
 
-__all__ = ["EventHelper", "FutureHelper", "NetworkUtils"]
+__all__ = ["EventHelper", "FutureHelper", "NetworkUtils", "CpuUtils"]
 
 from typing import List, Tuple
 

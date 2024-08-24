@@ -31,7 +31,7 @@ _LOGGER = loggerFactory.get_logger()
 _cpu_invocation = RpcInvocation(
     "org.apache.dubbo.MetricsService",
     "cpu",
-    b"",
+    str(1).encode("utf-8"),
     attributes={
         common_constants.CALL_KEY: UnaryCallType,
     },
@@ -164,11 +164,13 @@ class CpuInnerRpcHandler:
         )
 
     @staticmethod
-    def get_cpu_usage(*args) -> bytes:
+    def get_cpu_usage(interval) -> bytes:
         """
         Get the CPU usage.
+        :param interval: The interval.
+        :type interval: bytes
         :return: The CPU usage.
         :rtype: bytes
         """
-        float_value = CpuUtils.get_total_cpu_usage()
+        float_value = CpuUtils.get_total_cpu_usage(interval=int(interval.decode("utf-8")))
         return str(float_value).encode("utf-8")

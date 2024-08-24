@@ -36,7 +36,7 @@ class UnaryServiceStub:
 
 if __name__ == "__main__":
     registry_config = RegistryConfig.from_url(
-        "zookeeper://127.0.0.1:2181?loadbalance=cpu"
+        "zookeeper://127.0.0.1:2181"
     )
     bootstrap = dubbo.Dubbo(registry_config=registry_config)
 
@@ -47,13 +47,6 @@ if __name__ == "__main__":
 
     unary_service_stub = UnaryServiceStub(dubbo_client)
 
-    time.sleep(5)
-
     result = unary_service_stub.unary(unary_unary_pb2.Request(name="world"))
 
-    print(result.message)
-
-    time.sleep(10)
-
-    result = unary_service_stub.unary(unary_unary_pb2.Request(name="world"))
     print(result.message)
