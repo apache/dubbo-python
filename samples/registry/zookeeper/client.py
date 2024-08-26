@@ -13,6 +13,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import time
+
 import unary_unary_pb2
 
 import dubbo
@@ -33,10 +35,14 @@ class UnaryServiceStub:
 
 
 if __name__ == "__main__":
-    registry_config = RegistryConfig.from_url("zookeeper://127.0.0.1:2181")
+    registry_config = RegistryConfig.from_url(
+        "zookeeper://127.0.0.1:2181"
+    )
     bootstrap = dubbo.Dubbo(registry_config=registry_config)
 
-    reference_config = ReferenceConfig(protocol="tri", service="org.apache.dubbo.samples.registry.zk")
+    reference_config = ReferenceConfig(
+        protocol="tri", service="org.apache.dubbo.samples.registry.zk"
+    )
     dubbo_client = bootstrap.create_client(reference_config)
 
     unary_service_stub = UnaryServiceStub(dubbo_client)

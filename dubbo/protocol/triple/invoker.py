@@ -47,7 +47,7 @@ class TripleInvoker(Invoker):
     Triple invoker.
     """
 
-    __slots__ = ["_url", "_client", "_stream_multiplexer", "_compression", "_destroyed"]
+    __slots__ = ["_url", "_client", "_stream_multiplexer", "_compression"]
 
     def __init__(
         self, url: URL, client: Client, stream_multiplexer: StreamClientMultiplexHandler
@@ -55,8 +55,6 @@ class TripleInvoker(Invoker):
         self._url = url
         self._client = client
         self._stream_multiplexer = stream_multiplexer
-
-        self._destroyed = False
 
     def invoke(self, invocation: RpcInvocation) -> Result:
         call_type: CallType = invocation.get_attribute(common_constants.CALL_KEY)
@@ -201,10 +199,6 @@ class TripleInvoker(Invoker):
 
     def is_available(self) -> bool:
         return self._client.is_connected()
-
-    @property
-    def destroyed(self) -> bool:
-        return self._destroyed
 
     def destroy(self) -> None:
         self._client.close()

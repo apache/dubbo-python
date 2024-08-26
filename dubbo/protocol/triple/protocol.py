@@ -61,11 +61,13 @@ class TripleProtocol(Protocol):
         if self._server is not None:
             return
 
-        service_handler: RpcServiceHandler = url.attributes[
-            common_constants.SERVICE_HANDLER_KEY
-        ]
+        service_handler = url.attributes[common_constants.SERVICE_HANDLER_KEY]
 
-        self._path_resolver[service_handler.service_name] = service_handler
+        if iter(service_handler):
+            for handler in service_handler:
+                self._path_resolver[handler.service_name] = handler
+        else:
+            self._path_resolver[service_handler.service_name] = service_handler
 
         method_executor = ThreadPoolExecutor(
             thread_name_prefix=f"dubbo_tri_method_{str(uuid.uuid4())}", max_workers=10

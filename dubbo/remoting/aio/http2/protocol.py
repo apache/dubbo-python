@@ -17,7 +17,7 @@ import abc
 import asyncio
 import struct
 import time
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from h2.config import H2Configuration
 from h2.connection import H2Connection
@@ -32,7 +32,7 @@ from dubbo.remoting.aio.http2.frames import (
     HeadersFrame,
     Http2Frame,
     PingFrame,
-    ResetStreamFrame,
+    RstStreamFrame,
     UserActionFrames,
     WindowUpdateFrame,
 )
@@ -159,9 +159,7 @@ class AbstractHttp2Protocol(asyncio.Protocol, abc.ABC):
         """
         frame_type = frame.frame_type
         if frame_type == Http2FrameType.HEADERS:
-            self._send_headers_frame(
-                frame.stream_id, frame.headers.to_list(), frame.end_stream, event
-            )
+            self._send_headers_frame(frame, stream, event)
         elif frame_type == Http2FrameType.DATA:
             self._flow_controller.write_data(stream, frame, event)
         elif frame_type == Http2FrameType.RST_STREAM:
@@ -171,22 +169,25 @@ class AbstractHttp2Protocol(asyncio.Protocol, abc.ABC):
 
     def _send_headers_frame(
         self,
-        stream_id: int,
-        headers: List[Tuple[str, str]],
-        end_stream: bool,
+        frame: HeadersFrame,
+        stream: Http2Stream,
         event: Optional[asyncio.Event] = None,
     ) -> None:
         """
         Send the HTTP/2 headers frame.(thread-unsafe)
-        :param stream_id: The stream identifier.
-        :type stream_id: int
-        :param headers: The headers.
-        :type headers: List[Tuple[str, str]]
-        :param end_stream: Whether the stream is ended.
-        :type end_stream: bool
+         :param frame: The frame to send.
+        :type frame: HeadersFrame
+        :param stream: The stream.
+        :type stream: Http2Stream
         :param event: The event to be set after sending the frame.
         """
-        self._h2_connection.send_headers(stream_id, headers, end_stream=end_stream)
+        if stream.id == -1:
+            stream.id = self._h2_connection.get_next_available_stream_id()
+            self._stream_handler.put_stream(stream.id, stream)
+
+        self._h2_connection.send_headers(
+            stream.id, frame.headers.to_list(), end_stream=frame.end_stream
+        )
         self._flush()
         EventHelper.set(event)
 
@@ -248,7 +249,7 @@ class AbstractHttp2Protocol(asyncio.Protocol, abc.ABC):
                     if isinstance(frame, WindowUpdateFrame):
                         # Because flow control may be at the connection level, it is handled here
                         self._flow_controller.release_flow_control(frame)
-                    elif isinstance(frame, (HeadersFrame, DataFrame, ResetStreamFrame)):
+                    elif isinstance(frame, (HeadersFrame, DataFrame, RstStreamFrame)):
                         # Handle the frame by the stream handler
                         self._stream_handler.handle_frame(frame)
                     else:
@@ -331,7 +332,7 @@ class Http2ClientProtocol(AbstractHttp2Protocol):
 
     def _do_other_frame(self, frame: Http2Frame):
         # Handle the ping frame
-        if isinstance(frame, PingFrame):
+        if isinstance(frame, PingFrame) and frame.ack:
             FutureHelper.set_result(self._ping_ack_future, None)
 
     async def _heartbeat_loop(self):

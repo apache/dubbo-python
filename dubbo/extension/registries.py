@@ -62,6 +62,7 @@ loadBalanceRegistry = ExtendedRegistry(
     interface=LoadBalance,
     impls={
         "random": "dubbo.cluster.loadbalances.RandomLoadBalance",
+        "cpu": "dubbo.cluster.loadbalances.CpuLoadBalance",
     },
 )
 

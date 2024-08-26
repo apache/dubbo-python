@@ -23,7 +23,7 @@ from dubbo.remoting.aio.exceptions import StreamError
 from dubbo.remoting.aio.http2.frames import (
     DataFrame,
     HeadersFrame,
-    ResetStreamFrame,
+    RstStreamFrame,
     UserActionFrames,
 )
 from dubbo.remoting.aio.http2.headers import Http2Headers
@@ -57,6 +57,13 @@ class Http2Stream(abc.ABC):
         Get the stream identifier.
         """
         return self._id
+
+    @id.setter
+    def id(self, stream_id: int) -> None:
+        """
+        Set the stream identifier.
+        """
+        self._id = stream_id
 
     @property
     def listener(self) -> "Http2Stream.Listener":
@@ -261,8 +268,8 @@ class DefaultHttp2Stream(Http2Stream):
         if self.local_closed:
             # The stream has been closed locally.
             return
-        reset_frame = ResetStreamFrame(self.id, error_code)
-        self._outbound_controller.write_rst(reset_frame)
+        rst_frame = RstStreamFrame(self.id, error_code)
+        self._outbound_controller.write_rst(rst_frame)
 
     def receive_frame(self, frame: UserActionFrames) -> None:
         """

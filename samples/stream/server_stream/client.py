@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import unary_stream_pb2
-from setuptools.extern import names
 
 import dubbo
 from dubbo.configs import ReferenceConfig

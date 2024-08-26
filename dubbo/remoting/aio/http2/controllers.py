@@ -349,6 +349,12 @@ class FrameOutboundController(Controller):
         """
 
         def _inner_operation(_frame: UserActionFrames):
+
+            # -1 means the stream is not created, so we don't need to send the reset frame
+            if self._stream.id == -1:
+                return
+
+            _frame.stream_id = self._stream.id
             self._protocol.send_frame(_frame, self._stream)
 
             self._stream.close_local()
@@ -376,6 +382,7 @@ class FrameOutboundController(Controller):
         # wait and send the data frames
         while True:
             frame = await self._data_queue.get()
+            frame.stream_id = self._stream.id
             if frame is not FrameOutboundController.LAST_DATA_FRAME:
                 self._data_sent_event = asyncio.Event()
                 self._protocol.send_frame(frame, self._stream, self._data_sent_event)
@@ -388,6 +395,7 @@ class FrameOutboundController(Controller):
 
         # wait for the last data frame and send the trailers frame
         await self._data_sent_event.wait()
+        self._trailers.stream_id = self._stream.id
         self._protocol.send_frame(self._trailers, self._stream)
 
         # close the stream

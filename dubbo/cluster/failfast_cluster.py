@@ -15,6 +15,7 @@
 # limitations under the License.
 
 from dubbo.cluster import Cluster, Directory, LoadBalance
+from dubbo.cluster.loadbalances import CpuLoadBalance
 from dubbo.constants import common_constants
 from dubbo.extension import extensionLoader
 from dubbo.protocol import Invoker, Result
@@ -27,12 +28,15 @@ class FailfastInvoker(Invoker):
     FailfastInvoker
     """
 
-    def __init__(self, directory: Directory, url: URL):
+    def __init__(self, directory, url: URL):
         self._directory = directory
 
         self._load_balance = extensionLoader.get_extension(
             LoadBalance, url.parameters.get(common_constants.LOADBALANCE_KEY, "random")
         )()
+
+        if isinstance(self._load_balance, CpuLoadBalance):
+            self._load_balance.set_monitor(directory)
 
     def invoke(self, invocation) -> Result:
 
