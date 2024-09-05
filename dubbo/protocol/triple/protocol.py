@@ -16,6 +16,7 @@
 
 import functools
 import uuid
+from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Optional
 
@@ -63,7 +64,7 @@ class TripleProtocol(Protocol):
 
         service_handler = url.attributes[common_constants.SERVICE_HANDLER_KEY]
 
-        if iter(service_handler):
+        if isinstance(service_handler, Iterable):
             for handler in service_handler:
                 self._path_resolver[handler.service_name] = handler
         else:

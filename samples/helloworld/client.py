@@ -18,7 +18,6 @@ from dubbo.configs import ReferenceConfig
 
 
 class UnaryServiceStub:
-
     def __init__(self, client: dubbo.Client):
         self.unary = client.unary(method_name="unary")
 

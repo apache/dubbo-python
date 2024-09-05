@@ -38,7 +38,6 @@ class _DefaultStateListener(StateListener):
 
 
 class _DefaultChildrenListener(ChildrenListener):
-
     def __init__(self, listener: NotifyListener):
         self._listener = listener
 
@@ -207,7 +206,6 @@ class ZookeeperRegistry(Registry):
 
 
 class ZookeeperRegistryFactory(RegistryFactory):
-
     def __init__(self):
         self._transport: ZookeeperTransport = KazooZookeeperTransport()
 

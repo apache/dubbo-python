@@ -13,14 +13,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import unary_stream_pb2
+from samples.proto import unary_stream_pb2
 
 import dubbo
 from dubbo.configs import ReferenceConfig
 
 
 class ServerStreamServiceStub:
-
     def __init__(self, client: dubbo.Client):
         self.stream_unary = client.server_stream(
             method_name="serverStream",

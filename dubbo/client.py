@@ -40,7 +40,6 @@ from dubbo.url import URL
 
 
 class Client:
-
     def __init__(self, reference: ReferenceConfig, dubbo: Optional[Dubbo] = None):
         self._initialized = False
         self._global_lock = threading.RLock()

@@ -24,7 +24,6 @@ __all__ = ["Invocation", "Result", "Invoker", "Protocol"]
 
 
 class Invocation(abc.ABC):
-
     @abc.abstractmethod
     def get_service_name(self) -> str:
         """
@@ -103,7 +102,6 @@ class Invoker(Node, abc.ABC):
 
 
 class Protocol(abc.ABC):
-
     @abc.abstractmethod
     def export(self, url: URL):
         """

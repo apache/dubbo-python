@@ -15,14 +15,13 @@
 # limitations under the License.
 import uuid
 
-import chat_pb2
+from samples.proto import chat_pb2
 
 import dubbo
 from dubbo.configs import ReferenceConfig
 
 
 class ChatServiceStub:
-
     def __init__(self, client: dubbo.Client):
         self.chat = client.bidi_stream(
             method_name="chat",

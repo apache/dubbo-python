@@ -30,7 +30,6 @@ def response_deserializer(data: bytes) -> Dict:
 
 
 class UnaryServiceStub:
-
     def __init__(self, client: dubbo.Client):
         self.unary = client.unary(
             method_name="unary",

@@ -17,4 +17,6 @@
 from dubbo.extension.extension_loader import ExtensionError
 from dubbo.extension.extension_loader import ExtensionLoader as _ExtensionLoader
 
+__all__ = ["ExtensionError", "extensionLoader"]
+
 extensionLoader = _ExtensionLoader()

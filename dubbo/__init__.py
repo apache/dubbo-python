@@ -17,6 +17,5 @@
 from .bootstrap import Dubbo
 from .client import Client
 from .server import Server
-from .__version__ import __version__
 
 __all__ = ["Dubbo", "Client", "Server"]

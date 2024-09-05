@@ -13,14 +13,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import unary_unary_pb2
-
+from samples.proto import unary_unary_pb2
 import dubbo
 from dubbo.configs import ReferenceConfig
 
 
 class UnaryServiceStub:
-
     def __init__(self, client: dubbo.Client):
         self.unary = client.unary(
             method_name="unary",
