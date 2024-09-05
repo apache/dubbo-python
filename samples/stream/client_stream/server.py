@@ -13,32 +13,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from samples.proto import stream_unary_pb2
+from samples.proto import greeter_pb2
 
 import dubbo
 from dubbo.configs import ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
 
 
-def handle_stream(request_stream):
+def client_stream(request_stream):
     response = ""
     for request in request_stream:
         print(f"Received request: {request.name}")
         response += f"{request.name} "
 
-    return stream_unary_pb2.Response(message=response)
+    return greeter_pb2.GreeterReply(message=response)
 
 
 if __name__ == "__main__":
     # build a method handler
     method_handler = RpcMethodHandler.client_stream(
-        handle_stream,
-        request_deserializer=stream_unary_pb2.Request.FromString,
-        response_serializer=stream_unary_pb2.Response.SerializeToString,
+        client_stream,
+        request_deserializer=greeter_pb2.GreeterRequest.FromString,
+        response_serializer=greeter_pb2.GreeterReply.SerializeToString,
     )
     # build a service handler
     service_handler = RpcServiceHandler(
-        service_name="org.apache.dubbo.samples.stream",
+        service_name="org.apache.dubbo.samples.proto.Greeter",
         method_handlers={"clientStream": method_handler},
     )
 

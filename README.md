@@ -1,4 +1,4 @@
-# Apache Dubbo for python
+# Apache Dubbo for Python
 
 ![License](https://img.shields.io/github/license/apache/dubbo-python)
 ![GitHub last commit](https://img.shields.io/github/last-commit/apache/dubbo-python)

@@ -13,40 +13,39 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import uuid
 
-from samples.proto import chat_pb2
+from samples.proto import greeter_pb2
 
 import dubbo
 from dubbo.configs import ReferenceConfig
 
 
-class ChatServiceStub:
+class GreeterServiceStub:
     def __init__(self, client: dubbo.Client):
-        self.chat = client.bidi_stream(
-            method_name="chat",
-            request_serializer=chat_pb2.ChatMessage.SerializeToString,
-            response_deserializer=chat_pb2.ChatMessage.FromString,
+        self.bidi_stream = client.bidi_stream(
+            method_name="biStream",
+            request_serializer=greeter_pb2.GreeterRequest.SerializeToString,
+            response_deserializer=greeter_pb2.GreeterReply.FromString,
         )
 
-    def chat(self, values):
-        return self.chat(values)
+    def bi_stream(self, values):
+        return self.bidi_stream(values)
 
 
 if __name__ == "__main__":
     reference_config = ReferenceConfig.from_url(
-        "tri://127.0.0.1:50051/org.apache.dubbo.samples.stream"
+        "tri://127.0.0.1:50051/org.apache.dubbo.samples.proto.Greeter"
     )
     dubbo_client = dubbo.Client(reference_config)
 
-    chat_service_stub = ChatServiceStub(dubbo_client)
+    stub = GreeterServiceStub(dubbo_client)
 
     # Iterator of request
     def request_generator():
         for item in ["hello", "world", "from", "dubbo-python"]:
-            yield chat_pb2.ChatMessage(user=item, message=str(uuid.uuid4()))
+            yield greeter_pb2.GreeterRequest(name=str(item))
 
-    result = chat_service_stub.chat(request_generator())
+    result = stub.bi_stream(request_generator())
 
     for i in result:
-        print(f"Received response: user={i.user}, message={i.message}")
+        print(f"Received response: {i.message}")

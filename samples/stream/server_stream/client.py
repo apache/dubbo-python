@@ -13,35 +13,35 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from samples.proto import unary_stream_pb2
+from samples.proto import greeter_pb2
 
 import dubbo
 from dubbo.configs import ReferenceConfig
 
 
-class ServerStreamServiceStub:
+class GreeterServiceStub:
     def __init__(self, client: dubbo.Client):
         self.stream_unary = client.server_stream(
             method_name="serverStream",
-            request_serializer=unary_stream_pb2.Request.SerializeToString,
-            response_deserializer=unary_stream_pb2.Response.FromString,
+            request_serializer=greeter_pb2.GreeterRequest.SerializeToString,
+            response_deserializer=greeter_pb2.GreeterReply.FromString,
         )
 
-    def stream_unary(self, values):
+    def server_stream(self, values):
         return self.stream_unary(values)
 
 
 if __name__ == "__main__":
     reference_config = ReferenceConfig.from_url(
-        "tri://127.0.0.1:50051/org.apache.dubbo.samples.stream"
+        "tri://127.0.0.1:50051/org.apache.dubbo.samples.proto.Greeter"
     )
     dubbo_client = dubbo.Client(reference_config)
 
-    server_stream_service_stub = ServerStreamServiceStub(dubbo_client)
+    stub = GreeterServiceStub(dubbo_client)
 
-    request = unary_stream_pb2.Request(name="hello world from dubbo-python")
+    request = greeter_pb2.GreeterRequest(name="hello world from dubbo-python")
 
-    result = server_stream_service_stub.stream_unary(request)
+    result = stub.server_stream(request)
 
     for i in result:
         print(f"Received response: {i.message}")

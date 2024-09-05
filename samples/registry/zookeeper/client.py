@@ -14,21 +14,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from samples.proto import unary_unary_pb2
+from samples.proto import greeter_pb2
 
 import dubbo
 from dubbo.configs import ReferenceConfig, RegistryConfig
 
 
-class UnaryServiceStub:
+class GreeterServiceStub:
     def __init__(self, client: dubbo.Client):
         self.unary = client.unary(
-            method_name="unary",
-            request_serializer=unary_unary_pb2.Request.SerializeToString,
-            response_deserializer=unary_unary_pb2.Response.FromString,
+            method_name="sayHello",
+            request_serializer=greeter_pb2.GreeterRequest.SerializeToString,
+            response_deserializer=greeter_pb2.GreeterReply.FromString,
         )
 
-    def unary(self, request):
+    def say_hello(self, request):
         return self.unary(request)
 
 
@@ -37,12 +37,12 @@ if __name__ == "__main__":
     bootstrap = dubbo.Dubbo(registry_config=registry_config)
 
     reference_config = ReferenceConfig(
-        protocol="tri", service="org.apache.dubbo.samples.registry.zk"
+        protocol="tri", service="org.apache.dubbo.samples.proto.Greeter"
     )
     dubbo_client = bootstrap.create_client(reference_config)
 
-    unary_service_stub = UnaryServiceStub(dubbo_client)
+    stub = GreeterServiceStub(dubbo_client)
 
-    result = unary_service_stub.unary(unary_unary_pb2.Request(name="world"))
+    result = stub.say_hello(greeter_pb2.GreeterRequest(name="hello"))
 
     print(result.message)

@@ -1,4 +1,4 @@
-# Dubbo-python Examples
+# Dubbo-python Samples
 
 Before you begin, ensure that you have **`Python 3.11+`**. Then, install Dubbo-Python in your project using the following steps:
 
