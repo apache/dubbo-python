@@ -1,6 +1,8 @@
 # Apache Dubbo for python
 
 ![License](https://img.shields.io/github/license/apache/dubbo-python)
+![GitHub last commit](https://img.shields.io/github/last-commit/apache/dubbo-python)
+![GitHub branch check runs](https://img.shields.io/github/check-runs/apache/dubbo-python/main)
 
 ---
 
@@ -21,7 +23,7 @@ Visit [the official website](https://dubbo.apache.org/) for more information.
 ## Features
 
 - **Service Discovery**: Zookeeper
-- **Load Balance**: Random
+- **Load Balance**: Random, CPU
 - **RPC Protocols**: Triple(gRPC compatible and HTTP-friendly)
 - **Transport**: asyncio(uvloop)
 - **Serialization**: Customizable(protobuf, json...)
