@@ -172,5 +172,7 @@ class CpuInnerRpcHandler:
         :return: The CPU usage.
         :rtype: bytes
         """
-        float_value = CpuUtils.get_total_cpu_usage(interval=int(interval.decode("utf-8")))
+        float_value = CpuUtils.get_total_cpu_usage(
+            interval=int(interval.decode("utf-8"))
+        )
         return str(float_value).encode("utf-8")

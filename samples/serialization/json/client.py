@@ -29,8 +29,7 @@ def response_deserializer(data: bytes) -> Dict:
     return orjson.loads(data)
 
 
-class UnaryServiceStub:
-
+class GreeterServiceStub:
     def __init__(self, client: dubbo.Client):
         self.unary = client.unary(
             method_name="unary",
@@ -38,7 +37,7 @@ class UnaryServiceStub:
             response_deserializer=response_deserializer,
         )
 
-    def unary(self, request):
+    def say_hello(self, request):
         return self.unary(request)
 
 
@@ -48,8 +47,6 @@ if __name__ == "__main__":
     )
     dubbo_client = dubbo.Client(reference_config)
 
-    unary_service_stub = UnaryServiceStub(dubbo_client)
-
-    result = unary_service_stub.unary({"name": "world"})
-
+    stub = GreeterServiceStub(dubbo_client)
+    result = stub.say_hello({"name": "world"})
     print(result)

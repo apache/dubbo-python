@@ -22,7 +22,6 @@ __all__ = ["Client", "Server", "Transporter"]
 
 
 class Client(abc.ABC):
-
     def __init__(self, url: URL):
         self._url = url
 

@@ -1,0 +1,24 @@
+# This file is used to ignore files and directories from the license scan
+# Note: these patterns are applied to single files or directories, not full paths
+
+# file extensions
+.*md
+.*proto
+
+# files
+.asf.yaml
+LICENSE
+NOTICE
+README.md
+requirements.txt
+rat-report.txt
+
+# directories
+.vscode
+.idea
+.github
+.gitignore
+.license-ignore
+./samples/proto/*
+
+

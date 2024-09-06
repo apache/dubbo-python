@@ -33,51 +33,48 @@ Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
    client
 
    ```python
-   class UnaryServiceStub:
-   
+   class GreeterServiceStub:
        def __init__(self, client: dubbo.Client):
            self.unary = client.unary(
-               method_name="unary",
-               request_serializer=unary_unary_pb2.Request.SerializeToString,
-               response_deserializer=unary_unary_pb2.Response.FromString,
+               method_name="sayHello",
+               request_serializer=greeter_pb2.GreeterRequest.SerializeToString,
+               response_deserializer=greeter_pb2.GreeterReply.FromString,
            )
    
-       def unary(self, request):
+       def say_hello(self, request):
            return self.unary(request)
    
    
    if __name__ == "__main__":
        reference_config = ReferenceConfig.from_url(
-           "tri://127.0.0.1:50051/org.apache.dubbo.samples.HelloWorld"
+           "tri://127.0.0.1:50051/org.apache.dubbo.samples.proto.Greeter"
        )
        dubbo_client = dubbo.Client(reference_config)
    
-       unary_service_stub = UnaryServiceStub(dubbo_client)
-   
-       result = unary_service_stub.unary(unary_unary_pb2.Request(name="world"))
-   
+       stub = GreeterServiceStub(dubbo_client)
+       result = stub.say_hello(greeter_pb2.GreeterRequest(name="hello"))
        print(result.message)
    ```
-
+   
    server
-
+   
    ```python
-   def handle_unary(request):
+   def say_hello(request):
        print(f"Received request: {request}")
-       return unary_unary_pb2.Response(message=f"Hello, {request.name}")
+       return greeter_pb2.GreeterReply(message=f"{request.name} Dubbo!")
    
    
    if __name__ == "__main__":
        # build a method handler
        method_handler = RpcMethodHandler.unary(
-           handle_unary,
-           request_deserializer=unary_unary_pb2.Request.FromString,
-           response_serializer=unary_unary_pb2.Response.SerializeToString,
+           say_hello,
+           request_deserializer=greeter_pb2.GreeterRequest.FromString,
+           response_serializer=greeter_pb2.GreeterReply.SerializeToString,
        )
        # build a service handler
        service_handler = RpcServiceHandler(
-           service_name="org.apache.dubbo.samples.HelloWorld",
-           method_handlers={"unary": method_handler},
+           service_name="org.apache.dubbo.samples.proto.Greeter",
+           method_handlers={"sayHello": method_handler},
        )
    
        service_config = ServiceConfig(service_handler)
@@ -86,7 +83,6 @@ Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
        server = dubbo.Server(service_config).start()
    
        input("Press Enter to stop the server...\n")
-   
    ```
 
 
@@ -114,8 +110,7 @@ Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
        return orjson.loads(data)
    
    
-   class UnaryServiceStub:
-   
+   class GreeterServiceStub:
        def __init__(self, client: dubbo.Client):
            self.unary = client.unary(
                method_name="unary",
@@ -123,25 +118,23 @@ Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
                response_deserializer=response_deserializer,
            )
    
-       def unary(self, request):
+       def say_hello(self, request):
            return self.unary(request)
    
    
    if __name__ == "__main__":
        reference_config = ReferenceConfig.from_url(
-           "tri://127.0.0.1:50051/org.apache.dubbo.samples.HelloWorld"
+           "tri://127.0.0.1:50051/org.apache.dubbo.samples.serialization.json"
        )
        dubbo_client = dubbo.Client(reference_config)
    
-       unary_service_stub = UnaryServiceStub(dubbo_client)
-   
-       result = unary_service_stub.unary({"name": "world"})
-   
+       stub = GreeterServiceStub(dubbo_client)
+       result = stub.say_hello({"name": "world"})
        print(result)
    ```
-
+   
    server
-
+   
    ```python
    def request_deserializer(data: bytes) -> Dict:
        return orjson.loads(data)
@@ -176,5 +169,5 @@ Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
    
        input("Press Enter to stop the server...\n")
    ```
-
+   
    

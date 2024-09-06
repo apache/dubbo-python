@@ -60,7 +60,6 @@ _try_use_uvloop()
 
 
 class EventLoop:
-
     def __init__(self, in_other_tread: bool = True):
         self._in_other_tread = in_other_tread
         # The event loop to run the asynchronous function.

@@ -303,7 +303,6 @@ class ChildrenListenerAdapter(AbstractListenerAdapter):
 
 
 class DataListenerAdapterFactory(AbstractListenerAdapterFactory):
-
     def do_create(self, path: str, listener: DataListener) -> AbstractListenerAdapter:
         data_adapter = DataListenerAdapter(path, listener)
         self._client.DataWatch(path, data_adapter)
@@ -311,7 +310,6 @@ class DataListenerAdapterFactory(AbstractListenerAdapterFactory):
 
 
 class ChildrenListenerAdapterFactory(AbstractListenerAdapterFactory):
-
     def do_create(
         self, path: str, listener: ChildrenListener
     ) -> AbstractListenerAdapter:
@@ -400,7 +398,6 @@ class KazooZookeeperClient(ZookeeperClient):
 
 
 class KazooZookeeperTransport(ZookeeperTransport):
-
     def __init__(self):
         self._lock = threading.Lock()
         # key: location, value: KazooZookeeperClient

@@ -241,7 +241,6 @@ class TriDecoder:
         self._state = HEADER
 
     class Listener(abc.ABC):
-
         @abc.abstractmethod
         def on_message(self, message: bytes):
             """

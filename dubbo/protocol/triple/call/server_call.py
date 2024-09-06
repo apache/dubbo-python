@@ -43,7 +43,6 @@ from dubbo.serialization import (
 
 
 class TripleServerCall(ServerCall, ServerStream.Listener):
-
     def __init__(
         self,
         stream: ServerStream,
@@ -172,7 +171,6 @@ class DefaultMethodRunner(MethodRunner):
         client_stream: bool,
         server_stream: bool,
     ):
-
         self._server_call: TripleServerCall = server_call
         self._func = func
 

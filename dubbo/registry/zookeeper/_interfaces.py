@@ -268,7 +268,6 @@ class ZookeeperClient(abc.ABC):
 
 
 class ZookeeperTransport(abc.ABC):
-
     @abc.abstractmethod
     def connect(self, url: URL) -> ZookeeperClient:
         """

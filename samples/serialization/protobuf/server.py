@@ -13,29 +13,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import unary_unary_pb2
-
+from samples.proto import greeter_pb2
 import dubbo
 from dubbo.configs import ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
 
 
-def handle_unary(request):
+def say_hello(request):
     print(f"Received request: {request}")
-    return unary_unary_pb2.Response(message=f"Hello, {request.name}")
+    return greeter_pb2.GreeterReply(message=f"{request.name} Dubbo!")
 
 
 if __name__ == "__main__":
     # build a method handler
     method_handler = RpcMethodHandler.unary(
-        handle_unary,
-        request_deserializer=unary_unary_pb2.Request.FromString,
-        response_serializer=unary_unary_pb2.Response.SerializeToString,
+        say_hello,
+        request_deserializer=greeter_pb2.GreeterRequest.FromString,
+        response_serializer=greeter_pb2.GreeterReply.SerializeToString,
     )
     # build a service handler
     service_handler = RpcServiceHandler(
-        service_name="org.apache.dubbo.samples.serialization.protobuf",
-        method_handlers={"unary": method_handler},
+        service_name="org.apache.dubbo.samples.proto.Greeter",
+        method_handlers={"sayHello": method_handler},
     )
 
     service_config = ServiceConfig(service_handler)

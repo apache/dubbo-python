@@ -41,7 +41,6 @@ _LOGGER = loggerFactory.get_logger()
 
 
 class TripleServerStream(ServerStream):
-
     def __init__(self, stream: Http2Stream):
         self._stream = stream
 

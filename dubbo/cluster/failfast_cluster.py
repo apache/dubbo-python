@@ -39,7 +39,6 @@ class FailfastInvoker(Invoker):
             self._load_balance.set_monitor(directory)
 
     def invoke(self, invocation) -> Result:
-
         # get the invokers
         invokers = self._directory.list(invocation)
         if not invokers:

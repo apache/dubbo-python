@@ -24,7 +24,6 @@ __all__ = ["RpcCallable", "RpcCallableFactory"]
 
 
 class RpcCallable(abc.ABC):
-
     @abc.abstractmethod
     def __call__(self, *args, **kwargs):
         """
@@ -34,7 +33,6 @@ class RpcCallable(abc.ABC):
 
 
 class RpcCallableFactory(abc.ABC):
-
     @abc.abstractmethod
     def get_callable(self, invoker: Invoker, url: URL) -> RpcCallable:
         """

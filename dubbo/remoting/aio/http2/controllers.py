@@ -349,7 +349,6 @@ class FrameOutboundController(Controller):
         """
 
         def _inner_operation(_frame: UserActionFrames):
-
             # -1 means the stream is not created, so we don't need to send the reset frame
             if self._stream.id == -1:
                 return

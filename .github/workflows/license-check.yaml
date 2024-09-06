@@ -1,0 +1,19 @@
+name: License Template Check
+
+on: [push, pull_request]
+
+
+jobs:
+  license-check:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+      - name: Check License Header
+        run:  bash ./scripts/check_license.sh

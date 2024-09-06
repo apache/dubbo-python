@@ -7,58 +7,57 @@ When using `BidirectionalStream`, the client needs to pass an iterator as a para
 Here’s an example of the client-side code:
 
 ```python
-class ChatServiceStub:
-
+class GreeterServiceStub:
     def __init__(self, client: dubbo.Client):
-        self.chat = client.bidi_stream(
-            method_name="chat",
-            request_serializer=chat_pb2.ChatMessage.SerializeToString,
-            response_deserializer=chat_pb2.ChatMessage.FromString,
+        self.bidi_stream = client.bidi_stream(
+            method_name="biStream",
+            request_serializer=greeter_pb2.GreeterRequest.SerializeToString,
+            response_deserializer=greeter_pb2.GreeterReply.FromString,
         )
 
-    def chat(self, values):
-        return self.chat(values)
+    def bi_stream(self, values):
+        return self.bidi_stream(values)
 
 
 if __name__ == "__main__":
     reference_config = ReferenceConfig.from_url(
-        "tri://127.0.0.1:50051/org.apache.dubbo.samples.stream"
+        "tri://127.0.0.1:50051/org.apache.dubbo.samples.proto.Greeter"
     )
     dubbo_client = dubbo.Client(reference_config)
 
-    chat_service_stub = ChatServiceStub(dubbo_client)
+    stub = GreeterServiceStub(dubbo_client)
 
     # Iterator of request
     def request_generator():
         for item in ["hello", "world", "from", "dubbo-python"]:
-            yield chat_pb2.ChatMessage(user=item, message=str(uuid.uuid4()))
+            yield greeter_pb2.GreeterRequest(name=str(item))
 
-    result = chat_service_stub.chat(request_generator())
+    result = stub.bi_stream(request_generator())
 
     for i in result:
-        print(f"Received response: user={i.user}, message={i.message}")
+        print(f"Received response: {i.message}")
 ```
 
 And here’s the server-side code:
 
 ```python
-def chat(request_stream):
+def bi_stream(request_stream):
     for request in request_stream:
-        print(f"Received message from {request.user}: {request.message}")
-        yield chat_pb2.ChatMessage(user=request.message, message=request.user)
+        print(f"Received message from {request.name}")
+        yield greeter_pb2.GreeterReply(message=request.name)
 
 
 if __name__ == "__main__":
     # build a method handler
     method_handler = RpcMethodHandler.bi_stream(
-        chat,
-        request_deserializer=chat_pb2.ChatMessage.FromString,
-        response_serializer=chat_pb2.ChatMessage.SerializeToString,
+        bi_stream,
+        request_deserializer=greeter_pb2.GreeterRequest.FromString,
+        response_serializer=greeter_pb2.GreeterReply.SerializeToString,
     )
     # build a service handler
     service_handler = RpcServiceHandler(
-        service_name="org.apache.dubbo.samples.stream",
-        method_handlers={"chat": method_handler},
+        service_name="org.apache.dubbo.samples.proto.Greeter",
+        method_handlers={"biStream": method_handler},
     )
 
     service_config = ServiceConfig(service_handler)
@@ -67,6 +66,5 @@ if __name__ == "__main__":
     server = dubbo.Server(service_config).start()
 
     input("Press Enter to stop the server...\n")
-
 ```
 

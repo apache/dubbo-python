@@ -39,7 +39,6 @@ class NotifyListener(abc.ABC):
 
 
 class Registry(Node, abc.ABC):
-
     @abc.abstractmethod
     def register(self, url: URL) -> None:
         """
@@ -94,7 +93,6 @@ class Registry(Node, abc.ABC):
 
 
 class RegistryFactory(abc.ABC):
-
     @abc.abstractmethod
     def get_registry(self, url: URL) -> Registry:
         """
