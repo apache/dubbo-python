@@ -1,28 +1,24 @@
-## Defining and Using Serialization Functions
+## Custom Serialization
 
-Python is a dynamic language, and its flexibility makes it challenging to design a universal serialization layer as seen in other languages. Therefore, we have removed the "serialization layer" and left it to the users to implement (since users know the formats of the data they will pass).
+Python is a dynamic language, and its flexibility makes it challenging to design a universal serialization layer for other languages. Therefore, we removed the framework-level serialization layer and instead exposed interfaces, allowing users to implement their own (as they know best the data format they will be passing).
 
-Serialization typically consists of two parts: serialization and deserialization. We have defined the types for these functions, and custom serialization/deserialization functions must adhere to these "formats."
+Serialization typically involves two parts: serialization and deserialization. We have defined the types for these functions, and custom serialization/deserialization functions must follow these "formats."
 
-
-
-First, for serialization functions, we specify:
+For serialization functions, we specify:
 
 ```python
-# A function that takes an argument of any type and returns data of type bytes
-SerializingFunction = Callable[[Any], bytes]
+# A function that takes any number of arguments and returns data of type bytes
+SerializingFunction = Callable[..., bytes]
 ```
 
-Next, for deserialization functions, we specify:
+For deserialization functions, we specify:
 
-```python
+```
 # A function that takes an argument of type bytes and returns data of any type
 DeserializingFunction = Callable[[bytes], Any]
 ```
 
-Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
-
-
+Below, I'll demonstrate how to use `protobuf` and `json` for serialization.
 
 ### [protobuf](./protobuf)
 
@@ -47,37 +43,46 @@ Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
    
    if __name__ == "__main__":
        reference_config = ReferenceConfig.from_url(
-           "tri://127.0.0.1:50051/org.apache.dubbo.samples.proto.Greeter"
+           "tri://127.0.0.1:50051/org.apache.dubbo.samples.data.Greeter"
        )
        dubbo_client = dubbo.Client(reference_config)
    
        stub = GreeterServiceStub(dubbo_client)
-       result = stub.say_hello(greeter_pb2.GreeterRequest(name="hello"))
-       print(result.message)
+       result = stub.say_hello(greeter_pb2.GreeterRequest(name="Dubbo-python"))
+       print(f"Received reply: {result.message}")
    ```
    
    server
    
    ```python
-   def say_hello(request):
-       print(f"Received request: {request}")
-       return greeter_pb2.GreeterReply(message=f"{request.name} Dubbo!")
+   class GreeterServiceServicer:
+       def say_hello(self, request):
+           print(f"Received request: {request}")
+           return greeter_pb2.GreeterReply(message=f"Hello, {request.name}")
    
    
-   if __name__ == "__main__":
+   def build_service_handler():
        # build a method handler
        method_handler = RpcMethodHandler.unary(
-           say_hello,
+           GreeterServiceServicer().say_hello,
+           method_name="sayHello",
            request_deserializer=greeter_pb2.GreeterRequest.FromString,
            response_serializer=greeter_pb2.GreeterReply.SerializeToString,
        )
        # build a service handler
        service_handler = RpcServiceHandler(
-           service_name="org.apache.dubbo.samples.proto.Greeter",
-           method_handlers={"sayHello": method_handler},
+           service_name="org.apache.dubbo.samples.data.Greeter",
+           method_handlers=[method_handler],
        )
+       return service_handler
    
-       service_config = ServiceConfig(service_handler)
+   
+   if __name__ == "__main__":
+       # build a service handler
+       service_handler = build_service_handler()
+       service_config = ServiceConfig(
+           service_handler=service_handler, host="127.0.0.1", port=50051
+       )
    
        # start the server
        server = dubbo.Server(service_config).start()
@@ -89,7 +94,7 @@ Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
 
 ### [Json](./json)
 
-`protobuf` does not fully illustrate how to implement custom serialization and deserialization because its built-in functions perfectly meet the requirements. Instead, I'll demonstrate how to create custom serialization and deserialization functions using `orjson`:
+We have already implemented single-parameter serialization and deserialization using `protobuf`. Now, I will demonstrate how to write a multi-parameter `Json` serialization and deserialization function to enable remote calls for methods with multiple parameters.
 
 1. Install `orjson`:
 
@@ -102,12 +107,13 @@ Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
    client
 
    ```python
-   def request_serializer(data: Dict) -> bytes:
-       return orjson.dumps(data)
+   def request_serializer(name: str, age: int) -> bytes:
+       return orjson.dumps({"name": name, "age": age})
    
    
-   def response_deserializer(data: bytes) -> Dict:
-       return orjson.loads(data)
+   def response_deserializer(data: bytes) -> str:
+       json_dict = orjson.loads(data)
+       return json_dict["message"]
    
    
    class GreeterServiceStub:
@@ -118,8 +124,8 @@ Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
                response_deserializer=response_deserializer,
            )
    
-       def say_hello(self, request):
-           return self.unary(request)
+       def say_hello(self, name: str, age: int):
+           return self.unary(name, age)
    
    
    if __name__ == "__main__":
@@ -129,40 +135,51 @@ Below, I'll demonstrate how to use custom functions with `protobuf` and `json`.
        dubbo_client = dubbo.Client(reference_config)
    
        stub = GreeterServiceStub(dubbo_client)
-       result = stub.say_hello({"name": "world"})
+       result = stub.say_hello("dubbo-python", 18)
        print(result)
    ```
    
    server
    
    ```python
-   def request_deserializer(data: bytes) -> Dict:
-       return orjson.loads(data)
+   def request_deserializer(data: bytes) -> Tuple[str, int]:
+       json_dict = orjson.loads(data)
+       return json_dict["name"], json_dict["age"]
    
    
-   def response_serializer(data: Dict) -> bytes:
-       return orjson.dumps(data)
+   def response_serializer(message: str) -> bytes:
+       return orjson.dumps({"message": message})
    
    
-   def handle_unary(request):
-       print(f"Received request: {request}")
-       return {"message": f"Hello, {request['name']}"}
+   class GreeterServiceServicer:
+       def say_hello(self, request):
+           name, age = request
+           print(f"Received request: {name}, {age}")
+           return f"Hello, {name}, you are {age} years old."
    
    
-   if __name__ == "__main__":
+   def build_service_handler():
        # build a method handler
        method_handler = RpcMethodHandler.unary(
-           handle_unary,
+           GreeterServiceServicer().say_hello,
+           method_name="unary",
            request_deserializer=request_deserializer,
            response_serializer=response_serializer,
        )
        # build a service handler
        service_handler = RpcServiceHandler(
-           service_name="org.apache.dubbo.samples.HelloWorld",
-           method_handlers={"unary": method_handler},
+           service_name="org.apache.dubbo.samples.serialization.json",
+           method_handlers=[method_handler],
        )
+       return service_handler
    
-       service_config = ServiceConfig(service_handler)
+   
+   if __name__ == "__main__":
+       # build server config
+       service_handler = build_service_handler()
+       service_config = ServiceConfig(
+           service_handler=service_handler, host="127.0.0.1", port=50051
+       )
    
        # start the server
        server = dubbo.Server(service_config).start()

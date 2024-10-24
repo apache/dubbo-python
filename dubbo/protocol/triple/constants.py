@@ -118,7 +118,7 @@ class TripleHeaderValue(enum.Enum):
     TRAILERS = "trailers"
     HTTP = "http"
     HTTPS = "https"
-    APPLICATION_GRPC_PROTO = "application/grpc+proto"
+    APPLICATION_GRPC_PROTO = "application/grpc+data"
     APPLICATION_GRPC = "application/grpc"
 
     TEXT_PLAIN_UTF8 = "text/plain; encoding=utf-8"

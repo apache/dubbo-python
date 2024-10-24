@@ -15,7 +15,7 @@
 # limitations under the License.
 import dubbo
 from dubbo.configs import ReferenceConfig
-from samples.proto import greeter_pb2
+from samples.data import greeter_pb2
 
 
 class GreeterServiceStub:
@@ -32,7 +32,7 @@ class GreeterServiceStub:
 
 if __name__ == "__main__":
     reference_config = ReferenceConfig.from_url(
-        "tri://127.0.0.1:50051/org.apache.dubbo.samples.proto.Greeter"
+        "tri://127.0.0.1:50051/org.apache.dubbo.samples.data.Greeter"
     )
     dubbo_client = dubbo.Client(reference_config)
 

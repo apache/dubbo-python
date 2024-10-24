@@ -31,16 +31,17 @@ def response_serializer(message: str) -> bytes:
     return orjson.dumps({"message": message})
 
 
-def handle_unary(request):
-    name, age = request
-    print(f"Received request: {name}, {age}")
-    return f"Hello, {name}, you are {age} years old."
+class GreeterServiceServicer:
+    def say_hello(self, request):
+        name, age = request
+        print(f"Received request: {name}, {age}")
+        return f"Hello, {name}, you are {age} years old."
 
 
-if __name__ == "__main__":
+def build_service_handler():
     # build a method handler
     method_handler = RpcMethodHandler.unary(
-        method=handle_unary,
+        GreeterServiceServicer().say_hello,
         method_name="unary",
         request_deserializer=request_deserializer,
         response_serializer=response_serializer,
@@ -50,7 +51,12 @@ if __name__ == "__main__":
         service_name="org.apache.dubbo.samples.serialization.json",
         method_handlers=[method_handler],
     )
+    return service_handler
 
+
+if __name__ == "__main__":
+    # build server config
+    service_handler = build_service_handler()
     service_config = ServiceConfig(
         service_handler=service_handler, host="127.0.0.1", port=50051
     )

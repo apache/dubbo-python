@@ -29,51 +29,65 @@ Visit [the official website](https://dubbo.apache.org/) for more information.
 - **Serialization**: Customizable(protobuf, json...)
 
 
+
+## Installation
+
+Before you start, make sure you have **`python 3.11+`** installed.
+
+1. Install from source
+
+   ```sh
+   git clone https://github.com/apache/dubbo-python.git
+   cd dubbo-python && pip install .
+   ```
+
+
 ## Getting started
 
-Before you begin, ensure that you have **`python 3.11+`**. Then, install Dubbo-Python in your project using the following steps:
+Get up and running with Dubbo-Python in just 5 minutes by following our [Quick Start Guide](https://github.com/apache/dubbo-python/tree/main/samples).
 
-```shell
-git clone https://github.com/apache/dubbo-python.git
-cd dubbo-python && pip install .
-```
+It's as simple as the code snippet below. With just a few lines of code, you can launch a fully functional point-to-point RPC service:
 
-Get started with Dubbo-Python in just 5 minutes by following our [Quick Start Guide](https://github.com/apache/dubbo-python/tree/main/samples).
-
-It's as simple as the following code snippet. With just a few lines of code, you can launch a fully functional point-to-point RPC service :
-
-1. Build and start the Server
+1. Build and start the server
 
    ```python
    import dubbo
    from dubbo.configs import ServiceConfig
-   from dubbo.proxy.handlers import RpcServiceHandler, RpcMethodHandler
+   from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
    
    
-   def handle_unary(request):
-       s = request.decode("utf-8")
-       print(f"Received request: {s}")
-       return (s + " world").encode("utf-8")
+   class UnaryServiceServicer:
+       def say_hello(self, message: bytes) -> bytes:
+           print(f"Received message from client: {message}")
+           return b"Hello from server"
    
    
-   if __name__ == "__main__":
+   def build_service_handler():
        # build a method handler
-       method_handler = RpcMethodHandler.unary(handle_unary)
+       method_handler = RpcMethodHandler.unary(
+           method=UnaryServiceServicer().say_hello, method_name="unary"
+       )
        # build a service handler
        service_handler = RpcServiceHandler(
            service_name="org.apache.dubbo.samples.HelloWorld",
-           method_handlers={"unary": method_handler},
+           method_handlers=[method_handler],
        )
+       return service_handler
    
-       service_config = ServiceConfig(service_handler)
    
+   if __name__ == "__main__":
+       # build service config
+       service_handler = build_service_handler()
+       service_config = ServiceConfig(
+           service_handler=service_handler, host="127.0.0.1", port=50051
+       )
        # start the server
        server = dubbo.Server(service_config).start()
    
        input("Press Enter to stop the server...\n")
    ```
 
-2. Build and start the Client
+1. Build and start the Client
 
    ```python
    import dubbo
@@ -81,24 +95,25 @@ It's as simple as the following code snippet. With just a few lines of code, you
    
    
    class UnaryServiceStub:
-   
        def __init__(self, client: dubbo.Client):
            self.unary = client.unary(method_name="unary")
    
-       def unary(self, request):
-           return self.unary(request)
+       def say_hello(self, message: bytes) -> bytes:
+           return self.unary(message)
    
    
    if __name__ == "__main__":
+       # Create a client
        reference_config = ReferenceConfig.from_url(
            "tri://127.0.0.1:50051/org.apache.dubbo.samples.HelloWorld"
        )
        dubbo_client = dubbo.Client(reference_config)
-   
        unary_service_stub = UnaryServiceStub(dubbo_client)
    
-       result = unary_service_stub.unary("hello".encode("utf-8"))
-       print(result.decode("utf-8"))
+       # Call the remote method
+       result = unary_service_stub.say_hello(b"Hello from client")
+       print(result)
+   
    ```
 
    

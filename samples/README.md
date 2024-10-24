@@ -1,12 +1,5 @@
 # Dubbo-python Samples
 
-Before you begin, ensure that you have **`Python 3.11+`**. Then, install Dubbo-Python in your project using the following steps:
-
-```shell
-git clone https://github.com/apache/dubbo-python.git
-cd dubbo-python && pip install .
-```
-
 ## What It Contains
 
 1. [**helloworld**](./helloworld): The simplest usage example for quick start.

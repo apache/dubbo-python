@@ -56,7 +56,7 @@ if __name__ == "__main__":
     )
     # build a service handler
     service_handler = RpcServiceHandler(
-        service_name="org.apache.dubbo.samples.proto.Greeter",
+        service_name="org.apache.dubbo.samples.data.Greeter",
         method_handlers={"biStream": method_handler},
     )
 

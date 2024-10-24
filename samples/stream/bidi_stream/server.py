@@ -16,7 +16,7 @@
 import dubbo
 from dubbo.configs import ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
-from samples.proto import greeter_pb2
+from samples.data import greeter_pb2
 
 import time
 
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     )
     # build a service handler
     service_handler = RpcServiceHandler(
-        service_name="org.apache.dubbo.samples.proto.Greeter",
+        service_name="org.apache.dubbo.samples.data.Greeter",
         method_handlers=[method_handler],
     )
 
