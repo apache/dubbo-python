@@ -13,10 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from samples.proto import greeter_pb2
-
 import dubbo
 from dubbo.configs import ReferenceConfig
+from samples.proto import greeter_pb2
 
 
 class GreeterServiceStub:
@@ -27,8 +26,8 @@ class GreeterServiceStub:
             response_deserializer=greeter_pb2.GreeterReply.FromString,
         )
 
-    def client_stream(self, values):
-        return self.unary_stream(values)
+    def client_stream(self, *args):
+        return self.unary_stream(args)
 
 
 if __name__ == "__main__":
@@ -39,11 +38,19 @@ if __name__ == "__main__":
 
     stub = GreeterServiceStub(dubbo_client)
 
-    # Iterator of request
+    # 迭代器方法
     def request_generator():
         for i in ["hello", "world", "from", "dubbo-python"]:
             yield greeter_pb2.GreeterRequest(name=str(i))
 
-    result = stub.client_stream(request_generator())
+    stream = stub.client_stream(request_generator())
+    print(stream.read())
 
-    print(result.message)
+    # stream 调用方法
+    stream = stub.client_stream()
+    for i in ["hello", "world", "from", "dubbo-python"]:
+        stream.write(greeter_pb2.GreeterRequest(name=str(i)))
+
+    stream.done_writing()
+
+    print(stream.read())

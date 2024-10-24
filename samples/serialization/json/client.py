@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Dict
 
 import orjson
 
@@ -21,12 +20,13 @@ import dubbo
 from dubbo.configs import ReferenceConfig
 
 
-def request_serializer(data: Dict) -> bytes:
-    return orjson.dumps(data)
+def request_serializer(name: str, age: int) -> bytes:
+    return orjson.dumps({"name": name, "age": age})
 
 
-def response_deserializer(data: bytes) -> Dict:
-    return orjson.loads(data)
+def response_deserializer(data: bytes) -> str:
+    json_dict = orjson.loads(data)
+    return json_dict["message"]
 
 
 class GreeterServiceStub:
@@ -37,8 +37,8 @@ class GreeterServiceStub:
             response_deserializer=response_deserializer,
         )
 
-    def say_hello(self, request):
-        return self.unary(request)
+    def say_hello(self, name: str, age: int):
+        return self.unary(name, age)
 
 
 if __name__ == "__main__":
@@ -48,5 +48,5 @@ if __name__ == "__main__":
     dubbo_client = dubbo.Client(reference_config)
 
     stub = GreeterServiceStub(dubbo_client)
-    result = stub.say_hello({"name": "world"})
+    result = stub.say_hello("dubbo-python", 18)
     print(result)

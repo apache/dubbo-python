@@ -21,14 +21,19 @@ from dubbo.loggers import loggerFactory
 from dubbo.protocol.triple.call import ClientCall
 from dubbo.protocol.triple.constants import GRpcCode
 from dubbo.protocol.triple.metadata import RequestMetadata
-from dubbo.protocol.triple.results import TriResult
 from dubbo.protocol.triple.status import TriRpcStatus
 from dubbo.protocol.triple.stream import ClientStream
 from dubbo.protocol.triple.stream.client_stream import TriClientStream
 from dubbo.remoting.aio.http2.stream_handler import StreamClientMultiplexHandler
 from dubbo.serialization import Deserializer, SerializationError, Serializer
 
-__all__ = ["TripleClientCall", "DefaultClientCallListener"]
+__all__ = [
+    "TripleClientCall",
+    "FutureToClientCallListenerAdapter",
+    "ReadStreamToClientCallListenerAdapter",
+]
+
+from dubbo.utils import FunctionHelper
 
 _LOGGER = loggerFactory.get_logger()
 
@@ -81,7 +86,11 @@ class TripleClientCall(ClientCall, ClientStream.Listener):
 
         # send message
         try:
-            data = self._serializer.serialize(message)
+            data = (
+                FunctionHelper.call_func(self._serializer.serialize, message)
+                if message
+                else b""
+            )
             compress_flag = (
                 0
                 if self._compressor.get_message_encoding()
@@ -160,19 +169,38 @@ class TripleClientCall(ClientCall, ClientStream.Listener):
         self.on_complete(status, {})
 
 
-class DefaultClientCallListener(ClientCall.Listener):
+class FutureToClientCallListenerAdapter(ClientCall.Listener):
     """
-    The default client call listener.
+    The future call listener.
     """
 
-    def __init__(self, result: TriResult):
-        self._result = result
+    def __init__(self, future):
+        self._future = future
+        self._message = None
 
     def on_message(self, message: Any) -> None:
-        self._result.set_value(message)
+        self._message = message
 
     def on_close(self, status: TriRpcStatus, attachments: Dict[str, Any]) -> None:
         if status.code != GRpcCode.OK:
-            self._result.set_exception(status.as_exception())
+            self._future.set_exception(status.as_exception())
         else:
-            self._result.complete_value()
+            self._future.set_result(self._message)
+
+
+class ReadStreamToClientCallListenerAdapter(ClientCall.Listener):
+    """
+    Adapter from stream to client call listener.
+    """
+
+    def __init__(self, read_stream):
+        self._read_stream = read_stream
+
+    def on_message(self, message: Any) -> None:
+        self._read_stream.put(message)
+
+    def on_close(self, status: TriRpcStatus, trailers: Dict[str, Any]) -> None:
+        if status.code != GRpcCode.OK:
+            self._read_stream.put_exception(status.as_exception())
+        else:
+            self._read_stream.put_eof()

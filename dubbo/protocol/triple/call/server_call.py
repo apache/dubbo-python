@@ -18,11 +18,8 @@ import abc
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict
 
-from dubbo.deliverers import (
-    MessageDeliverer,
-    MultiMessageDeliverer,
-    SingleMessageDeliverer,
-)
+from dubbo.classes import ReadWriteStream
+from dubbo.loggers import loggerFactory
 from dubbo.protocol.triple.call import ServerCall
 from dubbo.protocol.triple.constants import (
     GRpcCode,
@@ -31,6 +28,11 @@ from dubbo.protocol.triple.constants import (
 )
 from dubbo.protocol.triple.status import TriRpcStatus
 from dubbo.protocol.triple.stream import ServerStream
+from dubbo.protocol.triple.streams import (
+    TriReadStream,
+    TriServerWriteStream,
+    TriReadWriteStream,
+)
 from dubbo.proxy.handlers import RpcMethodHandler
 from dubbo.remoting.aio.http2.headers import Http2Headers
 from dubbo.remoting.aio.http2.registries import HttpStatus
@@ -40,36 +42,50 @@ from dubbo.serialization import (
     DirectDeserializer,
     DirectSerializer,
 )
+from dubbo.utils import FunctionHelper
+
+
+_LOGGER = loggerFactory.get_logger()
 
 
 class TripleServerCall(ServerCall, ServerStream.Listener):
     def __init__(
         self,
-        stream: ServerStream,
+        server_stream: ServerStream,
         method_handler: RpcMethodHandler,
         executor: ThreadPoolExecutor,
     ):
-        self._stream = stream
-        self._method_runner: MethodRunner = MethodRunnerFactory.create(
-            method_handler, self
-        )
-
+        self._server_stream = server_stream
         self._executor = executor
 
-        # get serializer
-        serializing_function = method_handler.response_serializer
-        self._serializer = (
-            CustomSerializer(serializing_function)
-            if serializing_function
-            else DirectSerializer()
+        # create read stream
+        self._read_stream = TriReadStream()
+
+        # create write stream
+        write_stream = TriServerWriteStream(self)
+        read_write_stream = TriReadWriteStream(write_stream, self._read_stream)
+
+        self._method_runner: MethodRunner = MethodRunnerFactory.create(
+            method_handler, read_write_stream
         )
 
-        # get deserializer
-        deserializing_function = method_handler.request_deserializer
+        # get method descriptor
+        method_descriptor = method_handler.method_descriptor
+
+        # get arguments deserializer
+        arg_deserializer = method_descriptor.get_arg_deserializer()
         self._deserializer = (
-            CustomDeserializer(deserializing_function)
-            if deserializing_function
+            CustomDeserializer(arg_deserializer)
+            if arg_deserializer
             else DirectDeserializer()
+        )
+
+        # get return serializer
+        return_serializer = method_descriptor.get_return_serializer()
+        self._serializer = (
+            CustomSerializer(return_serializer)
+            if return_serializer
+            else DirectSerializer()
         )
 
         self._headers_sent = False
@@ -82,56 +98,41 @@ class TripleServerCall(ServerCall, ServerStream.Listener):
                 TripleHeaderName.CONTENT_TYPE.value,
                 TripleHeaderValue.APPLICATION_GRPC_PROTO.value,
             )
-            self._stream.send_headers(headers)
+            self._server_stream.send_headers(headers)
 
-        serialized_data = self._serializer.serialize(message)
+        serialized_data = FunctionHelper.call_func(self._serializer.serialize, message)
         # TODO support compression
-        self._stream.send_message(serialized_data, False)
+        self._server_stream.send_message(serialized_data, False)
 
     def complete(self, status: TriRpcStatus, attachments: Dict[str, Any]) -> None:
         if not attachments.get(TripleHeaderName.CONTENT_TYPE.value):
             attachments[TripleHeaderName.CONTENT_TYPE.value] = (
                 TripleHeaderValue.APPLICATION_GRPC_PROTO.value
             )
-        self._stream.complete(status, attachments)
+        self._server_stream.complete(status, attachments)
 
     def on_headers(self, headers: Dict[str, Any]) -> None:
         # start a new thread to run the method
         self._executor.submit(self._method_runner.run)
 
     def on_message(self, data: bytes) -> None:
+        if data == b"":
+            return
         deserialized_data = self._deserializer.deserialize(data)
-        self._method_runner.receive_arg(deserialized_data)
+        self._read_stream.put(deserialized_data)
 
     def on_complete(self) -> None:
-        self._method_runner.receive_complete()
+        self._read_stream.put_eof()
 
     def on_cancel_by_remote(self, status: TriRpcStatus) -> None:
         # cancel the method runner.
-        self._executor.shutdown()
-        self._executor = None
+        self._read_stream.put_exception(status.as_exception())
 
 
 class MethodRunner(abc.ABC):
     """
     Interface for method runner.
     """
-
-    @abc.abstractmethod
-    def receive_arg(self, arg: Any) -> None:
-        """
-        Receive argument.
-        :param arg: argument
-        :type arg: Any
-        """
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def receive_complete(self) -> None:
-        """
-        Receive complete.
-        """
-        raise NotImplementedError()
 
     @abc.abstractmethod
     def run(self) -> None:
@@ -167,32 +168,22 @@ class DefaultMethodRunner(MethodRunner):
     def __init__(
         self,
         func: Callable,
-        server_call: TripleServerCall,
+        read_write_stream: ReadWriteStream,
         client_stream: bool,
         server_stream: bool,
     ):
-        self._server_call: TripleServerCall = server_call
+        self._read_write_stream = read_write_stream
         self._func = func
 
-        self._deliverer: MessageDeliverer = (
-            MultiMessageDeliverer() if client_stream else SingleMessageDeliverer()
-        )
-        self._server_stream = server_stream
-
-        self._completed = False
-
-    def receive_arg(self, arg: Any) -> None:
-        self._deliverer.add(arg)
-
-    def receive_complete(self) -> None:
-        self._deliverer.complete()
+        self._is_client_stream = client_stream
+        self._is_server_stream = server_stream
 
     def run(self) -> None:
         try:
-            if isinstance(self._deliverer, SingleMessageDeliverer):
-                result = self._func(self._deliverer.get())
+            if not self._is_client_stream:
+                result = self._func(self._read_write_stream.read())
             else:
-                result = self._func(self._deliverer)
+                result = self._func(self._read_write_stream)
             # handle the result
             self.handle_result(result)
         except Exception as e:
@@ -201,28 +192,31 @@ class DefaultMethodRunner(MethodRunner):
 
     def handle_result(self, result: Any) -> None:
         try:
-            if not self._server_stream:
+            # check if the stream is completed
+            if not self._read_write_stream.can_write_more():
+                return
+
+            if not self._is_server_stream:
                 # get single result
-                self._server_call.send_message(result)
+                self._read_write_stream.write(result)
+                self._read_write_stream.done_writing()
             else:
                 # get multi results
                 for message in result:
-                    self._server_call.send_message(message)
-
-            self._server_call.complete(TriRpcStatus(GRpcCode.OK), {})
-            self._completed = True
+                    self._read_write_stream.write(message)
+                self._read_write_stream.done_writing()
         except Exception as e:
             self.handle_exception(e)
 
     def handle_exception(self, e: Exception) -> None:
-        if not self._completed:
+        if self._read_write_stream.can_write_more():
+            _LOGGER.exception("Invoke method failed: %s", e)
             status = TriRpcStatus(
                 GRpcCode.INTERNAL,
                 description=f"Invoke method failed: {str(e)}",
                 cause=e,
             )
-            self._server_call.complete(status, {})
-            self._completed = True
+            self._read_write_stream.done_writing(tri_rpc_status=status)
 
 
 class MethodRunnerFactory:
@@ -231,23 +225,26 @@ class MethodRunnerFactory:
     """
 
     @staticmethod
-    def create(method_handler: RpcMethodHandler, server_call) -> MethodRunner:
+    def create(
+        method_handler: RpcMethodHandler, read_write_stream: ReadWriteStream
+    ) -> MethodRunner:
         """
         Create a method runner.
 
         :param method_handler: method handler
         :type method_handler: RpcMethodHandler
-        :param server_call: server call
-        :type server_call: TripleServerCall
+        :param read_write_stream: read write stream
+        :type read_write_stream: ReadWriteStream
         :return: method runner
         :rtype: MethodRunner
         """
 
-        call_type = method_handler.call_type
+        method_descriptor = method_handler.method_descriptor
+        rpc_type = method_descriptor.get_rpc_type()
 
         return DefaultMethodRunner(
-            method_handler.behavior,
-            server_call,
-            call_type.client_stream,
-            call_type.server_stream,
+            method_descriptor.get_method(),
+            read_write_stream,
+            rpc_type.client_stream,
+            rpc_type.server_stream,
         )

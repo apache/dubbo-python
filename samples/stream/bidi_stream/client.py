@@ -14,10 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from samples.proto import greeter_pb2
-
 import dubbo
+from dubbo.classes import EOF
 from dubbo.configs import ReferenceConfig
+from samples.proto import greeter_pb2
 
 
 class GreeterServiceStub:
@@ -28,8 +28,8 @@ class GreeterServiceStub:
             response_deserializer=greeter_pb2.GreeterReply.FromString,
         )
 
-    def bi_stream(self, values):
-        return self.bidi_stream(values)
+    def bi_stream(self, *args):
+        return self.bidi_stream(args)
 
 
 if __name__ == "__main__":
@@ -40,12 +40,40 @@ if __name__ == "__main__":
 
     stub = GreeterServiceStub(dubbo_client)
 
-    # Iterator of request
-    def request_generator():
-        for item in ["hello", "world", "from", "dubbo-python"]:
-            yield greeter_pb2.GreeterRequest(name=str(item))
+    # # Iterator of request
+    # def request_generator():
+    #     for item in ["hello", "world", "from", "dubbo-python"]:
+    #         yield greeter_pb2.GreeterRequest(name=str(item))
+    #
+    # result = stub.bi_stream(request_generator())
+    #
+    # for i in result:
+    #     print(f"Received response: {i.message}")
 
-    result = stub.bi_stream(request_generator())
+    stream = stub.bi_stream()
 
-    for i in result:
+    stream.write(greeter_pb2.GreeterRequest(name="hello"))
+
+    # print(f"Received response: {stream.read().message}")
+
+    stream.write(greeter_pb2.GreeterRequest(name="world"))
+    stream.write(greeter_pb2.GreeterRequest(name="from"))
+    stream.write(greeter_pb2.GreeterRequest(name="dubbo-python"))
+    stream.done_writing()
+
+    # 直接调用read方法
+    print(stream.read())
+
+    # 迭代器调用read方法（推荐）
+    for i in stream:
+        print(f"Received response: {i.message}")
+
+    # 循环调用read方法
+    while True:
+        i = stream.read(timeout=0.5)
+        if i is EOF:
+            break
+        elif i is None:
+            print("No message received")
+            continue
         print(f"Received response: {i.message}")

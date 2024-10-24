@@ -258,7 +258,11 @@ class AioServer(Server):
                 raise RemotingError("Failed to export the server") from exc
             else:
                 self._exported = True
-            _LOGGER.info("Exported the server. port: %s", self._url.port)
+            _LOGGER.info(
+                "Exported the server. host: %s, port: %s",
+                self._url.host,
+                self._url.port,
+            )
         finally:
             self._exporting = False
 

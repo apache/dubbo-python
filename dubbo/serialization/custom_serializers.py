@@ -26,6 +26,8 @@ from dubbo.types import DeserializingFunction, SerializingFunction
 
 __all__ = ["CustomSerializer", "CustomDeserializer"]
 
+from dubbo.utils import FunctionHelper
+
 
 class CustomSerializer(Serializer):
     """
@@ -37,17 +39,17 @@ class CustomSerializer(Serializer):
     def __init__(self, serializer: SerializingFunction):
         self.serializer = serializer
 
-    def serialize(self, obj: Any) -> bytes:
+    def serialize(self, *args, **kwargs) -> bytes:
         """
         Serialize an object to bytes.
-        :param obj: The object to serialize.
-        :type obj: Any
+        :param args: The arguments to serialize.
+        :param kwargs: The keyword arguments to serialize.
         :return: The serialized bytes.
         :rtype: bytes
         :raises SerializationError: If the object is not of type bytes, bytearray, or memoryview.
         """
         try:
-            serialized_obj = self.serializer(obj)
+            serialized_obj = FunctionHelper.call_func(self.serializer, (args, kwargs))
         except Exception as e:
             raise SerializationError(
                 f"SerializationError: Failed to serialize object. Please check the serializer. \nDetails: {str(e)}",

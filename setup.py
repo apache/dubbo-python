@@ -15,7 +15,6 @@
 # limitations under the License.
 from setuptools import find_packages, setup
 
-
 # Read version from dubbo/__version__.py
 with open("dubbo/__version__.py", "r", encoding="utf-8") as f:
     global_vars = {}

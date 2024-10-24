@@ -13,11 +13,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from samples.proto import greeter_pb2
-
 import dubbo
 from dubbo.configs import ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
+from samples.proto import greeter_pb2
 
 
 def server_stream(request):
@@ -31,16 +30,17 @@ if __name__ == "__main__":
     # build a method handler
     method_handler = RpcMethodHandler.server_stream(
         server_stream,
+        method_name="serverStream",
         request_deserializer=greeter_pb2.GreeterRequest.FromString,
         response_serializer=greeter_pb2.GreeterReply.SerializeToString,
     )
     # build a service handler
     service_handler = RpcServiceHandler(
         service_name="org.apache.dubbo.samples.proto.Greeter",
-        method_handlers={"serverStream": method_handler},
+        method_handlers=[method_handler],
     )
 
-    service_config = ServiceConfig(service_handler)
+    service_config = ServiceConfig(service_handler, host="127.0.0.1", port=50051)
 
     # start the server
     server = dubbo.Server(service_config).start()

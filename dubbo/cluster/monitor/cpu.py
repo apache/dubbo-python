@@ -15,14 +15,13 @@
 # limitations under the License.
 import threading
 from typing import Dict, List
+
 from dubbo.cluster.directories import RegistryDirectory
-from dubbo.constants import common_constants
 from dubbo.loggers import loggerFactory
-from dubbo.protocol import Protocol, Invoker
+from dubbo.protocol import Invoker, Protocol
 from dubbo.protocol.invocation import RpcInvocation
-from dubbo.proxy.handlers import RpcServiceHandler, RpcMethodHandler
+from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
 from dubbo.registry import Registry
-from dubbo.types import UnaryCallType
 from dubbo.url import URL
 from dubbo.utils import CpuUtils
 
@@ -32,9 +31,6 @@ _cpu_invocation = RpcInvocation(
     "org.apache.dubbo.MetricsService",
     "cpu",
     str(1).encode("utf-8"),
-    attributes={
-        common_constants.CALL_KEY: UnaryCallType,
-    },
 )
 
 
@@ -160,7 +156,11 @@ class CpuInnerRpcHandler:
         """
         return RpcServiceHandler(
             "org.apache.dubbo.MetricsService",
-            {"cpu": RpcMethodHandler.unary(CpuInnerRpcHandler.get_cpu_usage)},
+            [
+                RpcMethodHandler.unary(
+                    CpuInnerRpcHandler.get_cpu_usage, method_name="cpu"
+                ),
+            ],
         )
 
     @staticmethod

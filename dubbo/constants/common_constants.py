@@ -56,7 +56,10 @@ TRANSPORTER_DEFAULT_VALUE = "aio"
 TRUE_VALUE = "true"
 FALSE_VALUE = "false"
 
+RPC_TYPE_KEY = "rpc-type"
+
 CALL_KEY = "call"
+METHOD_DESCRIPTOR_KEY = "method-descriptor"
 
 LOADBALANCE_KEY = "loadbalance"
 

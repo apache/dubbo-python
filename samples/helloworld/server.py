@@ -26,14 +26,16 @@ def handle_unary(request):
 
 if __name__ == "__main__":
     # build a method handler
-    method_handler = RpcMethodHandler.unary(handle_unary)
+    method_handler = RpcMethodHandler.unary(method=handle_unary, method_name="unary")
     # build a service handler
     service_handler = RpcServiceHandler(
         service_name="org.apache.dubbo.samples.HelloWorld",
-        method_handlers={"unary": method_handler},
+        method_handlers=[method_handler],
     )
 
-    service_config = ServiceConfig(service_handler)
+    service_config = ServiceConfig(
+        service_handler=service_handler, host="127.0.0.1", port=50051
+    )
 
     # start the server
     server = dubbo.Server(service_config).start()

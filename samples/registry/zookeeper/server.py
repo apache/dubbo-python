@@ -13,11 +13,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from samples.proto import greeter_pb2
-
 import dubbo
-from dubbo.configs import ServiceConfig, RegistryConfig
+from dubbo.configs import RegistryConfig, ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
+from samples.proto import greeter_pb2
 
 
 def say_hello(request):
@@ -29,13 +28,14 @@ if __name__ == "__main__":
     # build a method handler
     method_handler = RpcMethodHandler.unary(
         say_hello,
+        method_name="sayHello",
         request_deserializer=greeter_pb2.GreeterRequest.FromString,
         response_serializer=greeter_pb2.GreeterReply.SerializeToString,
     )
     # build a service handler
     service_handler = RpcServiceHandler(
         service_name="org.apache.dubbo.samples.proto.Greeter",
-        method_handlers={"sayHello": method_handler},
+        method_handlers=[method_handler],
     )
 
     registry_config = RegistryConfig.from_url("zookeeper://127.0.0.1:2181")

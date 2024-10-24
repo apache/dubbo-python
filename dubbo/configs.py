@@ -24,6 +24,10 @@ from dubbo.constants import (
     registry_constants,
 )
 
+from dubbo.proxy.handlers import RpcServiceHandler
+from dubbo.url import URL, create_url
+from dubbo.utils import NetworkUtils
+
 __all__ = [
     "ApplicationConfig",
     "ReferenceConfig",
@@ -31,9 +35,6 @@ __all__ = [
     "RegistryConfig",
     "LoggerConfig",
 ]
-
-from dubbo.proxy.handlers import RpcServiceHandler
-from dubbo.url import URL, create_url
 
 
 class AbstractConfig(abc.ABC):
@@ -379,12 +380,18 @@ class ServiceConfig(AbstractConfig):
     def __init__(
         self,
         service_handler: RpcServiceHandler,
+        host: Optional[str] = None,
         port: Optional[int] = None,
         protocol: Optional[str] = None,
     ):
         super().__init__()
 
         self._service_handler = service_handler
+        self._host = (
+            host
+            or NetworkUtils.get_local_address()
+            or common_constants.LOCAL_HOST_VALUE
+        )
         self._port = port or common_constants.DEFAULT_PORT
         self._protocol = protocol or common_constants.TRIPLE_SHORT
 
@@ -405,6 +412,24 @@ class ServiceConfig(AbstractConfig):
         :type service_handler: RpcServiceHandler
         """
         self._service_handler = service_handler
+
+    @property
+    def host(self) -> str:
+        """
+        Get the host of the service.
+        :return: The host of the service.
+        :rtype: str
+        """
+        return self._host
+
+    @host.setter
+    def host(self, host: str) -> None:
+        """
+        Set the host of the service.
+        :param host: The host of the service.
+        :type host: str
+        """
+        self._host = host
 
     @property
     def port(self) -> int:
@@ -450,7 +475,7 @@ class ServiceConfig(AbstractConfig):
         """
         return URL(
             scheme=self.protocol,
-            host=common_constants.LOCAL_HOST_VALUE,
+            host=self.host,
             port=self.port,
             parameters={
                 common_constants.SERVICE_KEY: self.service_handler.service_name
