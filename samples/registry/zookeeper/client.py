@@ -16,7 +16,7 @@
 
 import dubbo
 from dubbo.configs import ReferenceConfig, RegistryConfig
-from samples.data import greeter_pb2
+from samples.proto import greeter_pb2
 
 
 class GreeterServiceStub:
@@ -42,6 +42,6 @@ if __name__ == "__main__":
 
     stub = GreeterServiceStub(dubbo_client)
 
-    result = stub.say_hello(greeter_pb2.GreeterRequest(name="hello"))
+    result = stub.say_hello(greeter_pb2.GreeterRequest(name="dubbo-python"))
 
     print(result.message)

@@ -16,18 +16,19 @@
 import dubbo
 from dubbo.configs import RegistryConfig, ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
-from samples.data import greeter_pb2
+from samples.proto import greeter_pb2
 
 
-def say_hello(request):
-    print(f"Received request: {request}")
-    return greeter_pb2.GreeterReply(message=f"{request.name} Dubbo!")
+class GreeterServiceServicer:
+    def say_hello(self, request):
+        print(f"Received request: {request.name}")
+        return greeter_pb2.GreeterReply(message=f"Hello, {request.name}!")
 
 
-if __name__ == "__main__":
+def build_server_handler():
     # build a method handler
     method_handler = RpcMethodHandler.unary(
-        say_hello,
+        GreeterServiceServicer().say_hello,
         method_name="sayHello",
         request_deserializer=greeter_pb2.GreeterRequest.FromString,
         response_serializer=greeter_pb2.GreeterReply.SerializeToString,
@@ -37,10 +38,15 @@ if __name__ == "__main__":
         service_name="org.apache.dubbo.samples.data.Greeter",
         method_handlers=[method_handler],
     )
+    return service_handler
 
+
+if __name__ == "__main__":
     registry_config = RegistryConfig.from_url("zookeeper://127.0.0.1:2181")
     bootstrap = dubbo.Dubbo(registry_config=registry_config)
 
+    # build a service config
+    service_handler = build_server_handler()
     service_config = ServiceConfig(service_handler)
 
     # start the server
