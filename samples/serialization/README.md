@@ -13,7 +13,7 @@ SerializingFunction = Callable[..., bytes]
 
 For deserialization functions, we specify:
 
-```
+```python
 # A function that takes an argument of type bytes and returns data of any type
 DeserializingFunction = Callable[[bytes], Any]
 ```

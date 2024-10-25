@@ -42,6 +42,7 @@ from dubbo.serialization import (
     DirectDeserializer,
     DirectSerializer,
 )
+from dubbo.types import RpcType, RpcTypes
 from dubbo.utils import FunctionHelper
 
 
@@ -169,18 +170,16 @@ class DefaultMethodRunner(MethodRunner):
         self,
         func: Callable,
         read_write_stream: ReadWriteStream,
-        client_stream: bool,
-        server_stream: bool,
+        rpc_type: RpcType,
     ):
         self._read_write_stream = read_write_stream
         self._func = func
 
-        self._is_client_stream = client_stream
-        self._is_server_stream = server_stream
+        self._rpc_type = rpc_type
 
     def run(self) -> None:
         try:
-            if not self._is_client_stream:
+            if self._rpc_type == RpcTypes.UNARY.value:
                 result = self._func(self._read_write_stream.read())
             else:
                 result = self._func(self._read_write_stream)
@@ -196,15 +195,15 @@ class DefaultMethodRunner(MethodRunner):
             if not self._read_write_stream.can_write_more():
                 return
 
-            if not self._is_server_stream:
+            if not self._rpc_type.server_stream:
                 # get single result
                 self._read_write_stream.write(result)
-                self._read_write_stream.done_writing()
             else:
                 # get multi results
                 for message in result:
                     self._read_write_stream.write(message)
-                self._read_write_stream.done_writing()
+
+            self._read_write_stream.done_writing()
         except Exception as e:
             self.handle_exception(e)
 
@@ -240,11 +239,9 @@ class MethodRunnerFactory:
         """
 
         method_descriptor = method_handler.method_descriptor
-        rpc_type = method_descriptor.get_rpc_type()
 
         return DefaultMethodRunner(
             method_descriptor.get_method(),
             read_write_stream,
-            rpc_type.client_stream,
-            rpc_type.server_stream,
+            method_descriptor.get_rpc_type(),
         )

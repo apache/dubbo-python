@@ -16,32 +16,43 @@
 import dubbo
 from dubbo.configs import ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
-from samples.data import greeter_pb2
+from samples.proto import greeter_pb2
 
 import time
 
 
-def bi_stream(request_stream):
-    for request in request_stream:
-        print(f"Received message from {request.name}")
-        yield greeter_pb2.GreeterReply(message=request.name)
-        time.sleep(1)
+class GreeterServiceServicer:
+    def bi_stream(self, stream):
+        counter = 0
+        for request in stream:
+            print(f"Received request: {request.name}")
+            # simulate a long time to process
+            if counter == 1:
+                time.sleep(1)
+            counter += 1
+
+            stream.write(greeter_pb2.GreeterReply(message=f"Hello, {request.name}!"))
+
+        stream.done_writing()
 
 
-if __name__ == "__main__":
-    # build a method handler
+def build_server_handler():
     method_handler = RpcMethodHandler.bi_stream(
-        bi_stream,
+        GreeterServiceServicer().bi_stream,
         method_name="biStream",
         request_deserializer=greeter_pb2.GreeterRequest.FromString,
         response_serializer=greeter_pb2.GreeterReply.SerializeToString,
     )
-    # build a service handler
     service_handler = RpcServiceHandler(
         service_name="org.apache.dubbo.samples.data.Greeter",
         method_handlers=[method_handler],
     )
+    return service_handler
 
+
+if __name__ == "__main__":
+    # build a service config
+    service_handler = build_server_handler()
     service_config = ServiceConfig(service_handler, host="127.0.0.1", port=50051)
 
     # start the server

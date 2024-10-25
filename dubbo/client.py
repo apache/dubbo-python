@@ -133,7 +133,7 @@ class Client:
             )
         )
 
-    def bidi_stream(
+    def bi_stream(
         self,
         method_name: str,
         request_serializer: Optional[SerializingFunction] = None,

@@ -16,20 +16,22 @@
 import dubbo
 from dubbo.configs import ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
-from samples.data import greeter_pb2
+from samples.proto import greeter_pb2
 
 
-def server_stream(request):
-    print(f"Received request: {request.name}")
-    response = request.name.split(" ")
-    for i in response:
-        yield greeter_pb2.GreeterReply(message=i)
+class GreeterServiceServicer:
+    def server_stream(self, stream):
+        request = stream.read()
+        print(f"Received request: {request.name}")
+        response = request.name.split(" ")
+        for i in response:
+            yield greeter_pb2.GreeterReply(message=i)
 
 
-if __name__ == "__main__":
+def build_server_handler():
     # build a method handler
     method_handler = RpcMethodHandler.server_stream(
-        server_stream,
+        GreeterServiceServicer().server_stream,
         method_name="serverStream",
         request_deserializer=greeter_pb2.GreeterRequest.FromString,
         response_serializer=greeter_pb2.GreeterReply.SerializeToString,
@@ -39,7 +41,12 @@ if __name__ == "__main__":
         service_name="org.apache.dubbo.samples.data.Greeter",
         method_handlers=[method_handler],
     )
+    return service_handler
 
+
+if __name__ == "__main__":
+    # build a service config
+    service_handler = build_server_handler()
     service_config = ServiceConfig(service_handler, host="127.0.0.1", port=50051)
 
     # start the server
