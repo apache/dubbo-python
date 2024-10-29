@@ -29,16 +29,16 @@ class DirectSerializer(Serializer, SingletonBase):
     expected types, a SerializationError is raised. This serializer is a singleton.
     """
 
-    def serialize(self, obj: Any) -> bytes:
+    def serialize(self, *args, **kwargs) -> bytes:
         """
-        Serialize an object to bytes.
-        :param obj: The object to serialize.
-        :type obj: Any
+        Serialize an object to bytes. we only return the first argument as bytes.
+        :param args: The arguments to serialize.
+        :param kwargs: The keyword arguments to serialize.
         :return: The serialized bytes.
         :rtype: bytes
         :raises SerializationError: If the object is not of type bytes, bytearray, or memoryview.
         """
-        return ensure_bytes(obj) if obj is not None else b""
+        return ensure_bytes(args[0]) if args else b""
 
 
 class DirectDeserializer(Deserializer):

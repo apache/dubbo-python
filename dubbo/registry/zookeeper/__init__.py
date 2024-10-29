@@ -22,7 +22,6 @@ from ._interfaces import (
     ZookeeperTransport,
 )
 
-
 __all__ = [
     "ChildrenListener",
     "DataListener",

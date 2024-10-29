@@ -14,38 +14,54 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from samples.proto import greeter_pb2
-
 import dubbo
+from dubbo.classes import EOF
 from dubbo.configs import ReferenceConfig
+from samples.proto import greeter_pb2
 
 
 class GreeterServiceStub:
     def __init__(self, client: dubbo.Client):
-        self.bidi_stream = client.bidi_stream(
+        self.bidi_stream = client.bi_stream(
             method_name="biStream",
             request_serializer=greeter_pb2.GreeterRequest.SerializeToString,
             response_deserializer=greeter_pb2.GreeterReply.FromString,
         )
 
-    def bi_stream(self, values):
-        return self.bidi_stream(values)
+    def bi_stream(self, *args):
+        return self.bidi_stream(args)
 
 
 if __name__ == "__main__":
+    # Create a reference config
     reference_config = ReferenceConfig.from_url(
-        "tri://127.0.0.1:50051/org.apache.dubbo.samples.proto.Greeter"
+        "tri://127.0.0.1:50051/org.apache.dubbo.samples.data.Greeter"
     )
     dubbo_client = dubbo.Client(reference_config)
-
     stub = GreeterServiceStub(dubbo_client)
 
-    # Iterator of request
-    def request_generator():
-        for item in ["hello", "world", "from", "dubbo-python"]:
-            yield greeter_pb2.GreeterRequest(name=str(item))
+    stream = stub.bi_stream()
+    # use write method to send message
+    stream.write(greeter_pb2.GreeterRequest(name="jock"))
 
-    result = stub.bi_stream(request_generator())
+    # use read method to receive message
+    print(f"Received response: {stream.read().message}")
 
-    for i in result:
+    # continue to send message
+    stream.write(greeter_pb2.GreeterRequest(name="jane"))
+    stream.write(greeter_pb2.GreeterRequest(name="alice"))
+    stream.write(greeter_pb2.GreeterRequest(name="dave"))
+    # done_writing method must be called to notify the server that the client has finished writing
+    stream.done_writing()
+
+    # use read method to receive message
+    # If no message arrives within the specified time, returns None
+    # If the server has finished sending messages and the client has received all messages, returns EOF
+    while True:
+        i = stream.read(timeout=0.5)
+        if i is EOF:
+            break
+        elif i is None:
+            print("No message received")
+            continue
         print(f"Received response: {i.message}")

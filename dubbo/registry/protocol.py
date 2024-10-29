@@ -16,7 +16,7 @@
 
 from dubbo.cluster.directories import RegistryDirectory
 from dubbo.cluster.failfast_cluster import FailfastCluster
-from dubbo.cluster.monitor.cpu import CpuMonitor, CpuInnerRpcHandler
+from dubbo.cluster.monitor.cpu import CpuInnerRpcHandler, CpuMonitor
 from dubbo.configs import RegistryConfig
 from dubbo.constants import common_constants
 from dubbo.extension import extensionLoader

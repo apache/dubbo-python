@@ -14,10 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from samples.proto import greeter_pb2
-
 import dubbo
 from dubbo.configs import ReferenceConfig, RegistryConfig
+from samples.proto import greeter_pb2
 
 
 class GreeterServiceStub:
@@ -37,12 +36,12 @@ if __name__ == "__main__":
     bootstrap = dubbo.Dubbo(registry_config=registry_config)
 
     reference_config = ReferenceConfig(
-        protocol="tri", service="org.apache.dubbo.samples.proto.Greeter"
+        protocol="tri", service="org.apache.dubbo.samples.data.Greeter"
     )
     dubbo_client = bootstrap.create_client(reference_config)
 
     stub = GreeterServiceStub(dubbo_client)
 
-    result = stub.say_hello(greeter_pb2.GreeterRequest(name="hello"))
+    result = stub.say_hello(greeter_pb2.GreeterRequest(name="dubbo-python"))
 
     print(result.message)

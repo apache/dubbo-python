@@ -16,9 +16,7 @@
 
 from typing import Any
 
-from dubbo.deliverers import MultiMessageDeliverer, SingleMessageDeliverer
 from dubbo.protocol import Result
-from dubbo.types import CallType
 
 
 class TriResult(Result):
@@ -26,49 +24,31 @@ class TriResult(Result):
     The triple result.
     """
 
-    __slots__ = ["_call_type", "_deliverer", "_exception"]
+    __slots__ = ["_future"]
 
-    def __init__(self, call_type: CallType):
-        self._call_type = call_type
-
-        self._deliverer = (
-            MultiMessageDeliverer()
-            if self._call_type.server_stream
-            else SingleMessageDeliverer()
-        )
-
-        self._exception = None
+    def __init__(self, future):
+        self._future = future
 
     def set_value(self, value: Any) -> None:
         """
         Set the value.
         """
-        self._deliverer.add(value)
-
-    def complete_value(self) -> None:
-        """
-        Complete the value.
-        """
-        self._deliverer.complete()
+        self._future.set_result(value)
 
     def value(self) -> Any:
         """
         Get the value.
         """
-        if self._call_type.server_stream:
-            return self._deliverer
-        else:
-            return self._deliverer.get()
+        return self._future.result()
 
     def set_exception(self, exception: Exception) -> None:
         """
         Set the exception.
         """
-        self._exception = exception
-        self._deliverer.cancel(exception)
+        self._future.set_exception(exception)
 
     def exception(self) -> Exception:
         """
         Get the exception.
         """
-        return self._exception
+        return self._future.exception()

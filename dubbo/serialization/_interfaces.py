@@ -61,11 +61,11 @@ class Serializer(abc.ABC):
     """
 
     @abc.abstractmethod
-    def serialize(self, obj: Any) -> bytes:
+    def serialize(self, *args, **kwargs) -> bytes:
         """
         Serialize an object to bytes.
-        :param obj: The object to serialize.
-        :type obj: Any
+        :param args: The arguments to serialize.
+        :param kwargs: The keyword arguments to serialize.
         :return: The serialized bytes.
         :rtype: bytes
         :raises SerializationError: If serialization fails.

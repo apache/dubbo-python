@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Dict
+from typing import Tuple
 
 import orjson
 
@@ -22,33 +22,44 @@ from dubbo.configs import ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
 
 
-def request_deserializer(data: bytes) -> Dict:
-    return orjson.loads(data)
+def request_deserializer(data: bytes) -> Tuple[str, int]:
+    json_dict = orjson.loads(data)
+    return json_dict["name"], json_dict["age"]
 
 
-def response_serializer(data: Dict) -> bytes:
-    return orjson.dumps(data)
+def response_serializer(message: str) -> bytes:
+    return orjson.dumps({"message": message})
 
 
-def handle_unary(request):
-    print(f"Received request: {request}")
-    return {"message": f"Hello, {request['name']}"}
+class GreeterServiceServicer:
+    def say_hello(self, request):
+        name, age = request
+        print(f"Received request: {name}, {age}")
+        return f"Hello, {name}, you are {age} years old."
 
 
-if __name__ == "__main__":
+def build_service_handler():
     # build a method handler
     method_handler = RpcMethodHandler.unary(
-        handle_unary,
+        GreeterServiceServicer().say_hello,
+        method_name="unary",
         request_deserializer=request_deserializer,
         response_serializer=response_serializer,
     )
     # build a service handler
     service_handler = RpcServiceHandler(
         service_name="org.apache.dubbo.samples.serialization.json",
-        method_handlers={"unary": method_handler},
+        method_handlers=[method_handler],
     )
+    return service_handler
 
-    service_config = ServiceConfig(service_handler)
+
+if __name__ == "__main__":
+    # build server config
+    service_handler = build_service_handler()
+    service_config = ServiceConfig(
+        service_handler=service_handler, host="127.0.0.1", port=50051
+    )
 
     # start the server
     server = dubbo.Server(service_config).start()

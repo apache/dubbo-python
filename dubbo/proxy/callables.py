@@ -16,13 +16,14 @@
 
 from typing import Any
 
+from dubbo.classes import MethodDescriptor
 from dubbo.constants import common_constants
 from dubbo.protocol import Invoker
 from dubbo.protocol.invocation import RpcInvocation
 from dubbo.proxy import RpcCallable, RpcCallableFactory
 from dubbo.url import URL
 
-__all__ = ["MultipleRpcCallable"]
+__all__ = ["MultipleRpcCallable", "DefaultRpcCallableFactory"]
 
 from dubbo.proxy.handlers import RpcServiceHandler
 
@@ -35,28 +36,25 @@ class MultipleRpcCallable(RpcCallable):
     def __init__(self, invoker: Invoker, url: URL):
         self._invoker = invoker
         self._url = url
-        self._service_name = self._url.path
-        self._method_name = self._url.parameters[common_constants.METHOD_KEY]
 
-        self._call_type = self._url.attributes[common_constants.CALL_KEY]
-        self._serializer = self._url.attributes[common_constants.SERIALIZER_KEY]
-        self._deserializer = self._url.attributes[common_constants.DESERIALIZER_KEY]
+        self._method_model: MethodDescriptor = url.attributes[
+            common_constants.METHOD_DESCRIPTOR_KEY
+        ]
+
+        self._service_name = url.path
+        self._method_name = self._method_model.get_method_name()
 
     def _create_invocation(self, argument: Any) -> RpcInvocation:
         return RpcInvocation(
             self._service_name,
             self._method_name,
             argument,
-            attributes={
-                common_constants.CALL_KEY: self._call_type,
-                common_constants.SERIALIZER_KEY: self._serializer,
-                common_constants.DESERIALIZER_KEY: self._deserializer,
-            },
+            attributes={common_constants.METHOD_DESCRIPTOR_KEY: self._method_model},
         )
 
-    def __call__(self, argument: Any) -> Any:
+    def __call__(self, *args, **kwargs) -> Any:
         # Create a new RpcInvocation
-        invocation = self._create_invocation(argument)
+        invocation = self._create_invocation((args, kwargs))
         # Do invoke.
         result = self._invoker.invoke(invocation)
         return result.value()

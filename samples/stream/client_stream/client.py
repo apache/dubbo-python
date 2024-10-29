@@ -13,10 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from samples.proto import greeter_pb2
-
 import dubbo
 from dubbo.configs import ReferenceConfig
+from samples.proto import greeter_pb2
 
 
 class GreeterServiceStub:
@@ -27,23 +26,23 @@ class GreeterServiceStub:
             response_deserializer=greeter_pb2.GreeterReply.FromString,
         )
 
-    def client_stream(self, values):
-        return self.unary_stream(values)
+    def client_stream(self, request_iterator):
+        return self.unary_stream(request_iterator)
 
 
 if __name__ == "__main__":
     reference_config = ReferenceConfig.from_url(
-        "tri://127.0.0.1:50051/org.apache.dubbo.samples.proto.Greeter"
+        "tri://127.0.0.1:50051/org.apache.dubbo.samples.data.Greeter"
     )
     dubbo_client = dubbo.Client(reference_config)
-
     stub = GreeterServiceStub(dubbo_client)
 
-    # Iterator of request
+    # use iterator to send multiple requests
     def request_generator():
         for i in ["hello", "world", "from", "dubbo-python"]:
             yield greeter_pb2.GreeterRequest(name=str(i))
 
-    result = stub.client_stream(request_generator())
-
-    print(result.message)
+    # call the remote method and return a read_stream
+    stream = stub.client_stream(request_generator())
+    # use read method to get the response
+    print(stream.read())

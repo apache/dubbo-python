@@ -13,10 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from samples.proto import greeter_pb2
-
 import dubbo
 from dubbo.configs import ReferenceConfig
+from samples.proto import greeter_pb2
 
 
 class GreeterServiceStub:
@@ -33,15 +32,14 @@ class GreeterServiceStub:
 
 if __name__ == "__main__":
     reference_config = ReferenceConfig.from_url(
-        "tri://127.0.0.1:50051/org.apache.dubbo.samples.proto.Greeter"
+        "tri://127.0.0.1:50051/org.apache.dubbo.samples.data.Greeter"
     )
     dubbo_client = dubbo.Client(reference_config)
-
     stub = GreeterServiceStub(dubbo_client)
 
-    request = greeter_pb2.GreeterRequest(name="hello world from dubbo-python")
+    stream = stub.server_stream(
+        greeter_pb2.GreeterRequest(name="hello world from dubbo-python")
+    )
 
-    result = stub.server_stream(request)
-
-    for i in result:
+    for i in stream:
         print(f"Received response: {i.message}")

@@ -13,26 +13,50 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from collections import namedtuple
+import enum
+from dataclasses import dataclass
 from typing import Any, Callable
 
 __all__ = [
     "SerializingFunction",
     "DeserializingFunction",
-    "CallType",
-    "UnaryCallType",
-    "ClientStreamCallType",
-    "ServerStreamCallType",
-    "BiStreamCallType",
+    "RpcType",
+    "RpcTypes",
 ]
 
-SerializingFunction = Callable[[Any], bytes]
+SerializingFunction = Callable[..., bytes]
 DeserializingFunction = Callable[[bytes], Any]
 
 
-# CallType
-CallType = namedtuple("CallType", ["name", "client_stream", "server_stream"])
-UnaryCallType = CallType("UnaryCall", False, False)
-ClientStreamCallType = CallType("ClientStreamCall", True, False)
-ServerStreamCallType = CallType("ServerStream", False, True)
-BiStreamCallType = CallType("BiStreamCall", True, True)
+@dataclass
+class RpcType:
+    """
+    RpcType
+    """
+
+    name: str
+    client_stream: bool
+    server_stream: bool
+
+
+@enum.unique
+class RpcTypes(enum.Enum):
+    UNARY = RpcType("Unary", False, False)
+    CLIENT_STREAM = RpcType("ClientStream", True, False)
+    SERVER_STREAM = RpcType("ServerStream", False, True)
+    BI_STREAM = RpcType("BiStream", True, True)
+
+    @classmethod
+    def from_name(cls, name: str) -> RpcType:
+        """
+        Get RpcType by name. Case-insensitive.
+        :param name: RpcType name
+        :return: RpcType
+        """
+        for item in cls:
+            # ignore case
+            if item.value.name.lower() == name.lower():
+                return item.value
+            if item.value.name == name:
+                return item.value
+        raise ValueError(f"Unknown RpcType name: {name}")

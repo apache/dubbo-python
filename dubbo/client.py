@@ -17,26 +17,22 @@ import threading
 from typing import Optional
 
 from dubbo.bootstrap import Dubbo
+from dubbo.classes import MethodDescriptor
 from dubbo.configs import ReferenceConfig
 from dubbo.constants import common_constants
 from dubbo.extension import extensionLoader
 from dubbo.protocol import Invoker, Protocol
-from dubbo.proxy import RpcCallable
-from dubbo.proxy.callables import MultipleRpcCallable
+from dubbo.proxy import RpcCallable, RpcCallableFactory
+from dubbo.proxy.callables import DefaultRpcCallableFactory
 from dubbo.registry.protocol import RegistryProtocol
 from dubbo.types import (
-    BiStreamCallType,
-    CallType,
-    ClientStreamCallType,
     DeserializingFunction,
     SerializingFunction,
-    ServerStreamCallType,
-    UnaryCallType,
+    RpcTypes,
 )
+from dubbo.url import URL
 
 __all__ = ["Client"]
-
-from dubbo.url import URL
 
 
 class Client:
@@ -50,6 +46,8 @@ class Client:
         self._url: Optional[URL] = None
         self._protocol: Optional[Protocol] = None
         self._invoker: Optional[Invoker] = None
+
+        self._callable_factory: RpcCallableFactory = DefaultRpcCallableFactory()
 
         # initialize the invoker
         self._initialize()
@@ -97,10 +95,12 @@ class Client:
         response_deserializer: Optional[DeserializingFunction] = None,
     ) -> RpcCallable:
         return self._callable(
-            UnaryCallType,
-            method_name,
-            request_serializer,
-            response_deserializer,
+            MethodDescriptor(
+                method_name=method_name,
+                arg_serialization=(request_serializer, None),
+                return_serialization=(None, response_deserializer),
+                rpc_type=RpcTypes.UNARY.value,
+            )
         )
 
     def client_stream(
@@ -110,10 +110,12 @@ class Client:
         response_deserializer: Optional[DeserializingFunction] = None,
     ) -> RpcCallable:
         return self._callable(
-            ClientStreamCallType,
-            method_name,
-            request_serializer,
-            response_deserializer,
+            MethodDescriptor(
+                method_name=method_name,
+                arg_serialization=(request_serializer, None),
+                return_serialization=(None, response_deserializer),
+                rpc_type=RpcTypes.CLIENT_STREAM.value,
+            )
         )
 
     def server_stream(
@@ -123,42 +125,34 @@ class Client:
         response_deserializer: Optional[DeserializingFunction] = None,
     ) -> RpcCallable:
         return self._callable(
-            ServerStreamCallType,
-            method_name,
-            request_serializer,
-            response_deserializer,
+            MethodDescriptor(
+                method_name=method_name,
+                arg_serialization=(request_serializer, None),
+                return_serialization=(None, response_deserializer),
+                rpc_type=RpcTypes.SERVER_STREAM.value,
+            )
         )
 
-    def bidi_stream(
+    def bi_stream(
         self,
         method_name: str,
         request_serializer: Optional[SerializingFunction] = None,
         response_deserializer: Optional[DeserializingFunction] = None,
     ) -> RpcCallable:
+        # create method descriptor
         return self._callable(
-            BiStreamCallType,
-            method_name,
-            request_serializer,
-            response_deserializer,
+            MethodDescriptor(
+                method_name=method_name,
+                arg_serialization=(request_serializer, None),
+                return_serialization=(None, response_deserializer),
+                rpc_type=RpcTypes.BI_STREAM.value,
+            )
         )
 
-    def _callable(
-        self,
-        call_type: CallType,
-        method_name: str,
-        request_serializer: Optional[SerializingFunction] = None,
-        response_deserializer: Optional[DeserializingFunction] = None,
-    ) -> RpcCallable:
+    def _callable(self, method_descriptor: MethodDescriptor) -> RpcCallable:
         """
         Generate a proxy for the given method
-        :param call_type: The call type.
-        :type call_type: str
-        :param method_name: The method name.
-        :type method_name: str
-        :param request_serializer: The request serializer.
-        :type request_serializer: Optional[SerializingFunction]
-        :param response_deserializer: The response deserializer.
-        :type response_deserializer: Optional[DeserializingFunction]
+        :param method_descriptor: The method descriptor.
         :return: The proxy.
         :rtype: RpcCallable
         """
@@ -167,13 +161,11 @@ class Client:
 
         # clone url
         url = url.copy()
-        url.parameters[common_constants.METHOD_KEY] = method_name
-        # set call type
-        url.attributes[common_constants.CALL_KEY] = call_type
-
-        # set serializer and deserializer
-        url.attributes[common_constants.SERIALIZER_KEY] = request_serializer
-        url.attributes[common_constants.DESERIALIZER_KEY] = response_deserializer
+        url.parameters[common_constants.METHOD_KEY] = (
+            method_descriptor.get_method_name()
+        )
+        # set method descriptor
+        url.attributes[common_constants.METHOD_DESCRIPTOR_KEY] = method_descriptor
 
         # create proxy
-        return MultipleRpcCallable(self._invoker, url)
+        return self._callable_factory.get_callable(self._invoker, url)

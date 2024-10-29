@@ -13,14 +13,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 import socket
-
-__all__ = ["EventHelper", "FutureHelper", "NetworkUtils", "CpuUtils"]
-
-from typing import List, Tuple
+from collections.abc import Callable
+from typing import Any, List, Tuple, Optional
 
 import psutil
+import inspect
+
+__all__ = ["EventHelper", "FutureHelper", "NetworkUtils", "CpuUtils", "FunctionHelper"]
 
 
 class EventHelper:
@@ -141,24 +142,66 @@ class NetworkUtils:
     """
 
     @staticmethod
-    def get_host_name():
+    def is_address_reachable(ip: str, timeout: int = 0) -> bool:
         """
-        Get the host name of the host machine.
+        Use ping to check if the IP address is reachable.
 
-        :return: The host name of the host machine.
-        :rtype: str
+        :param ip: The IP address.
+        :type ip: str
+        :param timeout: The timeout in seconds.
+        :type timeout: int
+        :return: True if the IP address is reachable, False otherwise.
+        :rtype: bool
         """
-        return socket.gethostname()
+        try:
+            # Use the ping command to check if the IP address is reachable
+            result = os.system(f"ping -c 1 -W {timeout} {ip} > /dev/null 2>&1")
+            return result == 0
+        except Exception:
+            return False
 
     @staticmethod
-    def get_host_ip():
+    def is_loopback_address(ip: str) -> bool:
         """
-        Get the IP address of the host machine.
+        Check if the IP address is a loopback address.
 
-        :return: The IP address of the host machine.
+        :param ip: The IP address.
+        :type ip: str
+        :return: True if the IP address is a loopback address, False otherwise.
+        :rtype: bool
+        """
+        return ip.startswith("127.") or ip == "localhost"
+
+    @staticmethod
+    def get_local_address() -> Optional[str]:
+        """
+        Find first valid IP from local network card.
+
+        :return: The local IP address. If not found, return None.
         :rtype: str
         """
-        return socket.gethostbyname(NetworkUtils.get_host_name())
+        try:
+            # use psutil to get the local IP address
+            for iface_name, iface_addrs in psutil.net_if_addrs().items():
+                for addr in iface_addrs:
+                    # only consider IPv4 address
+                    if addr.family == socket.AF_INET:
+                        # ignore the loopback address and check if the IP address is reachable
+                        if not NetworkUtils.is_loopback_address(
+                            addr.address
+                        ) and NetworkUtils.is_address_reachable(addr.address):
+                            return addr.address
+        except Exception:
+            pass
+
+        # if the local IP address is not found, try to get the IP address using the socket
+        try:
+            local_host_ip = socket.gethostbyname(socket.gethostname())
+            return local_host_ip
+        except Exception:
+            pass
+
+        return None
 
 
 class CpuUtils:
@@ -227,3 +270,122 @@ class CpuUtils:
         :return: The current CPU frequency.
         """
         return psutil.cpu_freq()
+
+
+class FunctionHelper:
+    """
+    Helper class for function operations.
+    """
+
+    @staticmethod
+    def is_callable(callable_func: Callable) -> bool:
+        """
+        Check if the function is callable.
+
+        :param callable_func: The callable function.
+        :type callable_func: Callable
+        :return: True if the function is callable, False otherwise.
+        :rtype: bool
+        """
+        return inspect.isfunction(callable_func) or inspect.ismethod(callable_func)
+
+    @staticmethod
+    def has_args(func: Callable) -> bool:
+        """
+        Check if the function has arguments.
+
+        :param func: The callable function.
+        :type func: Callable
+        :return: True if the function has arguments, False otherwise.
+        :rtype: bool
+        """
+        return inspect.Parameter.VAR_POSITIONAL in [
+            p.kind for p in inspect.signature(func).parameters.values()
+        ]
+
+    @staticmethod
+    def has_kwargs(func: Callable) -> bool:
+        """
+        Check if the function has keyword arguments.
+
+        :param func: The callable function.
+        :type func: Callable
+        :return: True if the function has keyword arguments, False otherwise.
+        :rtype: bool
+        """
+        return inspect.Parameter.VAR_KEYWORD in [
+            p.kind for p in inspect.signature(func).parameters.values()
+        ]
+
+    @staticmethod
+    def call_func(func: Callable, args_and_kwargs: Any = None) -> Any:
+        """
+        Call the function with the given arguments and keyword arguments.
+
+        :param func:
+            The callable function.
+        :type func: Callable
+        :param args_and_kwargs:
+            The arguments and keyword arguments.
+
+            the provided values must follow these forms:
+            - No arguments required, pass -> None
+            - Multiple positional arguments -> Tuple (e.g., ((1, 2),{}))
+            - Multiple keyword arguments -> Dict (e.g., ((),{"a": 1, "b": 2}))
+            - Both positional and keyword arguments -> Tuple of length 2
+                (e.g., ((1, 2), {"a": 1, "b": 2}))
+
+        :type args_and_kwargs: Tuple
+        :return: The result of the function.
+        :rtype: Any
+        """
+
+        # split the arguments and keyword arguments
+        if isinstance(args_and_kwargs, tuple) and len(args_and_kwargs) == 2:
+            args, kwargs = args_and_kwargs
+        else:
+            raise ValueError(
+                "Invalid function arguments, the provided values must follow these forms:"
+                "1.No arguments required, pass -> None"
+                "2.Multiple positional arguments -> Tuple (e.g., ((1, 2),{}))"
+                "3.Multiple keyword arguments -> Dict (e.g., ((),{'a': 1, 'b': 2}))"
+                "4.Both positional and keyword arguments -> Tuple of length 2"
+                " (e.g., ((1, 2), {'a': 1, 'b': 2}))"
+            )
+
+        # If the function is not callable, try to call the function directly
+        try:
+            if not FunctionHelper.is_callable(func):
+                return func(*args, **kwargs)
+        except Exception as e:
+            raise e
+
+        # Get the function signature
+        sig = inspect.signature(func)
+
+        # Get the function parameters and check if the function supports *args and **kwargs
+        params = sig.parameters
+        param_kinds = [p.kind for p in params.values()]
+        has_var_positional = inspect.Parameter.VAR_POSITIONAL in param_kinds
+        has_var_keyword = inspect.Parameter.VAR_KEYWORD in param_kinds
+
+        # If the function has no arguments or only one argument, call the function directly
+        if len(params) == 0 or args_and_kwargs is None:
+            return func()
+
+        # If the function accepts both *args and **kwargs
+        if has_var_positional and has_var_keyword:
+            return func(*args, **kwargs)
+
+        # If the function supports *args but not **kwargs
+        if has_var_positional:
+            return func(*args)
+
+        # If the function supports **kwargs but not *args
+        if has_var_keyword:
+            return func(**kwargs)
+
+        # common case
+        bound_args = sig.bind(*args, **kwargs)
+        bound_args.apply_defaults()
+        return func(*bound_args.args, **bound_args.kwargs)

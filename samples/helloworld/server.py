@@ -18,23 +18,31 @@ from dubbo.configs import ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
 
 
-def handle_unary(request):
-    s = request.decode("utf-8")
-    print(f"Received request: {s}")
-    return (s + " world").encode("utf-8")
+class UnaryServiceServicer:
+    def say_hello(self, message: bytes) -> bytes:
+        print(f"Received message from client: {message}")
+        return b"Hello from server"
 
 
-if __name__ == "__main__":
+def build_service_handler():
     # build a method handler
-    method_handler = RpcMethodHandler.unary(handle_unary)
+    method_handler = RpcMethodHandler.unary(
+        method=UnaryServiceServicer().say_hello, method_name="unary"
+    )
     # build a service handler
     service_handler = RpcServiceHandler(
         service_name="org.apache.dubbo.samples.HelloWorld",
-        method_handlers={"unary": method_handler},
+        method_handlers=[method_handler],
     )
+    return service_handler
 
-    service_config = ServiceConfig(service_handler)
 
+if __name__ == "__main__":
+    # build service config
+    service_handler = build_service_handler()
+    service_config = ServiceConfig(
+        service_handler=service_handler, host="127.0.0.1", port=50051
+    )
     # start the server
     server = dubbo.Server(service_config).start()
 
