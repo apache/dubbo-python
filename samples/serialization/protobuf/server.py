@@ -44,9 +44,7 @@ def build_service_handler():
 if __name__ == "__main__":
     # build a service handler
     service_handler = build_service_handler()
-    service_config = ServiceConfig(
-        service_handler=service_handler, host="127.0.0.1", port=50051
-    )
+    service_config = ServiceConfig(service_handler=service_handler, host="127.0.0.1", port=50051)
 
     # start the server
     server = dubbo.Server(service_config).start()

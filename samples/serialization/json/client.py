@@ -42,9 +42,7 @@ class GreeterServiceStub:
 
 
 if __name__ == "__main__":
-    reference_config = ReferenceConfig.from_url(
-        "tri://127.0.0.1:50051/org.apache.dubbo.samples.serialization.json"
-    )
+    reference_config = ReferenceConfig.from_url("tri://127.0.0.1:50051/org.apache.dubbo.samples.serialization.json")
     dubbo_client = dubbo.Client(reference_config)
 
     stub = GreeterServiceStub(dubbo_client)

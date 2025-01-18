@@ -16,13 +16,13 @@
 from setuptools import find_packages, setup
 
 # Read version from dubbo/__version__.py
-with open("dubbo/__version__.py", "r", encoding="utf-8") as f:
+with open("dubbo/__version__.py", encoding="utf-8") as f:
     global_vars = {}
     exec(f.read(), global_vars)
     version = global_vars["__version__"]
 
 # Read long description from README.md
-with open("README.md", "r", encoding="utf-8") as f:
+with open("README.md", encoding="utf-8") as f:
     long_description = f.read()
 
 setup(

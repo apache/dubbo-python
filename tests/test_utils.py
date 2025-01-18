@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Tuple, List, Dict, Any
+from typing import Any
 
 
 def test_func_helper():
@@ -59,7 +59,7 @@ def test_func_helper():
         return sum(args), kwargs
 
     # mixed arguments - 1
-    def func_9(a: Tuple[int, int], b: List[int], c: Dict[str, Any]):
+    def func_9(a: tuple[int, int], b: list[int], c: dict[str, Any]):
         return f"a={a}, b={b}, c={c}"
 
     # class
@@ -91,6 +91,9 @@ def test_func_helper():
         )
         == "a=(1, 2), b=[1, 2], c={'a': 1, 'b': 2}"
     )
-    assert FunctionHelper.call_func(
-        func_10, ((User("Alice", 20),), {"name": "Bob", "age": 30})
-    ) == ("Alice", 20, "Bob", 30)
+    assert FunctionHelper.call_func(func_10, ((User("Alice", 20),), {"name": "Bob", "age": 30})) == (
+        "Alice",
+        20,
+        "Bob",
+        30,
+    )
