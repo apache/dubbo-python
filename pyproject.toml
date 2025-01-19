@@ -69,15 +69,6 @@ zookeeper = [
     "kazoo>=2.10.0",
 ]
 
-dev=[
-    "hatch>=1.14.0",
-    "ruff>=0.9.1",
-    "mypy>=1.14.1",
-    "pytest>=8.3.4",
-    "coverage[toml]>=7.6.10",
-]
-
-
 ### Hatch settings ###
 [tool.hatch.version]
 path = "src/dubbo/__about__.py"

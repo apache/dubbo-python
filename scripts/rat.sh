@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,7 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e # Exit on error
+### Apache RAT license check script ###
+# This script downloads Apache RAT and runs it to check the license headers of the source files.
+
+set -e # Exit immediately if a command exits with a non-zero status.
 
 # Some variables
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"

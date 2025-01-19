@@ -16,4 +16,4 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
       - name: Check License Header
-        run:  bash ./scripts/check_license.sh
+        run:  "scripts/check-license.sh"
