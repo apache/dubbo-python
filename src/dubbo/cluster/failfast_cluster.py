@@ -40,7 +40,7 @@ class FailfastInvoker(Invoker):
 
     def invoke(self, invocation) -> Result:
         # get the invokers
-        invokers = self._directory.list(invocation)
+        invokers = self._directory.get_list(invocation)
         if not invokers:
             raise RpcError("No provider available for the service")
 

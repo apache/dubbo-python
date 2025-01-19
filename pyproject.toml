@@ -14,6 +14,92 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+[build-system]
+requires = ["hatchling", "hatch-fancy-pypi-readme"]
+build-backend = "hatchling.build"
+
+[project]
+name="dubbo-python"
+requires-python = ">=3.9"
+authors = [
+    {name = "Apache Dubbo Community", email = "dev@dubbo.apache.org"}
+]
+maintainers = [
+    {name = "Apache Dubbo Community", email = "dev@dubbo.apache.org"}
+]
+description = "Python Implementation For Apache Dubbo."
+license = "Apache-2.0"
+license-files = ["LICEN[CS]E.*"]
+keywords=["dubbo", "rpc","grpc", "dubbo-python", "http2", "network"]
+classifiers=[
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Framework :: AsyncIO",
+    "Topic :: Internet",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Networking",
+]
+
+dependencies = [
+    "h2>=4.1.0",
+    "uvloop>=0.19.0; platform_system!='Windows'",
+    "psutil>=6.0.0",
+]
+dynamic = ["version", "readme"]
+
+
+[project.urls]
+Homepage = "https://cn.dubbo.apache.org"
+Documentation = "https://cn.dubbo.apache.org/en/overview/mannual/python-sdk/"
+Repository = "https://github.com/apache/dubbo-python"
+Issues = "https://github.com/apache/dubbo/issues"
+
+[project.optional-dependencies]
+zookeeper = [
+    "kazoo>=2.10.0",
+]
+
+dev=[
+    "hatch>=1.14.0",
+    "ruff>=0.9.1",
+    "mypy>=1.14.1",
+    "pytest>=8.3.4",
+    "coverage[toml]>=7.6.10",
+]
+
+
+### Hatch settings ###
+[tool.hatch.version]
+path = "src/dubbo/__about__.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dubbo"]
+
+
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+
 
 ### Ruff settings ###
 
@@ -56,6 +142,39 @@ section-order = [
   "local-folder"
 ]
 
+### Coverage settings ###
+[tool.coverage.run]
+branch = true
+relative_files = true
+include = ["src/dubbo/*"]
 
+[tool.coverage.report]
+# Skip coverage report for 100% covered files
+skip_covered = true
+exclude_also = [
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@(abc\\.)?abstractmethod",
+    "@(typing(_extensions)?\\.)?overload",
+    "if (typing(_extensions)?\\.)?TYPE_CHECKING:"
+]
+
+
+### Mypy settings ###
 [tool.mypy]
-files = "src"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+check_untyped_defs = true
+
+### Pytest settings ###
+[tool.pytest]
+addopts = "-rxXs"
+testpaths = ["tests"]
+python_files = [
+    "test_*.py"
+]

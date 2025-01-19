@@ -36,7 +36,7 @@ class RegistryDirectory(Directory, NotifyListener):
         # subscribe
         self._registry.subscribe(url, self)
 
-    def list(self, invocation) -> list[Invoker]:
+    def get_list(self, invocation) -> list[Invoker]:
         return list(self._invokers.values())
 
     def notify(self, urls: list[URL]) -> None:

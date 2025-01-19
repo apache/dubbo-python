@@ -28,7 +28,7 @@ class Directory(Node, abc.ABC):
     """
 
     @abc.abstractmethod
-    def list(self, invocation: Invocation) -> list[Invoker]:
+    def get_list(self, invocation: Invocation) -> list[Invoker]:
         """
         List the directory.
         :param invocation: The invocation.
