@@ -16,4 +16,4 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
       - name: Check License Header
-        run:  "scripts/check-license.sh"
+        run:  "scripts/rat.sh"
