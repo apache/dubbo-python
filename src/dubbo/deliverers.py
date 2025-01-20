@@ -208,13 +208,9 @@ class SingleMessageDeliverer(MessageDeliverer):
             if self._status is DelivererStatus.FINISHED:
                 self._status = DelivererStatus.PENDING
                 return self._message
-
-            # raise error
-            if self._status is DelivererStatus.FINISHED:
-                raise NoMoreMessageError("Message already consumed.")
             elif self._status is DelivererStatus.CANCELLED:
                 raise self._message
-            elif self._status is DelivererStatus.PENDING:
+            else:  # PENDING
                 raise EmptyMessageError("Message is empty")
 
 

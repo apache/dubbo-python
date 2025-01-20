@@ -46,7 +46,7 @@ class RegistryDirectory(Directory, NotifyListener):
         # create new invokers
         for url in urls:
             k = str(url)
-            if k in old_invokers.items():
+            if k in old_invokers:
                 self._invokers[k] = old_invokers[k]
                 del old_invokers[k]
             else:
