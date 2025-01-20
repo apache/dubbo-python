@@ -26,9 +26,7 @@ class UnaryServiceServicer:
 
 def build_service_handler():
     # build a method handler
-    method_handler = RpcMethodHandler.unary(
-        method=UnaryServiceServicer().say_hello, method_name="unary"
-    )
+    method_handler = RpcMethodHandler.unary(method=UnaryServiceServicer().say_hello, method_name="unary")
     # build a service handler
     service_handler = RpcServiceHandler(
         service_name="org.apache.dubbo.samples.HelloWorld",
@@ -40,9 +38,7 @@ def build_service_handler():
 if __name__ == "__main__":
     # build service config
     service_handler = build_service_handler()
-    service_config = ServiceConfig(
-        service_handler=service_handler, host="127.0.0.1", port=50051
-    )
+    service_config = ServiceConfig(service_handler=service_handler, host="127.0.0.1", port=50051)
     # start the server
     server = dubbo.Server(service_config).start()
 

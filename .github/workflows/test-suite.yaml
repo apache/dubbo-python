@@ -1,0 +1,30 @@
+name: Check and test
+on: [push, pull_request]
+
+
+jobs:
+  tests:
+    name: "Python ${{ matrix.python-version }}"
+    runs-on: "ubuntu-latest"
+
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: "actions/checkout@v4"
+      - uses: "actions/setup-python@v5"
+        with:
+          python-version: "${{ matrix.python-version }}"
+
+      - name: "Install dependencies"
+        run: "scripts/install-dev.sh"
+
+      - name: "Check Code Style"
+        run: "scripts/check.sh"
+
+      - name: "Build package"
+        run: "scripts/build.sh"
+
+      - name: "Run tests and report coverage"
+        run: "scripts/test.sh"

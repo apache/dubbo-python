@@ -11,6 +11,7 @@ LICENSE
 NOTICE
 README.md
 requirements.txt
+requirements-dev.txt
 rat-report.txt
 
 # directories

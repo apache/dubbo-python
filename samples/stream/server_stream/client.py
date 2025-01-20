@@ -31,15 +31,11 @@ class GreeterServiceStub:
 
 
 if __name__ == "__main__":
-    reference_config = ReferenceConfig.from_url(
-        "tri://127.0.0.1:50051/org.apache.dubbo.samples.data.Greeter"
-    )
+    reference_config = ReferenceConfig.from_url("tri://127.0.0.1:50051/org.apache.dubbo.samples.data.Greeter")
     dubbo_client = dubbo.Client(reference_config)
     stub = GreeterServiceStub(dubbo_client)
 
-    stream = stub.server_stream(
-        greeter_pb2.GreeterRequest(name="hello world from dubbo-python")
-    )
+    stream = stub.server_stream(greeter_pb2.GreeterRequest(name="hello world from dubbo-python"))
 
     for i in stream:
         print(f"Received response: {i.message}")

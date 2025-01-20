@@ -13,7 +13,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Tuple
 
 import orjson
 
@@ -22,7 +21,7 @@ from dubbo.configs import ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
 
 
-def request_deserializer(data: bytes) -> Tuple[str, int]:
+def request_deserializer(data: bytes) -> tuple[str, int]:
     json_dict = orjson.loads(data)
     return json_dict["name"], json_dict["age"]
 
@@ -57,9 +56,7 @@ def build_service_handler():
 if __name__ == "__main__":
     # build server config
     service_handler = build_service_handler()
-    service_config = ServiceConfig(
-        service_handler=service_handler, host="127.0.0.1", port=50051
-    )
+    service_config = ServiceConfig(service_handler=service_handler, host="127.0.0.1", port=50051)
 
     # start the server
     server = dubbo.Server(service_config).start()

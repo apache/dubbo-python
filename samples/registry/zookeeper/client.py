@@ -35,9 +35,7 @@ if __name__ == "__main__":
     registry_config = RegistryConfig.from_url("zookeeper://127.0.0.1:2181")
     bootstrap = dubbo.Dubbo(registry_config=registry_config)
 
-    reference_config = ReferenceConfig(
-        protocol="tri", service="org.apache.dubbo.samples.data.Greeter"
-    )
+    reference_config = ReferenceConfig(protocol="tri", service="org.apache.dubbo.samples.data.Greeter")
     dubbo_client = bootstrap.create_client(reference_config)
 
     stub = GreeterServiceStub(dubbo_client)

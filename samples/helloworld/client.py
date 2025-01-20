@@ -27,9 +27,7 @@ class UnaryServiceStub:
 
 if __name__ == "__main__":
     # Create a client
-    reference_config = ReferenceConfig.from_url(
-        "tri://127.0.0.1:50051/org.apache.dubbo.samples.HelloWorld"
-    )
+    reference_config = ReferenceConfig.from_url("tri://127.0.0.1:50051/org.apache.dubbo.samples.HelloWorld")
     dubbo_client = dubbo.Client(reference_config)
     unary_service_stub = UnaryServiceStub(dubbo_client)
 

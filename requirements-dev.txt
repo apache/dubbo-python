@@ -1,0 +1,19 @@
+# Here, we do not specify the dependencies required by the project in the requirements.txt file,
+# as they have all been moved to the pyproject.toml file.
+# In this file, we only specify the dependencies needed for the development environment,
+# such as testing, packaging, linting, etc.
+
+-e .[zoopkeeper]
+
+
+# Packaging
+hatch>=1.14.0
+
+
+# Formatting & Linting
+ruff>=0.9.1
+mypy>=1.14.1
+
+# Testing
+pytest>=8.3.4
+coverage[toml]>=7.6.10
