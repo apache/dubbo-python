@@ -18,6 +18,9 @@ from dubbo.cluster import Directory
 from dubbo.protocol import Invoker, Protocol
 from dubbo.registry import NotifyListener, Registry
 from dubbo.url import URL
+import logging
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class RegistryDirectory(Directory, NotifyListener):
@@ -60,7 +63,15 @@ class RegistryDirectory(Directory, NotifyListener):
         return self._url
 
     def is_available(self) -> bool:
-        return self._registry.is_available()
+        try:
+            return self._registry.is_available()
+        except Exception as e:
+            _LOGGER.error(f"Failed to check registry availability: {e}")
+            return False
 
     def destroy(self) -> None:
-        self._registry.destroy()
+        try:
+            self._registry.destroy()
+        except Exception as e:
+            _LOGGER.error(f"Failed to destroy registry: {e}")
+            raise

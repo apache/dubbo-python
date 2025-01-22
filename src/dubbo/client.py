@@ -30,10 +30,11 @@ from dubbo.types import (
     RpcTypes,
     SerializingFunction,
 )
+from dubbo.loggers import loggerFactory
 from dubbo.url import URL
 
 __all__ = ["Client"]
-
+_LOGGER = loggerFactory.get_logger()
 
 class Client:
     def __init__(self, reference: ReferenceConfig, dubbo: Optional[Dubbo] = None):
@@ -150,14 +151,17 @@ class Client:
         :return: The proxy.
         :rtype: RpcCallable
         """
-        # get invoker
-        url = self._invoker.get_url()
+        try:
+            # get invoker
+            url = self._invoker.get_url()
+            
+            # clone url
+            url = url.copy()
+            url.parameters[common_constants.METHOD_KEY] = method_descriptor.get_method_name()
+            url.attributes[common_constants.METHOD_DESCRIPTOR_KEY] = method_descriptor
 
-        # clone url
-        url = url.copy()
-        url.parameters[common_constants.METHOD_KEY] = method_descriptor.get_method_name()
-        # set method descriptor
-        url.attributes[common_constants.METHOD_DESCRIPTOR_KEY] = method_descriptor
-
-        # create proxy
-        return self._callable_factory.get_callable(self._invoker, url)
+            # create proxy
+            return self._callable_factory.get_callable(self._invoker, url)
+        except Exception as e:
+            _LOGGER.error(f"Failed to create callable for method {method_descriptor.get_method_name()}: {e}")
+            raise

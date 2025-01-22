@@ -17,7 +17,9 @@
 import gzip
 
 from dubbo.compression import Compressor, Decompressor
+from dubbo.loggers import loggerFactory
 
+_LOGGER = loggerFactory.get_logger()
 __all__ = ["Gzip"]
 
 
@@ -45,7 +47,11 @@ class Gzip(Compressor, Decompressor):
         :return: The compressed data.
         :rtype: bytes
         """
-        return gzip.compress(data)
+        try:
+            return gzip.compress(data)
+        except Exception as e:
+            _LOGGER.error(f"Failed to compress data: {e}")
+            raise
 
     def decompress(self, data: bytes) -> bytes:
         """
@@ -55,4 +61,8 @@ class Gzip(Compressor, Decompressor):
         :return: The decompressed data.
         :rtype: bytes
         """
-        return gzip.decompress(data)
+        try:
+            return gzip.decompress(data)
+        except Exception as e:
+            _LOGGER.error(f"Failed to decompress data: {e}")
+            raise

@@ -26,6 +26,8 @@ from dubbo.configs import (
 from dubbo.constants import common_constants
 from dubbo.loggers import loggerFactory
 
+_LOGGER = loggerFactory.get_logger()
+
 
 class Dubbo(SingletonBase):
     """
@@ -119,9 +121,12 @@ class Dubbo(SingletonBase):
         :param reference_config: The reference configuration.
         :type reference_config: ReferenceConfig
         """
-        from dubbo import Client
-
-        return Client(reference_config, self)
+        try:
+            from dubbo import Client
+            return Client(reference_config, self)
+        except Exception as e:
+            _LOGGER.error(f"Failed to create client: {e}")
+            raise
 
     def create_server(self, config):
         """
@@ -129,6 +134,9 @@ class Dubbo(SingletonBase):
         :param config: The service configuration.
         :type config: ServiceConfig
         """
-        from dubbo import Server
-
-        return Server(config, self)
+        try:
+            from dubbo import Server
+            return Server(config, self)
+        except Exception as e:
+            _LOGGER.error(f"Failed to create server: {e}")
+            raise
