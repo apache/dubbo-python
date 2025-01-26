@@ -58,6 +58,24 @@ git push origin your_awesome_patch
 
 Thanks for contributing!
 
+
+
+### Development & Testing
+
+Before you start working on development, please install the necessary dependencies for Dubbo-Python using the following command:
+
+```shell
+pip install -r requirements-dev.txt
+```
+
+Our project uses a `src` layout, and packaging is required before running tests. We strongly recommend using the **editable installation mode** for packaging and testing:
+
+```shell
+pip install -e .
+```
+
+
+
 ### Code style
 
 We use **ruff** as the linter and code formatter for Dubbo-Python, and **Mypy** as the static type checker.
@@ -73,7 +91,7 @@ We have already set up the configurations for ruff and Mypy in the `pyproject.to
    
     By default, ruff will look for the `pyproject.toml` file in the current directory and its parent directories and load its configuration.
     
-    ```bash
+    ```shell
     # Default
     ruff format
     
@@ -83,7 +101,7 @@ We have already set up the configurations for ruff and Mypy in the `pyproject.to
     
 2. Code Linting
    
-    ```bash
+    ```shell
     # Just check
     ruff check
     
@@ -95,7 +113,7 @@ We have already set up the configurations for ruff and Mypy in the `pyproject.to
    
     Mypy will also automatically look for the `pyproject.toml` file and load its configuration.
     
-    ```bash
+    ```shell
     # Default
     mypy
     

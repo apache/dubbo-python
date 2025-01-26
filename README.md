@@ -1,10 +1,10 @@
 # Apache Dubbo for Python
 
-![License](https://img.shields.io/github/license/apache/dubbo-python)
+![License](https://img.shields.io/github/license/apache/dubbo-python?logo=apache&logoColor=red&label=LICENSE)
 ![GitHub last commit](https://img.shields.io/github/last-commit/apache/dubbo-python)
 ![GitHub branch check runs](https://img.shields.io/github/check-runs/apache/dubbo-python/main)
-
----
+![PyPI - Version](https://img.shields.io/pypi/v/apache-dubbo?logo=pypi&logoColor=gold&label=PyPI&color=blue)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/apache-dubbo?logo=python&logoColor=gold&label=Python)
 
 <p align="center">
   <img src="https://cn.dubbo.apache.org/imgs/nav_logo2.png" alt="Logo" width="40%" />
@@ -29,18 +29,21 @@ Visit [the official website](https://dubbo.apache.org/) for more information.
 - **Serialization**: Customizable(protobuf, json...)
 
 
-
 ## Installation
 
-Before you start, make sure you have **`python 3.11+`** installed.
+Before you start, make sure you have **`python 3.9+`** installed.
 
-1. Install from source
+1. Install Directly
+
+   ```sh
+   pip install apache-dubbo
+   ```
+2. Install from source
 
    ```sh
    git clone https://github.com/apache/dubbo-python.git
    cd dubbo-python && pip install .
    ```
-
 
 ## Getting started
 
@@ -116,7 +119,11 @@ It's as simple as the code snippet below. With just a few lines of code, you can
    
    ```
 
-   
+## Contributing
+
+We are excited to welcome contributions to the Dubbo-Python project! Whether you are fixing bugs, adding new features, or improving documentation, your input is highly valued.
+
+To ensure a smooth collaboration, please review our [Contributing Guide](https://github.com/apache/dubbo-python/blob/main/CONTRIBUTING.md) for detailed instructions on how to get started, adhere to coding standards, and submit your contributions effectively.
 
 ## License
 
