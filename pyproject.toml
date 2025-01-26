@@ -19,7 +19,7 @@ requires = ["hatchling", "hatch-fancy-pypi-readme"]
 build-backend = "hatchling.build"
 
 [project]
-name="dubbo-python"
+name="apache-dubbo"
 requires-python = ">=3.9"
 authors = [
     {name = "Apache Dubbo Community", email = "dev@dubbo.apache.org"}
