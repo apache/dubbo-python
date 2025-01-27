@@ -9,10 +9,7 @@
 .asf.yaml
 LICENSE
 NOTICE
-README.md
-requirements.txt
 requirements-dev.txt
-rat-report.txt
 
 # directories
 .vscode
@@ -21,5 +18,3 @@ rat-report.txt
 .gitignore
 .license-ignore
 ./samples/proto/*
-
-
