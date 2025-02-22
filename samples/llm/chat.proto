@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_outer_classname = "ChatProto";
+
+package org.apache.dubbo.samples.llm.api;
+
+message ChatRequest {
+  string role = 1;
+  string content = 2;
+}
+
+message ChatReply {
+  string think = 1;
+  string answer = 2;
+}
+
+service DeepSeekAiService {
+  // chat
+  rpc chat(ChatRequest) returns (stream ChatReply);
+}
