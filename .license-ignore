@@ -18,3 +18,4 @@ requirements-dev.txt
 .gitignore
 .license-ignore
 ./samples/proto/*
+./samples/llm/*
