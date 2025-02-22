@@ -4,6 +4,7 @@
 # file extensions
 .*md
 .*proto
+.*_pb2.py
 
 # files
 .asf.yaml
@@ -17,5 +18,3 @@ requirements-dev.txt
 .github
 .gitignore
 .license-ignore
-./samples/proto/*
-./samples/llm/*
