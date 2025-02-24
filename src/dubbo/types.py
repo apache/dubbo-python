@@ -57,6 +57,4 @@ class RpcTypes(enum.Enum):
             # ignore case
             if item.value.name.lower() == name.lower():
                 return item.value
-            if item.value.name == name:
-                return item.value
         raise ValueError(f"Unknown RpcType name: {name}")
