@@ -22,9 +22,11 @@ from typing import Optional
 from h2.config import H2Configuration
 from h2.connection import H2Connection
 
+from dubbo.constants import common_constants
 from dubbo.loggers import loggerFactory
 from dubbo.remoting.aio import ConnectionStateListener, EmptyConnectionStateListener, constants as h2_constants
 from dubbo.remoting.aio.exceptions import ProtocolError
+from dubbo.remoting.aio.http2.stream_handler import StreamServerMultiplexHandler, StreamClientMultiplexHandler
 from dubbo.remoting.aio.http2.controllers import RemoteFlowController
 from dubbo.remoting.aio.http2.frames import (
     DataFrame,
@@ -76,7 +78,11 @@ class AbstractHttp2Protocol(asyncio.Protocol, abc.ABC):
 
         self._flow_controller: Optional[RemoteFlowController] = None
 
-        self._stream_handler = self._url.attributes[h2_constants.STREAM_HANDLER_KEY]
+        if self._url.attributes[common_constants.PROTOCOL_KEY] == Http2ServerProtocol:
+            listener_factory = self._url.attributes[h2_constants.LISTENER_FACTORY_KEY]
+            self._stream_handler = StreamServerMultiplexHandler(listener_factory)
+        else:
+            self._stream_handler = self._url.attributes[h2_constants.STREAM_HANDLER_KEY]
 
         # last time of receiving data
         self._last_read = time.time()

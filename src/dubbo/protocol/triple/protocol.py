@@ -77,6 +77,7 @@ class TripleProtocol(Protocol):
         # Create a stream handler
         stream_multiplexer = StreamServerMultiplexHandler(listener_factory)
         # set stream handler and protocol
+        url.attributes[aio_constants.LISTENER_FACTORY_KEY] = listener_factory
         url.attributes[aio_constants.STREAM_HANDLER_KEY] = stream_multiplexer
         url.attributes[common_constants.PROTOCOL_KEY] = Http2ServerProtocol
 
