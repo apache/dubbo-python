@@ -26,7 +26,7 @@ from dubbo.constants import common_constants
 from dubbo.loggers import loggerFactory
 from dubbo.remoting.aio import ConnectionStateListener, EmptyConnectionStateListener, constants as h2_constants
 from dubbo.remoting.aio.exceptions import ProtocolError
-from dubbo.remoting.aio.http2.stream_handler import StreamServerMultiplexHandler, StreamClientMultiplexHandler
+from dubbo.remoting.aio.http2.stream_handler import StreamServerMultiplexHandler
 from dubbo.remoting.aio.http2.controllers import RemoteFlowController
 from dubbo.remoting.aio.http2.frames import (
     DataFrame,
