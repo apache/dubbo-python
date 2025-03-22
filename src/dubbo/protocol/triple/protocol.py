@@ -31,8 +31,7 @@ from dubbo.remoting import Server, Transporter
 from dubbo.remoting.aio import constants as aio_constants
 from dubbo.remoting.aio.http2.protocol import Http2ClientProtocol, Http2ServerProtocol
 from dubbo.remoting.aio.http2.stream_handler import (
-    StreamClientMultiplexHandler,
-    StreamServerMultiplexHandler,
+    StreamClientMultiplexHandler
 )
 from dubbo.url import URL
 
@@ -74,11 +73,8 @@ class TripleProtocol(Protocol):
 
         listener_factory = functools.partial(ServerTransportListener, self._path_resolver, method_executor)
 
-        # Create a stream handler
-        stream_multiplexer = StreamServerMultiplexHandler(listener_factory)
         # set stream handler and protocol
         url.attributes[aio_constants.LISTENER_FACTORY_KEY] = listener_factory
-        url.attributes[aio_constants.STREAM_HANDLER_KEY] = stream_multiplexer
         url.attributes[common_constants.PROTOCOL_KEY] = Http2ServerProtocol
 
         # Create a server
