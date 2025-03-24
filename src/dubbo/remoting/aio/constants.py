@@ -18,6 +18,8 @@ __all__ = ["STREAM_HANDLER_KEY"]
 
 STREAM_HANDLER_KEY = "stream-handler"
 
+LISTENER_FACTORY_KEY = "listener-factory"
+
 CLOSE_FUTURE_KEY = "close-future"
 
 HEARTBEAT_KEY = "heartbeat"
