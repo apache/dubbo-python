@@ -18,3 +18,4 @@ requirements-dev.txt
 .github
 .gitignore
 .license-ignore
+docs
