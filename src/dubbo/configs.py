@@ -491,6 +491,7 @@ class RegistryConfig(AbstractConfig):
         "_load_balance",
         "_group",
         "_version",
+        "_namespace",
     ]
 
     def __init__(
@@ -503,6 +504,7 @@ class RegistryConfig(AbstractConfig):
         load_balance: Optional[str] = None,
         group: Optional[str] = None,
         version: Optional[str] = None,
+        namespace: Optional[str] = None,
     ):
         """
         Initialize the registry configuration.
@@ -522,6 +524,8 @@ class RegistryConfig(AbstractConfig):
         :type group: Optional[str]
         :param version: The version of the registry.
         :type version: Optional[str]
+        :param namespace: The namespace of the registry.
+        :type namespace: Optional[str]
         """
         super().__init__()
 
@@ -533,6 +537,7 @@ class RegistryConfig(AbstractConfig):
         self._load_balance = load_balance
         self._group = group
         self._version = version
+        self._namespace = namespace
 
     @property
     def protocol(self) -> str:
@@ -677,6 +682,24 @@ class RegistryConfig(AbstractConfig):
         :type version: str
         """
         self._version = version
+        
+    @property
+    def namespace(self) -> Optional[str]:
+        """
+        Get the namespace of the registry.
+        :return: The namespace of the registry.
+        :rtype: Optional[str]
+        """
+        return self._namespace
+        
+    @namespace.setter
+    def namespace(self, namespace: str) -> None:
+        """
+        Set the namespace of the registry.
+        :param namespace: The namespace of the registry.
+        :type namespace: str
+        """
+        self._namespace = namespace
 
     def to_url(self) -> URL:
         """
@@ -687,10 +710,13 @@ class RegistryConfig(AbstractConfig):
         parameters = {}
         if self.load_balance:
             parameters[registry_constants.LOAD_BALANCE_KEY] = self.load_balance
+        if self.namespace:
+            parameters[registry_constants.NAMESPACE_KEY] = self.namespace
         if self.group:
             parameters[config_constants.GROUP] = self.group
         if self.version:
             parameters[config_constants.VERSION] = self.version
+        
 
         return URL(
             scheme=self.protocol,
@@ -721,6 +747,7 @@ class RegistryConfig(AbstractConfig):
             load_balance=url.parameters.get(registry_constants.LOAD_BALANCE_KEY),
             group=url.parameters.get(config_constants.GROUP),
             version=url.parameters.get(config_constants.VERSION),
+            namespace=url.parameters.get(registry_constants.NAMESPACE_KEY),
         )
 
 

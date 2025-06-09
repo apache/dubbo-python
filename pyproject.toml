@@ -70,6 +70,9 @@ Issues = "https://github.com/apache/dubbo/issues"
 zookeeper = [
     "kazoo>=2.10.0",
 ]
+nacos = [
+    "nacos-sdk-python>=2.0.6",
+]
 
 ### Hatch settings ###
 [tool.hatch.version]

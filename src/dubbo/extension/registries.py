@@ -54,6 +54,7 @@ registryFactoryRegistry = ExtendedRegistry(
     interface=RegistryFactory,
     impls={
         "zookeeper": "dubbo.registry.zookeeper.zk_registry.ZookeeperRegistryFactory",
+        "nacos": "dubbo.registry.nacos.nacos_registry.NacosRegistryFactory",
     },
 )
 

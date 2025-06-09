@@ -22,3 +22,4 @@ CONSUMERS_CATEGORY = "consumers"
 
 
 LOAD_BALANCE_KEY = "loadbalance"
+NAMESPACE_KEY = "namespace"
