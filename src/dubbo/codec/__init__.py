@@ -14,6 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .dubbo_codec import DubboCodec
+from .dubbo_codec import DubboTransportService
 
-__all__ = ["DubboCodec"]
+__all__ = ['DubboTransportService']

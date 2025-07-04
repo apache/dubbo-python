@@ -14,9 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Optional
+import inspect
+from typing import Callable, Optional, List, Type, Any, get_type_hints
 from dubbo.classes import MethodDescriptor
-from dubbo.codec import DubboCodec
+from dubbo.codec import DubboTransportService
 from dubbo.types import (
     DeserializingFunction,
     RpcTypes,
@@ -27,72 +28,96 @@ __all__ = ["RpcMethodHandler", "RpcServiceHandler"]
 
 
 class RpcMethodHandler:
-    """
-    Rpc method handler
-    """
-
     __slots__ = ["_method_descriptor"]
 
     def __init__(self, method_descriptor: MethodDescriptor):
-        """
-        Initialize the RpcMethodHandler
-        :param method_descriptor: the method descriptor.
-        :type method_descriptor: MethodDescriptor
-        """
         self._method_descriptor = method_descriptor
 
     @property
     def method_descriptor(self) -> MethodDescriptor:
-        """
-        Get the method descriptor
-        :return: the method descriptor
-        :rtype: MethodDescriptor
-        """
         return self._method_descriptor
 
     @staticmethod
     def get_codec(**kwargs) -> tuple:
-        """
-        Get the method encode and decode
-        :return: tuple of the encode and decode method 
-        """
-        return DubboCodec.get_serializer_deserializer(**kwargs)
+        return DubboTransportService.create_serialization_functions(**kwargs)
+
+    @classmethod
+    def _infer_types_from_method(cls, method: Callable) -> tuple:
+        try:
+            type_hints = get_type_hints(method)
+            sig = inspect.signature(method)
+            method_name = method.__name__
+            params = list(sig.parameters.values())
+            if params and params[0].name == "self":
+                params = params[1:]
+
+            params_types = [type_hints.get(p.name, Any) for p in params]
+            return_type = type_hints.get("return", Any)
+            return method_name, params_types, return_type
+        except Exception:
+            return method.__name__, [Any], Any
+
+    @classmethod
+    def _create_method_descriptor(
+        cls,
+        method: Callable,
+        method_name: str,
+        params_types: List[Type],
+        return_type: Type,
+        rpc_type: str,
+        codec: Optional[str] = None,
+        param_encoder: Optional[DeserializingFunction] = None,
+        return_decoder: Optional[SerializingFunction] = None,
+        **kwargs,
+    ) -> MethodDescriptor:
+        if param_encoder is None or return_decoder is None:
+            codec_kwargs = {
+                "transport_type": codec or "json",
+                "parameter_types": params_types,
+                "return_type": return_type,
+                **kwargs,
+            }
+            serializer, deserializer = cls.get_codec(**codec_kwargs)
+            request_deserializer = param_encoder or deserializer
+            response_serializer = return_decoder or serializer
+
+        return MethodDescriptor(
+            callable_method=method,
+            method_name=method_name or method.__name__,
+            arg_serialization=(None, request_deserializer),
+            return_serialization=(response_serializer, None),
+            rpc_type=rpc_type
+        )
 
     @classmethod
     def unary(
         cls,
         method: Callable,
         method_name: Optional[str] = None,
+        params_types: Optional[List[Type]] = None,
+        return_type: Optional[Type] = None,
+        codec: Optional[str] = None,
         request_deserializer: Optional[DeserializingFunction] = None,
         response_serializer: Optional[SerializingFunction] = None,
-        **kwargs
+        **kwargs,
     ) -> "RpcMethodHandler":
-        """
-        Create a unary method handler
-        :param method: the method.
-        :type method: Callable
-        :param method_name: the method name. If not provided, the method name will be used.
-        :type method_name: Optional[str]
-        :param request_deserializer: the request deserializer.
-        :type request_deserializer: Optional[DeserializingFunction]
-        :param response_serializer: the response serializer.
-        :type response_serializer: Optional[SerializingFunction]
-        :return: the unary method handler.
-        :rtype: RpcMethodHandler
-        """
-        # Use custom serializers if provided, otherwise get from codec
-        if request_deserializer is None or response_serializer is None:
-            default_deserializer, default_serializer = cls.get_codec(**kwargs)
-            request_deserializer = request_deserializer or default_deserializer
-            response_serializer = response_serializer or default_serializer
-            
+        inferred_name, inferred_param_types, inferred_return_type = cls._infer_types_from_method(method)
+        resolved_method_name = method_name or inferred_name
+        resolved_param_types = params_types or inferred_param_types
+        resolved_return_type = return_type or inferred_return_type
+        codec = codec or "json"
+
         return cls(
-            MethodDescriptor(
-                callable_method=method,
-                method_name=method_name or method.__name__,
-                arg_serialization=(None, request_deserializer),
-                return_serialization=(response_serializer, None),
+            cls._create_method_descriptor(
+                method=method,
+                method_name=resolved_method_name,
+                params_types=resolved_param_types,
+                return_type=resolved_return_type,
                 rpc_type=RpcTypes.UNARY.value,
+                codec=codec,
+                request_deserializer=request_deserializer,
+                response_serializer=response_serializer,
+                **kwargs,
             )
         )
 
@@ -101,36 +126,30 @@ class RpcMethodHandler:
         cls,
         method: Callable,
         method_name: Optional[str] = None,
+        params_types: Optional[List[Type]] = None,
+        return_type: Optional[Type] = None,
+        codec: Optional[str] = None,
         request_deserializer: Optional[DeserializingFunction] = None,
         response_serializer: Optional[SerializingFunction] = None,
-        **kwargs
-    ):
-        """
-        Create a client stream method handler
-        :param method: the method.
-        :type method: Callable
-        :param method_name: the method name. If not provided, the method name will be used.
-        :type method_name: Optional[str]
-        :param request_deserializer: the request deserializer.
-        :type request_deserializer: Optional[DeserializingFunction]
-        :param response_serializer: the response serializer.
-        :type response_serializer: Optional[SerializingFunction]
-        :return: the client stream method handler.
-        :rtype: RpcMethodHandler
-        """
-        # Use custom serializers if provided, otherwise get from codec
-        if request_deserializer is None or response_serializer is None:
-            default_deserializer, default_serializer = cls.get_codec(**kwargs)
-            request_deserializer = request_deserializer or default_deserializer
-            response_serializer = response_serializer or default_serializer
-            
+        **kwargs,
+    ) -> "RpcMethodHandler":
+        inferred_name, inferred_param_types, inferred_return_type = cls._infer_types_from_method(method)
+        resolved_method_name = method_name or inferred_name
+        resolved_param_types = params_types or inferred_param_types
+        resolved_return_type = return_type or inferred_return_type
+        resolved_codec = codec or "json"
+
         return cls(
-            MethodDescriptor(
-                callable_method=method,
-                method_name=method_name or method.__name__,
-                arg_serialization=(None, request_deserializer),
-                return_serialization=(response_serializer, None),
+            cls._create_method_descriptor(
+                method=method,
+                method_name=resolved_method_name,
+                params_types=resolved_param_types,
+                return_type=resolved_return_type,
                 rpc_type=RpcTypes.CLIENT_STREAM.value,
+                codec=resolved_codec,
+                request_deserializer=request_deserializer,
+                response_serializer=response_serializer,
+                **kwargs,
             )
         )
 
@@ -139,36 +158,30 @@ class RpcMethodHandler:
         cls,
         method: Callable,
         method_name: Optional[str] = None,
+        params_types: Optional[List[Type]] = None,
+        return_type: Optional[Type] = None,
+        codec: Optional[str] = None,
         request_deserializer: Optional[DeserializingFunction] = None,
         response_serializer: Optional[SerializingFunction] = None,
-        **kwargs
-    ):
-        """
-        Create a server stream method handler
-        :param method: the method.
-        :type method: Callable
-        :param method_name: the method name. If not provided, the method name will be used.
-        :type method_name: Optional[str]
-        :param request_deserializer: the request deserializer.
-        :type request_deserializer: Optional[DeserializingFunction]
-        :param response_serializer: the response serializer.
-        :type response_serializer: Optional[SerializingFunction]
-        :return: the server stream method handler.
-        :rtype: RpcMethodHandler
-        """
-        # Use custom serializers if provided, otherwise get from codec
-        if request_deserializer is None or response_serializer is None:
-            default_deserializer, default_serializer = cls.get_codec(**kwargs)
-            request_deserializer = request_deserializer or default_deserializer
-            response_serializer = response_serializer or default_serializer
-            
+        **kwargs,
+    ) -> "RpcMethodHandler":
+        inferred_name, inferred_param_types, inferred_return_type = cls._infer_types_from_method(method)
+        resolved_method_name = method_name or inferred_name
+        resolved_param_types = params_types or inferred_param_types
+        resolved_return_type = return_type or inferred_return_type
+        resolved_codec = codec or "json"
+
         return cls(
-            MethodDescriptor(
-                callable_method=method,
-                method_name=method_name or method.__name__,
-                arg_serialization=(None, request_deserializer),
-                return_serialization=(response_serializer, None),
+            cls._create_method_descriptor(
+                method=method,
+                method_name=resolved_method_name,
+                params_types=resolved_param_types,
+                return_type=resolved_return_type,
                 rpc_type=RpcTypes.SERVER_STREAM.value,
+                codec=resolved_codec,
+                request_deserializer=request_deserializer,
+                response_serializer=response_serializer,
+                **kwargs,
             )
         )
 
@@ -177,55 +190,38 @@ class RpcMethodHandler:
         cls,
         method: Callable,
         method_name: Optional[str] = None,
+        params_types: Optional[List[Type]] = None,
+        return_type: Optional[Type] = None,
+        codec: Optional[str] = None,
         request_deserializer: Optional[DeserializingFunction] = None,
         response_serializer: Optional[SerializingFunction] = None,
         **kwargs,
-    ):
-        """
-        Create a bidi stream method handler
-        :param method: the method.
-        :type method: Callable
-        :param method_name: the method name. If not provided, the method name will be used.
-        :type method_name: Optional[str]
-        :param request_deserializer: the request deserializer.
-        :type request_deserializer: Optional[DeserializingFunction]
-        :param response_serializer: the response serializer.
-        :type response_serializer: Optional[SerializingFunction]
-        :return: the bidi stream method handler.
-        :rtype: RpcMethodHandler
-        """
-        # Use custom serializers if provided, otherwise get from codec
-        if request_deserializer is None or response_serializer is None:
-            default_deserializer, default_serializer = cls.get_codec(**kwargs)
-            request_deserializer = request_deserializer or default_deserializer
-            response_serializer = response_serializer or default_serializer
-            
+    ) -> "RpcMethodHandler":
+        inferred_name, inferred_param_types, inferred_return_type = cls._infer_types_from_method(method)
+        resolved_method_name = method_name or inferred_name
+        resolved_param_types = params_types or inferred_param_types
+        resolved_return_type = return_type or inferred_return_type
+        resolved_codec = codec or "json"
+
         return cls(
-            MethodDescriptor(
-                callable_method=method,
-                method_name=method_name or method.__name__,
-                arg_serialization=(None, request_deserializer),
-                return_serialization=(response_serializer, None),
+            cls._create_method_descriptor(
+                method=method,
+                method_name=resolved_method_name,
+                params_types=resolved_param_types,
+                return_type=resolved_return_type,
                 rpc_type=RpcTypes.BI_STREAM.value,
+                codec=resolved_codec,
+                request_deserializer=request_deserializer,
+                response_serializer=response_serializer,
+                **kwargs,
             )
         )
-    
+
 
 class RpcServiceHandler:
-    """
-    Rpc service handler
-    """
-
     __slots__ = ["_service_name", "_method_handlers"]
 
     def __init__(self, service_name: str, method_handlers: list[RpcMethodHandler]):
-        """
-        Initialize the RpcServiceHandler
-        :param service_name: the name of the service.
-        :type service_name: str
-        :param method_handlers: the method handlers.
-        :type method_handlers: List[RpcMethodHandler]
-        """
         self._service_name = service_name
         self._method_handlers: dict[str, RpcMethodHandler] = {}
 
@@ -235,18 +231,8 @@ class RpcServiceHandler:
 
     @property
     def service_name(self) -> str:
-        """
-        Get the service name
-        :return: the service name
-        :rtype: str
-        """
         return self._service_name
 
     @property
     def method_handlers(self) -> dict[str, RpcMethodHandler]:
-        """
-        Get the method handlers
-        :return: the method handlers
-        :rtype: Dict[str, RpcMethodHandler]
-        """
         return self._method_handlers
