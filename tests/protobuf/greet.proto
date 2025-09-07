@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package protobuf_test;
+
+message GreeterRequest {
+  string name = 1;
+}
+
+message GreeterReply {
+  string message = 1;
+}

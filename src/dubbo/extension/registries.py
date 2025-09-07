@@ -18,6 +18,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from dubbo.cluster import LoadBalance
+from dubbo.codec import Codec
+from dubbo.codec.json_codec import TypeHandler
+from dubbo.codec.protobuf_codec import ProtobufEncoder
 from dubbo.compression import Compressor, Decompressor
 from dubbo.protocol import Protocol
 from dubbo.registry import RegistryFactory
@@ -47,6 +50,9 @@ registries = [
     "compressorRegistry",
     "decompressorRegistry",
     "transporterRegistry",
+    "codecRegistry",
+    "jsonTypeHandlerRegistry",
+    "protoHandlerRegistry",
 ]
 
 # RegistryFactory registry
@@ -84,7 +90,6 @@ compressorRegistry = ExtendedRegistry(
     },
 )
 
-
 # Decompressor registry
 decompressorRegistry = ExtendedRegistry(
     interface=Decompressor,
@@ -95,11 +100,43 @@ decompressorRegistry = ExtendedRegistry(
     },
 )
 
-
 # Transporter registry
 transporterRegistry = ExtendedRegistry(
     interface=Transporter,
     impls={
         "aio": "dubbo.remoting.aio.aio_transporter.AioTransporter",
+    },
+)
+
+# Codec registry
+codecRegistry = ExtendedRegistry(
+    interface=Codec,
+    impls={
+        "json": "dubbo.codec.json_codec.JsonTransportCodec",
+        "protobuf": "dubbo.codec.protobuf_codec.ProtobufTransportCodec",
+    },
+)
+
+# Protobuf handler registry
+protoHandlerRegistry = ExtendedRegistry(
+    interface=ProtobufEncoder,
+    impls={
+        "betterproto": "dubbo.codec.protobuf_codec.BetterprotoMessageHandler",
+        "primitive": "dubbo.codec.protobuf_codec.PrimitiveHandler",
+        "googleproto": "dubbo.codec.protobuf_codec.GoogleProtobufMessageHandler",
+    },
+)
+
+# JSON type handler registry
+jsonTypeHandlerRegistry = ExtendedRegistry(
+    interface=TypeHandler,
+    impls={
+        "datetime": "dubbo.codec.json_codec.DateTimeHandler",
+        "decimal": "dubbo.codec.json_codec.DecimalHandler",
+        "collection": "dubbo.codec.json_codec.CollectionHandler",
+        "enum": "dubbo.codec.json_codec.EnumHandler",
+        "dataclass": "dubbo.codec.json_codec.DataclassHandler",
+        "simple": "dubbo.codec.json_codec.SimpleTypesHandler",
+        "pydantic": "dubbo.codec.json_codec.PydanticHandler",
     },
 )

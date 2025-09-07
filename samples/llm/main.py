@@ -15,12 +15,12 @@
 # limitations under the License.
 from time import sleep
 
+import chat_pb2
 from lmdeploy import GenerationConfig, TurbomindEngineConfig, pipeline
 
 from dubbo import Dubbo
 from dubbo.configs import RegistryConfig, ServiceConfig
 from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
-import chat_pb2
 
 # the path of a model. It could be one of the following options:
 # 1. A local directory path of a turbomind model

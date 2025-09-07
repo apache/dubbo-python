@@ -30,9 +30,7 @@ from dubbo.proxy.handlers import RpcServiceHandler
 from dubbo.remoting import Server, Transporter
 from dubbo.remoting.aio import constants as aio_constants
 from dubbo.remoting.aio.http2.protocol import Http2ClientProtocol, Http2ServerProtocol
-from dubbo.remoting.aio.http2.stream_handler import (
-    StreamClientMultiplexHandler
-)
+from dubbo.remoting.aio.http2.stream_handler import StreamClientMultiplexHandler
 from dubbo.url import URL
 
 _LOGGER = loggerFactory.get_logger()
