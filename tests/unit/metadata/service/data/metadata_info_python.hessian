@@ -1,0 +1,3 @@
+C0&org.apache.dubbo.metadata.MetadataInfoìapprevisionservices`
+orders-app0 265ea22115086ffa295b1c5ffa5dfabaH0'g1/com.example.OrderService:2.0.0:dubboC02org.apache.dubbo.metadata.MetadataInfo$ServiceInfoónamegroupversionprotocolportpathparamsacom.example.OrderServiceg12.0.0dubbo‘Qëcom.example.OrderServiceHapplication
+orders-appmethods	find,listsideproviderZcom.example.Health:dubboacom.example.HealthNNdubbo‘Qëcom.example.HealthHZZ

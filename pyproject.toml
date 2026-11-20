@@ -1,173 +1,234 @@
-#
-# Licensed to the Apache Software Foundation (ASF) under one or more
-# contributor license agreements.  See the NOTICE file distributed with
-# this work for additional information regarding copyright ownership.
-# The ASF licenses this file to You under the Apache License, Version 2.0
-# (the "License"); you may not use this file except in compliance with
-# the License.  You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
 [build-system]
-requires = ["hatchling", "hatch-fancy-pypi-readme"]
+requires = ["hatchling>=1.26"]
 build-backend = "hatchling.build"
 
 [project]
-name="apache-dubbo"
-requires-python = ">=3.9"
-authors = [
-    {name = "Apache Dubbo Community", email = "dev@dubbo.apache.org"}
-]
-maintainers = [
-    {name = "Apache Dubbo Community", email = "dev@dubbo.apache.org"}
-]
-description = "Python Implementation For Apache Dubbo."
+name = "apache-dubbo"
+version = "3.0.0b2"
+description = "Python-native microservice RPC framework for Apache Dubbo"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Apache Dubbo Community", email = "dev@dubbo.apache.org" }]
 license = "Apache-2.0"
-license-files = ["LICEN[CS]E.*"]
-keywords=["dubbo", "rpc","grpc", "dubbo-python", "http2", "network"]
-classifiers=[
+license-files = ["LICENSE", "NOTICE"]
+keywords = ["dubbo", "microservices", "rpc", "service-discovery"]
+classifiers = [
     "Development Status :: 4 - Beta",
+    "Framework :: AsyncIO",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Framework :: AsyncIO",
-    "Topic :: Internet",
-    "Topic :: Internet :: WWW/HTTP",
-    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Networking",
+    "Typing :: Typed",
 ]
-
+# An upper bound only where the next major or minor release may break what is used.
 dependencies = [
-    "h2>=4.1.0",
-    "uvloop>=0.19.0; platform_system!='Windows'",
-    "psutil>=6.0.0",
+    "anyio>=4.14,<5",
+    "attrs>=26.1",
+    "cattrs>=26.1",
+    "hessian2>=0.2,<0.3",
+    "multidict>=7.2",
+    "ngh2>=0.5,<0.6",
+    "protobuf>=7.36,<8",
+    "psutil>=7",
 ]
-dynamic = ["version", "readme"]
 
+[project.optional-dependencies]
+# The rules that registries and configuration centers deliver are YAML.
+zookeeper = ["kazoo>=2.11", "apache-dubbo[yaml]"]
+nacos = ["nacos-sdk-python>=3.2,<4", "apache-dubbo[yaml]"]
+yaml = ["PyYAML>=6"]
+properties = ["dotproperties>=0.2,<0.3"]
+uvloop = ["uvloop>=0.22,<1; sys_platform != 'win32'"]
+protoc = ["grpcio-tools>=1.85"]
 
 [project.urls]
-Homepage = "https://cn.dubbo.apache.org"
-Documentation = "https://cn.dubbo.apache.org/en/overview/mannual/python-sdk/"
+Homepage = "https://dubbo.apache.org/"
+Documentation = "https://dubbo.apache.org/en/overview/mannual/python-sdk/"
 Repository = "https://github.com/apache/dubbo-python"
 Issues = "https://github.com/apache/dubbo/issues"
 
-[project.optional-dependencies]
-zookeeper = [
-    "kazoo>=2.10.0",
-]
+[project.scripts]
+protoc-gen-python-dubbo = "dubbo.protoc.plugin:main"
 
-### Hatch settings ###
-[tool.hatch.version]
-path = "src/dubbo/__about__.py"
+[project.entry-points."apache_dubbo.config.parser"]
+json = "dubbo.config.parsers.json:JsonParser"
+yaml = "dubbo.config.parsers.yaml:YamlParser"
+yml = "dubbo.config.parsers.yaml:YamlParser"
+properties = "dubbo.config.parsers.properties:PropertiesParser"
+
+[project.entry-points."apache_dubbo.config_center"]
+zookeeper = "dubbo.config_center.zookeeper:ZookeeperConfigCenter"
+nacos = "dubbo.config_center.nacos:NacosConfigCenter"
+
+[project.entry-points."apache_dubbo.interface_registry"]
+zookeeper = "dubbo.registry.zookeeper:ZookeeperInterfaceRegistry"
+nacos = "dubbo.registry.nacos:NacosInterfaceRegistry"
+
+[project.entry-points."apache_dubbo.instance_registry"]
+zookeeper = "dubbo.registry.zookeeper:ZookeeperInstanceRegistry"
+nacos = "dubbo.registry.nacos:NacosInstanceRegistry"
+
+[project.entry-points."apache_dubbo.metadata_report"]
+zookeeper = "dubbo.metadata.report.zookeeper:ZookeeperMetadataReport"
+nacos = "dubbo.metadata.report.nacos:NacosMetadataReport"
+
+[project.entry-points."apache_dubbo.cluster"]
+available = "dubbo.cluster.available:AvailableCluster"
+broadcast = "dubbo.cluster.broadcast:BroadcastCluster"
+failback = "dubbo.cluster.failback:FailbackCluster"
+failfast = "dubbo.cluster.failfast:FailfastCluster"
+failover = "dubbo.cluster.failover:FailoverCluster"
+failsafe = "dubbo.cluster.failsafe:FailsafeCluster"
+forking = "dubbo.cluster.forking:ForkingCluster"
+zone-aware = "dubbo.cluster.zoneaware:ZoneAwareCluster"
+
+[project.entry-points."apache_dubbo.loadbalance"]
+consistenthash = "dubbo.cluster.loadbalance.consistenthash:ConsistentHashLoadBalance"
+leastactive = "dubbo.cluster.loadbalance.leastactive:LeastActiveLoadBalance"
+random = "dubbo.cluster.loadbalance.random:RandomLoadBalance"
+roundrobin = "dubbo.cluster.loadbalance.roundrobin:RoundRobinLoadBalance"
+
+[project.entry-points."apache_dubbo.router"]
+condition = "dubbo.cluster.router.condition:ConditionRouter"
+tag = "dubbo.cluster.router.tag:TagRouter"
+
+[project.entry-points."apache_dubbo.protocol"]
+dubbo = "dubbo.protocol.dubbo:DubboProtocol"
+tri = "dubbo.protocol.triple:TripleProtocol"
+
+[project.entry-points."apache_dubbo.serialization"]
+hessian2 = "dubbo.serialization.hessian2:Hessian2Serialization"
+protobuf = "dubbo.serialization.protobuf:ProtobufSerialization"
+
+[project.entry-points."apache_dubbo.compression"]
+bzip2 = "dubbo.compression.bzip2:Bzip2Compressor"
+deflate = "dubbo.compression.deflate:DeflateCompressor"
+gzip = "dubbo.compression.gzip:GzipCompressor"
+
+[project.entry-points."apache_dubbo.transport.zookeeper"]
+kazoo = "dubbo.transport.zookeeper.kazoo:KazooZookeeperClient"
+
+[project.entry-points."apache_dubbo.transport.nacos.naming"]
+sdk = "dubbo.transport.nacos.sdk:SdkNacosNamingClient"
+
+[project.entry-points."apache_dubbo.transport.nacos.config"]
+sdk = "dubbo.transport.nacos.sdk:SdkNacosConfigClient"
+
+[project.entry-points."apache_dubbo.transport.h2.client"]
+aio = "dubbo.transport.h2.aio:AioH2Client"
+
+[project.entry-points."apache_dubbo.transport.h2.server"]
+aio = "dubbo.transport.h2.aio:AioH2Server"
+
+[dependency-groups]
+# The benchmarks of benchmark/: the gRPC libraries they compare with, and what plots the results.
+benchmark = [{ include-group = "grpc" }, "altair>=6.3,<7", "grpclib>=0.4,<0.5", "vl-convert-python>=1.9,<2"]
+dev = [
+    { include-group = "lint" },
+    { include-group = "test" },
+    { include-group = "type" },
+]
+# grpcio, which the tests and the benchmarks call and serve gRPC with.
+grpc = ["grpcio>=1.85,<2"]
+lint = [
+    "pre-commit>=4.6,<5",
+    "ruff>=0.17,<0.18",
+]
+# Pinned, so that regenerating the modules of src/dubbo/_proto changes nothing else.
+proto = ["grpcio-tools==1.85.0"]
+test = [{ include-group = "grpc" }, "pytest>=9.1,<10"]
+type = ["ty==0.0.104", "types-protobuf>=7.35,<8"]
 
 [tool.hatch.build.targets.sdist]
-include = [
-    "/src",
-    "/tests",
-    "/README.md",
-]
+only-include = ["src/dubbo"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/dubbo"]
 
-
-[tool.hatch.metadata.hooks.fancy-pypi-readme]
-content-type = "text/markdown"
-
-[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
-path = "README.md"
-
-
-
-### Ruff settings ###
-
-# Top-level
 [tool.ruff]
-target-version = "py39"
 line-length = 120
-extend-exclude = ["samples/proto"]
+# Modules generated by protoc.
+extend-exclude = ["**/*_pb2.py", "**/*_pb2.pyi", "**/*_pb2_grpc.py", "**/*_dubbo.py"]
+force-exclude = true
 
-# Format
-[tool.ruff.format]
-docstring-code-format = true
-
-# Lint
 [tool.ruff.lint]
 select = [
-    "E", # pycodestyle errors
-    "W", # pycodestyle warnings
-    "F", # pyflakes
-    "I", # Check for missing imports (auto-fixable)
-    "UP", # pyupgrade
-    "ASYNC", # flake8-async
-    "ISC", # Checks for implicit literal string concatenation (auto-fixable)
-    "LOG", # Checking the use of logging objects
-    "G",  # Check for logging format issues (auto-fixable)
-]
-ignore = [
-    "ISC001" # may casue conflict with ruff
-]
-
-
-[tool.ruff.lint.isort]
-combine-as-imports = true
-
-section-order = [
-  "future",
-  "standard-library",
-  "third-party",
-  "first-party",
-  "local-folder"
-]
-
-### Coverage settings ###
-[tool.coverage.run]
-branch = true
-relative_files = true
-include = ["src/dubbo/*"]
-
-[tool.coverage.report]
-# Skip coverage report for 100% covered files
-skip_covered = true
-exclude_also = [
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-    "if __name__ == .__main__.:",
-    "@(abc\\.)?abstractmethod",
-    "@(typing(_extensions)?\\.)?overload",
-    "if (typing(_extensions)?\\.)?TYPE_CHECKING:"
+    # pycodestyle: import, statement, and syntax errors.
+    "E4",
+    "E7",
+    "E9",
+    # Pyflakes: undefined names, unused imports, and related errors.
+    "F",
+    # isort: import grouping and ordering.
+    "I",
+    # pyupgrade: syntax supported by the minimum Python version.
+    "UP",
+    # flake8-bugbear: likely bugs and fragile patterns.
+    "B",
+    # flake8-comprehensions: unnecessary or suboptimal comprehensions.
+    "C4",
+    # flake8-simplify: unnecessarily complex expressions and control flow.
+    "SIM",
+    # flake8-pie: unnecessary code and avoidable patterns.
+    "PIE",
+    # Perflint: common Python performance anti-patterns.
+    "PERF",
+    # flake8-pytest-style: common pytest API misuse.
+    "PT",
+    # Ruff: native correctness and suppression checks.
+    "RUF",
 ]
 
+[tool.ty.src]
+include = ["src"]
 
-### Mypy settings ###
-[tool.mypy]
-ignore_missing_imports = true
+[tool.ty.terminal]
+error-on-warning = true
 
-[[tool.mypy.overrides]]
-module = "tests.*"
-disallow_untyped_defs = false
-check_untyped_defs = true
-
-### Pytest settings ###
 [tool.pytest]
-addopts = "-rxXs"
-testpaths = ["tests"]
-python_files = [
-    "test_*.py"
+minversion = "9.1"
+addopts = [
+    "-ra", # Summarize every result except passed tests.
+    "--import-mode=importlib", # Import tests without changing sys.path.
+]
+strict_config = true
+strict_markers = true
+markers = [
+    "zookeeper: needs the ZooKeeper whose host:port DUBBO_TEST_ZOOKEEPER holds",
+    "nacos: needs the Nacos whose host:port DUBBO_TEST_NACOS holds",
+    "samples: runs a sample of samples/ as its README says",
+    "real_clock: waits for a thread or a process, so it runs on the real clock instead of the virtual one",
+]
+strict_parametrization_ids = true
+strict_xfail = true
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:v2.nacos", # The Nacos SDK declares pydantic models the deprecated way.
+    # The Nacos SDK leaves the files of its local cache open.
+    "ignore:Exception ignored (in.|while finalizing file) <_io.FileIO name='[^']*/nacos/cache/:pytest.PytestUnraisableExceptionWarning",
 ]

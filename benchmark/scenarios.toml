@@ -1,0 +1,66 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# The scenarios run.py measures. Each measures every combination of its
+# implementations, protocols, sizes and calls in flight, with a new server
+# for each, in each of the rounds. The Python ones run on uvloop when it is
+# installed. A scenario with cores holds the side it measures to that many
+# cores, and the other side to the rest, on Linux with taskset. Times are in
+# seconds.
+warmup = 5.0
+duration = 15.0
+# Rounds of every point, run one after another over the whole list, so that a
+# drift of the machine spreads over all points; the charts show the median.
+rounds = 3
+# The connections each load opens, at most one for each call in flight.
+connections = 8
+# The processes of Python consumers that load a Dubbo server where Go is not installed.
+load_processes = 4
+
+# Each server on one core, as the Python servers run one event loop: the
+# headline. Its best throughput, and its P99 latency at 64 calls in flight.
+[[scenario]]
+name = "one-core"
+side = "server"
+cores = 1
+implementations = ["python", "java", "go", "grpcio", "grpclib"]
+protocols = ["tri", "dubbo"]
+sizes = [128, 16384]
+concurrency = [64, 128]
+
+# Each Dubbo server on eight cores, which a Java or Go process uses and a Python one does not:
+# its best throughput, with the load on the other cores.
+[[scenario]]
+name = "multi-core"
+side = "server"
+cores = 8
+implementations = ["python", "java", "go"]
+protocols = ["tri", "dubbo"]
+sizes = [128, 16384]
+# Below 200, which Dubbo Python and Java serve at once by default and refuse beyond.
+concurrency = [128, 192]
+
+# One Dubbo Python consumer on one core, calling, on the others, Dubbo Java over Triple and
+# Dubbo Go over Dubbo.
+[[scenario]]
+name = "client"
+side = "client"
+cores = 1
+implementations = ["python"]
+protocols = ["tri", "dubbo"]
+sizes = [128, 16384]
+concurrency = [64, 128]

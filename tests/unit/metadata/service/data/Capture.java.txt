@@ -1,0 +1,48 @@
+import com.alibaba.com.caucho.hessian.io.Hessian2Input;
+import com.alibaba.com.caucho.hessian.io.Hessian2Output;
+import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
+import org.apache.dubbo.metadata.MetadataInfo;
+import org.apache.dubbo.metadata.MetadataInfo.ServiceInfo;
+
+public class Capture {
+    public static void main(String[] args) throws Exception {
+        Map<String, String> params = new TreeMap<>();
+        params.put("application", "demo-provider");
+        params.put("methods", "sayHello,sayHelloAsync");
+        params.put("side", "provider");
+        ServiceInfo service = new ServiceInfo(
+                "org.apache.dubbo.demo.DemoService", "g1", "1.0.0", "dubbo", 20880,
+                "org.apache.dubbo.demo.DemoService", params);
+        ServiceInfo bare = new ServiceInfo(
+                "org.apache.dubbo.demo.GreeterService", null, null, "tri", -1,
+                "org.apache.dubbo.demo.GreeterService", new TreeMap<>());
+        Map<String, ServiceInfo> services = new HashMap<>();
+        services.put(service.getMatchKey(), service);
+        services.put(bare.getMatchKey(), bare);
+        MetadataInfo info = new MetadataInfo("demo-provider", "b7b1f9e4c0d8a3d6e5f2a1b0c9d8e7f6", services);
+
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        Hessian2Output out = new Hessian2Output(bytes);
+        out.writeObject(info);
+        out.flush();
+        Files.write(Path.of(args[0]), bytes.toByteArray());
+
+        try (FileInputStream file = new FileInputStream(args[1])) {
+            MetadataInfo read = (MetadataInfo) new Hessian2Input(file).readObject();
+            System.out.println("app=" + read.getApp() + " revision=" + read.getRevision());
+            for (Map.Entry<String, ServiceInfo> entry : new TreeMap<>(read.getServices()).entrySet()) {
+                ServiceInfo s = entry.getValue();
+                System.out.println(entry.getKey() + " -> name=" + s.getName() + " group=" + s.getGroup()
+                        + " version=" + s.getVersion() + " protocol=" + s.getProtocol() + " port=" + s.getPort()
+                        + " path=" + s.getPath() + " params=" + new TreeMap<>(s.getParams())
+                        + " matchKey=" + s.getMatchKey());
+            }
+        }
+    }
+}
