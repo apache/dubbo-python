@@ -1,0 +1,55 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+# Builds the candidates of a release: the source release that the PMC votes on, and the sdist and wheel built from
+# it. The release manager signs them, puts them to the vote, and uploads the sdist and wheel to PyPI after it passes.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Read the version
+        run: echo "VERSION=$(uv version --short)" >> "$GITHUB_ENV"
+      - name: The tag names the version
+        if: github.ref_type == 'tag'
+        run: test "${GITHUB_REF_NAME#v}" = "$VERSION"
+      - run: uv build
+      - name: Build the source release
+        run: >-
+          git archive --format=tar.gz --prefix="apache-dubbo-python-$VERSION/"
+          -o "dist/apache-dubbo-python-$VERSION-src.tar.gz" HEAD
+      - name: Write the checksums
+        working-directory: dist
+        run: for file in *; do sha512sum "$file" > "$file.sha512"; done
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-candidates-${{ env.VERSION }}
+          path: dist/

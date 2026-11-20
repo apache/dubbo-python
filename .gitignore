@@ -1,66 +1,61 @@
-# Compiler
-.idea/
-.vscode/
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
-# Byte-compiled / optimized / DLL files / logs
+# Entries follow https://github.com/github/gitignore/blob/main/Python.gitignore,
+# limited to the tools this project uses.
+
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
-*$py.class
-*.log
-
+*.py[codz]
 
 # Distribution / packaging
-.Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
 
 # Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
+.pytest_cache/
 .coverage
 .coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
+htmlcov/
 
 # Environments
+.venv/
 .env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
+.env.*
+!.env.example
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# Ruff stuff
+.ruff_cache/
+
+# PyPI configuration file
+.pypirc
+
+# Editors
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# Operating system metadata
+.DS_Store
+._*
+Thumbs.db
+[Dd]esktop.ini
+.directory

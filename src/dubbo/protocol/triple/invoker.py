@@ -1,201 +1,231 @@
-#
-# Licensed to the Apache Software Foundation (ASF) under one or more
-# contributor license agreements.  See the NOTICE file distributed with
-# this work for additional information regarding copyright ownership.
-# The ASF licenses this file to You under the Apache License, Version 2.0
-# (the "License"); you may not use this file except in compliance with
-# the License.  You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements. See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership. The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License. You may obtain a copy of the License at
 #
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-import concurrent
-from collections.abc import Iterator
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations
+# under the License.
 
-from dubbo.classes import MethodDescriptor
-from dubbo.compression import Compressor, Identity
-from dubbo.constants import common_constants
-from dubbo.extension import ExtensionError, extensionLoader
-from dubbo.loggers import loggerFactory
-from dubbo.protocol import Invoker, Result
-from dubbo.protocol.invocation import Invocation, RpcInvocation
-from dubbo.protocol.triple.call import TripleClientCall
-from dubbo.protocol.triple.call.client_call import (
-    FutureToClientCallListenerAdapter,
-    ReadStreamToClientCallListenerAdapter,
+import importlib.metadata
+import platform
+from collections.abc import Mapping
+
+import attrs
+from multidict import MultiDict
+
+from dubbo.constants import (
+    APPLICATION_KEY,
+    DEFAULT_JAVA_SERIALIZATION,
+    DEFAULT_SHUTWAIT,
+    GENERIC_KEY,
+    GROUP_KEY,
+    SERIALIZATION_KEY,
+    SHUTWAIT_KEY,
+    SSL_ENABLED_KEY,
+    TOKEN_KEY,
+    VERSION_KEY,
 )
-from dubbo.protocol.triple.constants import TripleHeaderName, TripleHeaderValue
-from dubbo.protocol.triple.metadata import RequestMetadata
-from dubbo.protocol.triple.results import TriResult
-from dubbo.protocol.triple.streams import (
-    TriClientWriteStream,
-    TriReadStream,
-    TriReadWriteStream,
-)
-from dubbo.remoting import Client
-from dubbo.remoting.aio.exceptions import RemotingError
-from dubbo.remoting.aio.http2.stream_handler import StreamClientMultiplexHandler
-from dubbo.serialization import (
-    CustomDeserializer,
-    CustomSerializer,
-    DirectDeserializer,
-    DirectSerializer,
-)
+from dubbo.exceptions import RpcError, Status
+from dubbo.extension import ExtensionError
+from dubbo.protocol.generic import GENERIC_INVOKE, invoke_arguments
+from dubbo.protocol.served import Calls, ClientPool, call_within, method_timeout
+from dubbo.rpc.definition import Method, RpcType, Service
+from dubbo.rpc.invocation import Invocation, Invoker, Result
+from dubbo.serialization import JavaSerialization, Serialization, get_java_serialization
+from dubbo.transport.h2 import H2Client, H2Headers
 from dubbo.url import URL
-from dubbo.utils import FunctionHelper
+from dubbo.utils.converters import boolean, milliseconds
+
+from .grpc import GrpcMethod
+from .grpc.headers import GrpcHeader, content_type
+from .headers import HttpHeader, TripleHeader
+from .messages import MethodMessages, method_messages
+from .settings import TripleSettings, transport_url
 
 __all__ = ["TripleInvoker"]
 
-
-_LOGGER = loggerFactory.get_logger()
+# The headers that carry URL parameters, by parameter key.
+_PARAMETER_HEADERS = (
+    (TripleHeader.SERVICE_GROUP, GROUP_KEY),
+    (TripleHeader.SERVICE_VERSION, VERSION_KEY),
+    (TripleHeader.CONSUMER_APPLICATION, APPLICATION_KEY),
+)
+# The library, its version and the platform, in the form gRPC recommends.
+_USER_AGENT = (
+    f"grpc-python-dubbo/{importlib.metadata.version('apache-dubbo')} "
+    f"({platform.system()}; {platform.python_implementation()}/{platform.python_version()})"
+).encode()
 
 
 class TripleInvoker(Invoker):
-    """
-    Triple invoker.
+    """Calls the methods of one remote service over a share in an HTTP/2 client of ``clients``.
+
+    Each method's call is prepared when the invoker is made, so a call only
+    encodes, sends and receives. Closing the invoker refuses new calls, waits
+    for those running as long as ``shutwait``, ten seconds when absent, then
+    gives the share back. It is available while open and while the client is.
+    A streaming call runs until its stream exits. A unary call runs until its
+    result, for at most the milliseconds of ``{method}.timeout``, else of
+    ``timeout``, and then ends with ``DEADLINE_EXCEEDED``.
+
+    Each call attaches the ``token`` of ``url``, which the provider
+    registers; one that carries a ``token`` itself fails with
+    ``INVALID_ARGUMENT``.
+
+    A generic call travels as ``$invoke`` of the service, its values wrapped
+    in the format of ``serialization`` when that carries Java objects, else
+    in ``hessian2``.
+
+    ``compressor`` names the compression of the requests, such as ``gzip``;
+    they are sent as they are when it is absent. ``max-receive-message-size``
+    is the bytes of the largest response, 4 MiB when absent.
+
+    Raises:
+        ValueError: A parameter is invalid, or names no installed compressor.
     """
 
-    __slots__ = ["_url", "_client", "_stream_multiplexer", "_compression"]
-
-    def __init__(self, url: URL, client: Client, stream_multiplexer: StreamClientMultiplexHandler):
+    def __init__(
+        self,
+        url: URL,
+        definition: Service,
+        client: H2Client,
+        serialization: Serialization,
+        messages: Mapping[str, MethodMessages],
+        clients: ClientPool[H2Client],
+    ) -> None:
+        """``messages`` tells how the values of each method of ``definition`` travel in ``serialization``."""
         self._url = url
+        self._interface = definition.interface
+        self._serialization = serialization
+        self._settings = settings = TripleSettings.from_url(transport_url(url))
+        scheme = b"https" if url.get_parameter(SSL_ENABLED_KEY, boolean, False) else b"http"
+        # Pseudo-header fields precede the others; :path follows them in each method's headers.
+        self._pseudo: H2Headers = (
+            (HttpHeader.METHOD, b"POST"),
+            (HttpHeader.SCHEME, scheme),
+            (HttpHeader.AUTHORITY, f"{url.host}:{url.port}".encode()),
+        )
+        # The fields after :path and content-type.
+        self._fields: H2Headers = (
+            (HttpHeader.TE, b"trailers"),
+            (HttpHeader.USER_AGENT, _USER_AGENT),
+            (GrpcHeader.ACCEPT_ENCODING, settings.compressors.accept_encoding),
+            *(((GrpcHeader.ENCODING, settings.encoding),) if settings.compressor is not None else ()),
+            *((name, url.parameters[key].encode()) for name, key in _PARAMETER_HEADERS if url.parameters.get(key)),
+        )
+
+        self._methods = {method.name: self._grpc_method(method, messages[method.name]) for method in definition.methods}
+        self._generic: tuple[GrpcMethod, JavaSerialization] | None = None
+        self._timeouts = {
+            method.name: method_timeout(url, method.name)
+            for method in definition.methods
+            if method.rpc_type is RpcType.UNARY
+        }
+        self._token = url.parameters.get(TOKEN_KEY)
+        self._shutwait = url.get_parameter(SHUTWAIT_KEY, milliseconds, DEFAULT_SHUTWAIT)
         self._client = client
-        self._stream_multiplexer = stream_multiplexer
+        self._clients = clients
+        self._closed = False
+        self._calls = Calls()
 
-    def invoke(self, invocation: RpcInvocation) -> Result:
-        """
-        Invoke the invocation.
-        :param invocation: The invocation to invoke.
-        :type invocation: RpcInvocation
-        :return: The result of the invocation.
-        :rtype: Result
-        """
-        future = concurrent.futures.Future()
-        result = TriResult(future)
-        if not self._client.is_connected():
-            result.set_exception(RemotingError("The client is not connected to the server."))
-            return result
-
-        # get method descriptor
-        method_descriptor: MethodDescriptor = invocation.get_attribute(common_constants.METHOD_DESCRIPTOR_KEY)
-
-        # get arg_serializer
-        arg_serializing_function = method_descriptor.get_arg_serializer()
-        arg_serializer = CustomSerializer(arg_serializing_function) if arg_serializing_function else DirectSerializer()
-
-        # get return_deserializer
-        return_deserializing_function = method_descriptor.get_return_deserializer()
-        return_deserializer = (
-            CustomDeserializer(return_deserializing_function) if return_deserializing_function else DirectDeserializer()
-        )
-
-        write_stream = TriClientWriteStream()
-        read_stream = TriReadStream()
-
-        # create listener
-        rpc_type = method_descriptor.get_rpc_type()
-        is_unary = not rpc_type.client_stream and not rpc_type.server_stream
-        if is_unary:
-            listener = FutureToClientCallListenerAdapter(future)
-        else:
-            read_stream = TriReadStream()
-            listener = ReadStreamToClientCallListenerAdapter(read_stream)
-
-        # Create a new TriClientCall
-        tri_client_call = TripleClientCall(
-            self._stream_multiplexer,
-            listener,
-            arg_serializer,
-            return_deserializer,
-        )
-        write_stream.set_call(tri_client_call)
-
-        if not is_unary:
-            write_stream = TriReadWriteStream(write_stream, read_stream)
-
-        # start the call
-        try:
-            metadata = self._create_metadata(invocation)
-            tri_client_call.start(metadata)
-        except ExtensionError as e:
-            result.set_exception(e)
-            return result
-
-        # write the message
-        if not rpc_type.client_stream:
-            # if the client call is not a stream, we send the message directly
-            FunctionHelper.call_func(write_stream.write, invocation.get_argument())
-            write_stream.done_writing()
-        else:
-            # try to get first argument and check if it is an iterable
-            args, _ = invocation.get_argument()
-            if args and isinstance(args[0], Iterator):
-                # if the argument is an iterator, we need to write the stream
-                for arg in args[0]:
-                    write_stream.write(arg)
-                write_stream.done_writing()
-
-        # If the call is not unary, we need to return the stream
-        # server_stream -> return read_stream
-        # client_stream or bidirectional_stream -> return write_read_stream
-        if not is_unary:
-            if rpc_type.server_stream and not rpc_type.client_stream:
-                result.set_value(read_stream)
-            else:
-                result.set_value(write_stream)
-
-        return result
-
-    def _create_metadata(self, invocation: Invocation) -> RequestMetadata:
-        """
-        Create the metadata.
-        :param invocation: The invocation.
-        :type invocation: Invocation
-        :return: The metadata.
-        :rtype: RequestMetadata
-        :raise ExtensionError: If the compressor is not supported.
-        """
-        metadata = RequestMetadata()
-        # set service and method
-        metadata.service = invocation.get_service_name()
-        metadata.method = invocation.get_method_name()
-
-        # get scheme
-        metadata.scheme = (
-            TripleHeaderValue.HTTPS.value
-            if self._url.parameters.get(common_constants.SSL_ENABLED_KEY, False)
-            else TripleHeaderValue.HTTP.value
-        )
-
-        # get compressor
-        compression = self._url.parameters.get(common_constants.COMPRESSION_KEY, Identity.get_message_encoding())
-        if metadata.compressor.get_message_encoding() != compression:
-            try:
-                metadata.compressor = extensionLoader.get_extension(Compressor, compression)()
-            except ExtensionError as e:
-                _LOGGER.error("Unsupported compressor: %s", compression)
-                raise e
-
-        # get address
-        metadata.address = self._url.location
-
-        # TODO add more metadata
-        metadata.attachments[TripleHeaderName.TE.value] = TripleHeaderValue.TRAILERS.value
-
-        return metadata
-
-    def get_url(self) -> URL:
+    @property
+    def url(self) -> URL:
         return self._url
 
-    def is_available(self) -> bool:
-        return self._client.is_connected()
+    @property
+    def available(self) -> bool:
+        return not self._closed and self._client.available
 
-    def destroy(self) -> None:
-        self._client.close()
-        self._client = None
-        self._stream_multiplexer = None
-        self._url = None
+    async def invoke(self, invocation: Invocation) -> Result:
+        if invocation.generic is not None:
+            try:
+                method, serialization = self._generic_method()
+                arguments = invoke_arguments(serialization, invocation.definition, invocation.arguments)
+            except (ExtensionError, TypeError, ValueError) as error:
+                # The cause of a plugin that cannot load tells what to install.
+                reason = f"{error}: {error.__cause__}" if error.__cause__ is not None else str(error)
+                message = f"cannot call {invocation.method} generically: {reason}"
+                return Result(error=RpcError(Status.UNIMPLEMENTED, message))
+            timeout = method_timeout(self._url, invocation.method)
+        else:
+            known = self._methods.get(invocation.method)
+            if known is None:
+                return Result(error=RpcError(Status.UNIMPLEMENTED, f"the service has no method {invocation.method!r}"))
+            method, arguments, timeout = known, invocation.arguments, self._timeouts.get(invocation.method)
+        if self._closed:
+            return Result(error=RpcError(Status.UNAVAILABLE, "the invoker is closed"))
+        if TOKEN_KEY in invocation.attachments:
+            return Result(error=RpcError(Status.INVALID_ARGUMENT, "the attachment token is the protocol's to set"))
+
+        if self._token or invocation.generic is not None:
+            # A copy: each attempt on another provider sends its own attachments.
+            attachments = MultiDict(invocation.attachments)
+            if self._token:
+                attachments[TOKEN_KEY] = self._token
+            if invocation.generic is not None:
+                attachments[GENERIC_KEY] = invocation.generic
+            invocation = attrs.evolve(invocation, arguments=arguments, attachments=attachments)
+
+        self._calls.enter()
+        # A unary call has a timeout; a streaming one runs until its stream exits.
+        if timeout is not None:
+            try:
+                return await call_within(timeout, invocation.method, method.call(self._client, invocation, timeout))
+            finally:
+                self._calls.leave()
+
+        try:
+            result = await method.open(self._client, invocation, on_exit=self._calls.leave)
+        except BaseException:
+            self._calls.leave()
+            raise
+
+        if result.error is not None:
+            self._calls.leave()
+        return result
+
+    async def aclose(self) -> None:
+        if self._closed:
+            return
+
+        self._closed = True
+        try:
+            await self._calls.drain(self._shutwait)
+        finally:
+            await self._clients.release(self._client)
+
+    def _grpc_method(self, method: Method, messages: MethodMessages) -> GrpcMethod:
+        """Return the call of ``method`` of the service, its values travelling as ``messages``."""
+        headers = (
+            *self._pseudo,
+            (HttpHeader.PATH, f"/{self._interface}/{method.name}".encode()),
+            (HttpHeader.CONTENT_TYPE, content_type(messages.content_subtype)),
+            *self._fields,
+        )
+        return GrpcMethod(method, headers, messages, self._settings)
+
+    def _generic_method(self) -> tuple[GrpcMethod, JavaSerialization]:
+        """Return the call of ``$invoke`` and the format of Java objects of its values, made on the first generic call.
+
+        Raises:
+            ExtensionError: The format of Java objects it needs cannot be loaded.
+            ValueError: That format carries no Java objects.
+        """
+        if self._generic is None:
+            java = self._serialization
+            if not isinstance(java, JavaSerialization):
+                java = get_java_serialization(
+                    self._url.update_parameters({SERIALIZATION_KEY: DEFAULT_JAVA_SERIALIZATION})
+                )
+            self._generic = self._grpc_method(GENERIC_INVOKE, method_messages(java, GENERIC_INVOKE)), java
+
+        return self._generic

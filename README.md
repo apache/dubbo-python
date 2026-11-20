@@ -1,135 +1,190 @@
-# Apache Dubbo for Python
-
-![License](https://img.shields.io/github/license/apache/dubbo-python?logo=apache&logoColor=red&label=LICENSE)
-![GitHub last commit](https://img.shields.io/github/last-commit/apache/dubbo-python)
-![GitHub branch check runs](https://img.shields.io/github/check-runs/apache/dubbo-python/main)
-![PyPI - Version](https://img.shields.io/pypi/v/apache-dubbo?logo=pypi&logoColor=gold&label=PyPI&color=blue)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/apache-dubbo?logo=python&logoColor=gold&label=Python)
-
 <p align="center">
-  <img src="https://cn.dubbo.apache.org/imgs/nav_logo2.png" alt="Logo" width="40%" />
+  <img src="https://dubbo.apache.org/imgs/nav_logo2.png" alt="Apache Dubbo" width="40%">
 </p>
 
-Apache Dubbo is an easy-to-use, high-performance WEB and RPC framework with builtin service discovery, traffic management, observability, security features, tools and best practices for building enterprise-level microservices.
+<h1 align="center">Apache Dubbo for Python</h1>
 
-Dubbo-python is a Python implementation of the [triple protocol](https://dubbo.apache.org/zh-cn/overview/reference/protocols/triple-spec/) (a protocol fully compatible with gRPC and friendly to HTTP) and various features designed by Dubbo for constructing microservice architectures.
+<p align="center">
+  <a href="https://github.com/apache/dubbo-python/actions/workflows/ci.yml"><img src="https://github.com/apache/dubbo-python/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://pypi.org/project/apache-dubbo/"><img src="https://img.shields.io/pypi/v/apache-dubbo?label=PyPI" alt="PyPI"></a>
+  <a href="https://pypi.org/project/apache-dubbo/"><img src="https://img.shields.io/pypi/pyversions/apache-dubbo?label=Python" alt="Python versions"></a>
+  <a href="https://github.com/apache/dubbo-python/blob/main/LICENSE"><img src="https://img.shields.io/github/license/apache/dubbo-python?label=License" alt="License"></a>
+</p>
 
-Visit [the official website](https://dubbo.apache.org/) for more information.
+Apache Dubbo for Python is a Python-native implementation of
+[Apache Dubbo](https://dubbo.apache.org/), the RPC and microservice framework.
+Python services join the same registries as Dubbo Java and Dubbo Go services
+and call them, and are called by them, with the service discovery and
+traffic management of Dubbo built in.
 
-### 🚧 Early-Stage Project 🚧
+> The project is in beta: the API may change.
 
-> **Disclaimer:** This project is in the early stages of development. Features are subject to change, and some components may not be fully stable. Contributions and feedback are welcome as the project evolves.
+## Highlights
 
-
-## Architecture
-<img src="./docs/img/Architecture.svg" alt="Architecture" style="zoom:30%;" />
+- **Works with Dubbo Java and Go**: the Triple and Dubbo protocols, Protobuf
+  and Hessian 2, ZooKeeper and Nacos registries, and both application-level
+  and interface-level service discovery.
+- **Compatible with gRPC**: Triple runs over HTTP/2, so gRPC clients and
+  servers, `grpcurl`, health checks and reflection work with it.
+- **Pythonic**: a service is a `typing.Protocol` with type hints; calls are
+  `async`; an application runs inside `async with`, in any asyncio program,
+  with uvloop optional.
+- **Governance built in**: load balancing, cluster fault tolerance, routing
+  rules and dynamic configuration, as in the other Dubbo languages.
+- **Extensible**: every protocol, registry, load balancer, router and filter
+  is a plugin that a package can add through an entry point.
 
 ## Features
 
-- **Service Discovery**: Zookeeper
-- **Load Balance**: Random, CPU
-- **RPC Protocols**: Triple(gRPC compatible and HTTP-friendly)
-- **Transport**: asyncio(uvloop)
-- **Serialization**: Customizable(protobuf, json...)
+From the API down to the transport:
 
+| Layer | What is supported |
+|---|---|
+| API | Contracts as `typing.Protocol`; unary, server streaming, client streaming and bidirectional streaming calls; generic calls; contracts generated from `.proto` files by `protoc-gen-python-dubbo` |
+| Configuration | Code, YAML, JSON, properties files and environment variables, layered; configuration centers on ZooKeeper and Nacos |
+| Service discovery | ZooKeeper and Nacos registries; application-level and interface-level discovery; local and remote metadata |
+| Traffic management | Load balancing: random, round robin, least active, consistent hash. Cluster fault tolerance: failover, failfast, failsafe, failback, forking, broadcast, available, zone-aware. Routing: condition and tag rules, dynamic configuration rules. Filters |
+| Protocols | Triple (HTTP/2, compatible with gRPC), with health checks and reflection; Dubbo. TLS and mutual TLS; gzip, deflate and bzip2 compression |
+| Serialization | Protobuf, Hessian 2 |
+| Runtime | asyncio, uvloop optional; Python 3.11 to 3.14 on Linux, macOS and Windows |
 
 ## Installation
 
-Before you start, make sure you have **`python 3.9+`** installed.
+```shell
+pip install apache-dubbo
+```
 
-1. Install Directly
+Or with [uv](https://docs.astral.sh/uv/):
 
-   ```sh
-   pip install apache-dubbo
-   ```
-2. Install from source
+```shell
+uv add apache-dubbo
+```
 
-   ```sh
-   git clone https://github.com/apache/dubbo-python.git
-   cd dubbo-python && pip install .
-   ```
+The default installation serves and calls over both protocols. Extras add
+optional parts, such as `pip install "apache-dubbo[zookeeper]"`:
 
-## Getting started
+| Extra | Adds |
+|---|---|
+| `zookeeper` | ZooKeeper registry, configuration center and metadata report |
+| `nacos` | Nacos registry, configuration center and metadata report |
+| `yaml` | YAML configuration files |
+| `properties` | `.properties` configuration files |
+| `uvloop` | [uvloop](https://github.com/MagicStack/uvloop), which an application runs on with `uvloop.run(main())`; not on Windows |
+| `protoc` | `grpcio-tools`, to generate contracts from `.proto` files |
 
-Get up and running with Dubbo-Python in just 5 minutes by following our [Quick Start Guide](https://github.com/apache/dubbo-python/tree/main/samples).
+## Quick start
 
-It's as simple as the code snippet below. With just a few lines of code, you can launch a fully functional point-to-point RPC service:
+A service is declared once as a contract, which both sides import.
+`greeter.py`:
 
-1. Build and start the server
+```python
+import typing
 
-   ```python
-   import dubbo
-   from dubbo.configs import ServiceConfig
-   from dubbo.proxy.handlers import RpcMethodHandler, RpcServiceHandler
-   
-   
-   class UnaryServiceServicer:
-       def say_hello(self, message: bytes) -> bytes:
-           print(f"Received message from client: {message}")
-           return b"Hello from server"
-   
-   
-   def build_service_handler():
-       # build a method handler
-       method_handler = RpcMethodHandler.unary(
-           method=UnaryServiceServicer().say_hello, method_name="unary"
-       )
-       # build a service handler
-       service_handler = RpcServiceHandler(
-           service_name="org.apache.dubbo.samples.HelloWorld",
-           method_handlers=[method_handler],
-       )
-       return service_handler
-   
-   
-   if __name__ == "__main__":
-       # build service config
-       service_handler = build_service_handler()
-       service_config = ServiceConfig(
-           service_handler=service_handler, host="127.0.0.1", port=50051
-       )
-       # start the server
-       server = dubbo.Server(service_config).start()
-   
-       input("Press Enter to stop the server...\n")
-   ```
+import dubbo
 
-1. Build and start the Client
 
-   ```python
-   import dubbo
-   from dubbo.configs import ReferenceConfig
-   
-   
-   class UnaryServiceStub:
-       def __init__(self, client: dubbo.Client):
-           self.unary = client.unary(method_name="unary")
-   
-       def say_hello(self, message: bytes) -> bytes:
-           return self.unary(message)
-   
-   
-   if __name__ == "__main__":
-       # Create a client
-       reference_config = ReferenceConfig.from_url(
-           "tri://127.0.0.1:50051/org.apache.dubbo.samples.HelloWorld"
-       )
-       dubbo_client = dubbo.Client(reference_config)
-       unary_service_stub = UnaryServiceStub(dubbo_client)
-   
-       # Call the remote method
-       result = unary_service_stub.say_hello(b"Hello from client")
-       print(result)
-   
-   ```
+@dubbo.service("org.apache.dubbo.samples.Greeter")
+class Greeter(typing.Protocol):
+    async def greet(self, name: str) -> str: ...
+```
 
-## Contributing
+The provider implements the contract and serves it over the Dubbo protocol.
+`server.py`:
 
-We are excited to welcome contributions to the Dubbo-Python project! Whether you are fixing bugs, adding new features, or improving documentation, your input is highly valued.
+```python
+import asyncio
 
-To ensure a smooth collaboration, please review our [Contributing Guide](./docs/CONTRIBUTING.md) for detailed instructions on how to get started, adhere to coding standards, and submit your contributions effectively.
+from dubbo import Dubbo
+from dubbo.config import ApplicationConfig, ProtocolConfig
+
+from greeter import Greeter
+
+
+class GreeterImpl(Greeter):
+    async def greet(self, name: str) -> str:
+        return f"Hello, {name}!"
+
+
+async def main() -> None:
+    app = Dubbo(
+        application=ApplicationConfig(name="greeter-server"),
+        protocols={"dubbo": ProtocolConfig(port=20880)},
+    )
+    app.export(GreeterImpl())
+
+    async with app:
+        await app.serve_forever()
+
+
+asyncio.run(main())
+```
+
+The consumer refers to the contract and calls it like a local object.
+`client.py`:
+
+```python
+import asyncio
+
+from dubbo import Dubbo
+
+from greeter import Greeter
+
+
+async def main() -> None:
+    app = Dubbo()
+    greeter = app.refer(Greeter, url="dubbo://127.0.0.1:20880")
+
+    async with app:
+        print(await greeter.greet("Dubbo"))
+
+
+asyncio.run(main())
+```
+
+Run `python server.py`, then `python client.py` in another terminal:
+
+```console
+$ python client.py
+Hello, Dubbo!
+```
+
+To discover the provider through a registry instead of its address, install
+`apache-dubbo[zookeeper]`, give both applications a name and the registry,
+and drop the `url` of `refer`:
+
+```python
+from dubbo.config import ApplicationConfig, RegistryConfig
+
+app = Dubbo(
+    application=ApplicationConfig(name="greeter-client"),
+    registries={"default": RegistryConfig(address="zookeeper://127.0.0.1:2181")},
+)
+greeter = app.refer(Greeter)
+```
+
+## Learn more
+
+- [Samples](https://github.com/apache/dubbo-python/tree/main/samples): step by step, from a first call to streaming,
+  registries and traffic management; working with Java, Go and gRPC; and
+  using Dubbo with other Python libraries.
+- [Dubbo documentation](https://dubbo.apache.org/): the concepts shared by
+  every Dubbo language.
+- [Contributing](https://github.com/apache/dubbo-python/blob/main/CONTRIBUTING.md): development setup, checks and
+  conventions.
+
+## Community
+
+- **Issues and feature requests**: this repository has no issue tracker of
+  its own; open them in the
+  [Apache Dubbo issue tracker](https://github.com/apache/dubbo/issues) and
+  say that they concern Dubbo for Python.
+- **Questions and discussion**: the
+  [dev@dubbo.apache.org](mailto:dev@dubbo.apache.org) mailing list
+  ([how to subscribe](https://github.com/apache/dubbo/wiki/Mailing-list-subscription-guide)).
+- **Security vulnerabilities**: report them privately to
+  [security@dubbo.apache.org](mailto:security@dubbo.apache.org), not in
+  public.
 
 ## License
 
-Apache Dubbo-python software is licensed under the Apache License Version 2.0. See
-the [LICENSE](https://github.com/apache/dubbo-python/blob/main/LICENSE) file for details.
+Apache Dubbo for Python is licensed under the [Apache License 2.0](https://github.com/apache/dubbo-python/blob/main/LICENSE).
